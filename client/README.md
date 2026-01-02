@@ -1,41 +1,56 @@
-# Startup LaunchPad – Client (React + Vite)
+# Startup LaunchPad – Client
 
-This directory contains the frontend application for the **Startup LaunchPad** project.  
-The application is built using **React** and powered by **Vite** for a fast development environment with Hot Module Replacement (HMR).
+The frontend application for **Startup LaunchPad**, built with **React 19**, **Vite**, and **Mantine UI**.
 
-## Core Responsibilities
+📖 **[Read the Full Frontend Technical Guide](../docs/FRONTEND_TECHNICAL_GUIDE.md)** for architecture usage rules.
 
-- Providing the full user interface (UI) and user experience (UX).
-- Communicating with the backend server via API requests.
-- Managing frontend state, routing, and all user interactions.
+---
 
-## Technology Overview
+## 🚀 Quick Start
 
-This project uses **React + Vite**, which offers a minimal, modern development setup with fast builds and HMR.
+1. **Install Dependencies**
+   ```bash
+   npm install
+   ```
 
-Two official Vite React plugins are available:
+2. **Start Dev Server**
+   ```bash
+   npm run dev
+   ```
+   Access the app at `http://localhost:5173`.
 
-- **[@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react)**  
-  Uses **Babel** (or **oxc** when used with Rolldown) for Fast Refresh.
+3. **Start Storybook (UI Dev)**
+   ```bash
+   npm run storybook
+   ```
+   Browse and develop components in isolation at `http://localhost:6006`.
 
-- **[@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc)**  
-  Uses **SWC** for Fast Refresh.
+---
 
-### React Compiler Note
+## 🛠️ Key Technologies
 
-The new React Compiler is **not yet compatible with SWC**.  
-See the issue here: [https://github.com/vitejs/vite-plugin-react/issues/428](https://github.com/vitejs/vite-plugin-react/issues/428)
+- **UI Framework**: [Mantine v7](https://mantine.dev/) + Tailwind CSS
+- **State Management**: TanStack Query (Server) + Redux Toolkit (Client)
+- **Routing**: React Router v7
+- **Visualization**: ECharts
+- **Testing**: Vitest + Playwright + React Testing Library
 
-### ESLint Configuration
+## 📦 Available Scripts
 
-If you're building a production-ready application, consider using **TypeScript** with type-aware lint rules.  
-See the TypeScript template for more info: [https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts)
+| Command | Description |
+| :--- | :--- |
+| `npm run dev` | Start the local Vite development server. |
+| `npm run build` | Build the application for production (to `dist/`). |
+| `npm run preview` | Preview the production build locally. |
+| `npm run lint` | Run ESLint check. |
+| `npm run storybook` | Launch Storybook UI explorer. |
+| `npm run test` | Run unit/component tests via Vitest. |
+| `npm test` | Alias for `npm run test`. |
 
-## Getting Started
+## 🧪 Testing
 
-1. Navigate to the `client` directory.
-2. Install dependencies using `npm install`.
-3. Start the development server using `npm run dev`.
-4. Open the app in your browser: [http://localhost:5173](http://localhost:5173) (default Vite dev port).
+We use **Vitest** for unit tests and **Playwright** for E2E.
+- **Unit Tests**: `npm run test`
+- **Storybook Tests**: `npm run test-storybook` (if configured)
 
-The page will automatically reload when you make changes.
+For detailed engineering guidelines, specific library rules, and best practices, strictly refer to the **[Frontend Technical Guide](../docs/FRONTEND_TECHNICAL_GUIDE.md)**.

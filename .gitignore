@@ -145,3 +145,9 @@ vite.config.ts.timestamp-*
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+*storybook.log
+storybook-static
+
+# Temporary Files
+Temp/

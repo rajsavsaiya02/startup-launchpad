@@ -5,6 +5,7 @@
   <p>
     <a href="./docs/PROJECT_AND_REPO_GUIDE.md"><strong>📖 PROJECT GUIDELINES</strong></a> &nbsp;&nbsp;&middot;&nbsp;&nbsp;
     <a href="./docs/DATABASE_GUIDE.md"><strong>🗄️ DATABASE GUIDE</strong></a> &nbsp;&nbsp;&middot;&nbsp;&nbsp;
+    <a href="./docs/FRONTEND_TECHNICAL_GUIDE.md"><strong>🎨 FRONTEND GUIDE</strong></a> &nbsp;&nbsp;&middot;&nbsp;&nbsp;
     <a href="./CONTRIBUTING.md"><strong>🤝 CONTRIBUTION</strong></a>
   </p>
 
