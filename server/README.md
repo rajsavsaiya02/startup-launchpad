@@ -16,13 +16,16 @@ We follow a clean **MVC (Model-View-Controller)** pattern for scalability.
 ```
 server/
 ├── src/
-│   ├── config/       # ⚙️ Configuration (DB, Environment)
-│   ├── controllers/  # 🧠 Business logic & Request handling
-│   ├── middleware/   # 🛡️ Custom middleware (Auth, Error handling)
+│   ├── config/       # ⚙️ Configuration
+│   ├── controllers/  # 🧠 Business logic (Auth, Config)
+│   ├── database/     # 🐘 Database Connection & Logic
+│   ├── middleware/   # 🛡️ Custom middleware
+│   ├── public/       # 📂 Static assets (Mobile Configs)
 │   ├── routes/       # 🛣️ API Route definitions
-│   ├── utils/        # 🧰 Utility functions (Logger, Helpers)
-│   ├── app.js        # 🚀 App setup (Middleware, Routes)
-│   └── index.js      # 🏁 Entry point (Server listener)
+│   ├── scripts/      # 📜 Setup scripts (e.g. initDb)
+│   ├── utils/        # 🧰 Utility functions
+│   ├── app.js        # 🚀 App setup
+│   └── index.js      # 🏁 Entry point
 ├── .env              # 🔐 Environment variables (GitIgnored)
 └── package.json      # 📦 Dependencies & Scripts
 ```
@@ -40,14 +43,27 @@ Navigate to the `server` directory and install dependencies:
 ```bash
 cd server
 npm install
+npm run db:init  # Initialize database tables
 ```
 
 ### 3. Configuration
 Create a `.env` file in the `server/` root (copy from `.env.example`):
 ```env
 PORT=5000
-DATABASE_URL=postgresql://user:password@localhost:5432/startup_launchpad
-NODE_ENV=development
+# Database
+DB_USER=postgres
+DB_PASSWORD=your_password
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=slpdb
+# Email (Nodemailer)
+EMAIL_USER=your_email@example.com
+EMAIL_PASS=your_email_password
+SMTP_HOST=mail.cyberinfospace.com
+SMTP_PORT=465
+SMTP_SECURE=true
+# JWT
+JWT_SECRET=your_jwt_secret
 ```
 
 ### 4. Running the Server

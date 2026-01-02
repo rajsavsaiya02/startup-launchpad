@@ -45,6 +45,7 @@ This is a **monorepo** containing both our frontend and backend applications. He
 |
 |-- client/          ➡️ React Frontend Application
 |-- server/          ➡️ Node.js Backend API
+|-- Tests/           ➡️ Unit & Integration Tests
 |-- docs/            ➡️ High-Level Project Documentation
 |-- .github/         ➡️ Issue & PR Templates
 |-- CONTRIBUTING.md  ➡️ Our Contribution Workflow
@@ -77,7 +78,17 @@ Follow these steps to set up a local copy for development.
     npm install
     cp .env.example .env
     # ❗️ Important: Open the new .env file and add your database credentials.
+    npm run db:init
     npm run dev
+    ```
+
+3.  **Run Tests (Optional but Recommended):**
+    All tests are configured to run via the server environment to ensure correct dependencies.
+    ```bash
+    cd server
+    npm run test:db-connection
+    npm run test:db-crud
+    npm run test:email
     ```
 
 3.  **Set up the Frontend (`/client`):**
