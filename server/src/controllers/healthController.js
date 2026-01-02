@@ -1,5 +1,5 @@
 const logger = require('../utils/logger');
-const db = require('../config/db');
+const db = require('../database');
 
 exports.checkHealth = async (req, res) => {
     let dbStatus = 'disconnected';

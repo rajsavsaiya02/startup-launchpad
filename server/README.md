@@ -67,9 +67,17 @@ JWT_SECRET=your_jwt_secret
 ```
 
 ### 4. Running the Server
+
+**Recommended Method (via Startup Scripts):**
 ```bash
-# Development (with Nodemon for auto-restart)
+../start/start_backend.sh
+```
+
+**Manual Method:**
+```bash
+# Development (with Nodemon)
 npm run dev
+```
 
 # Production
 npm start

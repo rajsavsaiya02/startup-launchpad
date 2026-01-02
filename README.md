@@ -3,8 +3,9 @@
   <p><strong>An AI-enhanced operational hub for early-stage startups.</strong></p>
 
   <p>
-    <a href="./docs/PROJECT_AND_REPO_GUIDE.md"><strong>📖 PROJECT AND REPOSITORY GUIDE</strong></a> &nbsp;&nbsp;&middot;&nbsp;&nbsp;
-    <a href="./CONTRIBUTING.md"><strong>🤝 Contribution Guide</strong></a> &nbsp;&nbsp;&middot;&nbsp;&nbsp;
+    <a href="./docs/PROJECT_AND_REPO_GUIDE.md"><strong>📖 PROJECT GUIDELINES</strong></a> &nbsp;&nbsp;&middot;&nbsp;&nbsp;
+    <a href="./docs/DATABASE_GUIDE.md"><strong>🗄️ DATABASE GUIDE</strong></a> &nbsp;&nbsp;&middot;&nbsp;&nbsp;
+    <a href="./CONTRIBUTING.md"><strong>🤝 CONTRIBUTION</strong></a>
   </p>
 
   ![Project Status](https://img.shields.io/badge/status-in%20development-green)
