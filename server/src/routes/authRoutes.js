@@ -38,8 +38,13 @@ router.post('/forgot-password', authController.forgotPassword);
 router.post('/reset-password', authController.resetPassword);
 
 // Get Current User (Session Verification)
-const verifyToken = require('../middleware/authMiddleware');
-router.get('/me', verifyToken, authController.getMe);
+const { protect } = require('../middleware/authMiddleware');
+router.get('/me', protect, authController.getMe);
+router.get('/check-session', authController.checkSession);
 router.post('/logout', authController.logout);
+
+// Device Verification
+router.post('/device/verify-request', protect, authController.requestDeviceVerification);
+router.post('/device/verify-confirm', protect, authController.confirmDeviceVerification);
 
 module.exports = router;

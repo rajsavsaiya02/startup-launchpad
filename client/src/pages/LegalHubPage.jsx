@@ -3,7 +3,12 @@ import { Link } from 'react-router-dom';
 import { Shield, FileText, Lock, ArrowRight } from 'lucide-react';
 import { Card } from '../components/ui/Card';
 
+import { useSettings } from '../context/SettingsContext';
+
 export function LegalHubPage() {
+  const { settings } = useSettings();
+  const platformName = settings?.platform_name || 'Startup LaunchPad';
+
   const docs = [
     {
       id: 'privacy',
@@ -15,7 +20,7 @@ export function LegalHubPage() {
     {
       id: 'terms',
       title: 'Terms & Conditions',
-      desc: 'Your rights and responsibilities when using Startup LaunchPad.',
+      desc: `Your rights and responsibilities when using ${platformName}.`,
       icon: FileText,
       link: '/legal/terms'
     },

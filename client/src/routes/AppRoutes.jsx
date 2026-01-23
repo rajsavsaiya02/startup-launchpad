@@ -43,7 +43,16 @@ import { AdminOrganizationsPage } from '../features/admin/organizations/AdminOrg
 import { PlansSubscriptionsPage } from '../features/admin/plans/PlansSubscriptionsPage';
 import { MarketplaceModerationPage } from '../features/admin/marketplace/MarketplaceModerationPage';
 import { ContentManagementPage } from '../features/admin/content/ContentManagementPage';
+import { PublicPageManager } from '../features/admin/content/PublicPageManager';
+
+import { SystemHealthPage } from '../features/admin/dashboard/SystemHealthPage';
 import { AdminSettingsPage } from '../features/admin/settings/AdminSettingsPage';
+import { EmailSettingsPage } from '../features/admin/settings/EmailSettingsPage';
+import { AccessControlPage } from '../features/admin/settings/AccessControlPage';
+import { AdminProfilePage } from '../features/admin/users/AdminProfilePage';
+import { AdminSecurityPage } from '../features/admin/users/AdminSecurityPage';
+import BrandingSettings from '../features/admin/settings/BrandingSettings';
+import { AdminPreferencesPage } from '../features/admin/users/AdminPreferencesPage';
 import { FreelancerProfilePage } from '../features/talent/FreelancerProfilePage';
 import { GigApplicationsPage } from '../features/talent/GigApplicationsPage';
 import { GigListPage } from '../features/talent/GigListPage';
@@ -55,8 +64,12 @@ import { DashboardOverview } from '../features/dashboard/DashboardOverview';
 import { TeamPage } from '../features/team/TeamPage';
 import { UserSettingsPage } from '../features/settings/UserSettingsPage';
 import { UserProfilePage } from '../features/users/UserProfilePage';
+import AdminLogin from '../pages/admin/AdminLogin';
 
 import { ProtectedRoute } from '../components/layout/ProtectedRoute';
+import { AdminGuard } from '../components/layout/AdminGuard';
+import { PublicAuthGuard } from '../components/layout/PublicAuthGuard';
+import { AdminPlaceholderPage } from '../components/common/AdminPlaceholderPage';
 
 export function AppRoutes() {
   return (
@@ -80,31 +93,77 @@ export function AppRoutes() {
         <Route path="/case-studies/:id" element={<CaseStudyDetailPage />} />
       </Route>
 
-      {/* Authentication Routes */}
-      <Route path="/auth" element={<AuthLayout />}>
-        <Route path="login" element={<LoginPage />} />
-        <Route path="success" element={<AuthSuccessPage />} />
-        <Route path="signup" element={<SignupPage />} />
-        <Route path="forgot-password" element={<ForgotPasswordPage />} />
-        <Route index element={<Navigate to="login" replace />} />
+      {/* Admin Authentication */}
+      {/* Public Auth Routes (Redirects if logged in) */}
+      <Route element={<PublicAuthGuard />}>
+        <Route path="/admin/login" element={<AdminLogin />} />
+
+        <Route path="/auth" element={<AuthLayout />}>
+          <Route path="login" element={<LoginPage />} />
+          <Route path="success" element={<AuthSuccessPage />} />
+          <Route path="signup" element={<SignupPage />} />
+          <Route path="forgot-password" element={<ForgotPasswordPage />} />
+          <Route index element={<Navigate to="login" replace />} />
+        </Route>
       </Route>
 
-      {/* Protected Application Routes */}
-      <Route element={<ProtectedRoute />}>
-        {/* Admin Design System Routes (In real app, wrap with AdminGuard) */}
+      {/* Admin Protected Routes */}
+      <Route element={<AdminGuard />}>
         <Route path="/admin" element={<AdminLayout />}>
-          <Route index element={<Navigate to="dashboard" replace />} />
-          <Route path="dashboard" element={<AdminDashboardPage />} />
-          <Route path="users" element={<UsersManagementPage />} />
-          <Route path="organizations" element={<AdminOrganizationsPage />} />
-          <Route path="plans" element={<PlansSubscriptionsPage />} />
-          <Route path="marketplace" element={<MarketplaceModerationPage />} />
-          <Route path="audit" element={<AuditLogsPage />} />
-          <Route path="content" element={<ContentManagementPage />} />
-          <Route path="settings" element={<AdminSettingsPage />} />
+          {/* Default Redirect */}
+          <Route index element={<Navigate to="dashboard/overview" replace />} />
+          <Route path="dashboard" element={<Navigate to="overview" replace />} />
+
+          {/* 1. Dashboard Module */}
+          <Route path="dashboard/overview" element={<AdminDashboardPage />} />
+          <Route path="dashboard/analytics" element={<AdminPlaceholderPage title="Analytics" module="Dashboard" />} />
+          <Route path="dashboard/financials" element={<AdminPlaceholderPage title="Financial Reports" module="Dashboard" />} />
+          <Route path="dashboard/live" element={<AdminPlaceholderPage title="Live Feed" module="Dashboard" />} />
+          <Route path="dashboard/health" element={<SystemHealthPage />} />
+
+          {/* 2. Management Module */}
+          <Route path="management" element={<Navigate to="ventures" replace />} />
+          <Route path="management/ventures" element={<AdminPlaceholderPage title="Ventures" module="Management" />} /> {/* Was ProjectsDashboard? */}
+          <Route path="management/users" element={<UsersManagementPage />} />
+          <Route path="management/verification" element={<AdminPlaceholderPage title="Verification Queue" module="Management" />} />
+          <Route path="management/fiscal" element={<PlansSubscriptionsPage />} />
+          <Route path="management/marketplace" element={<MarketplaceModerationPage />} />
+
+          {/* 3. Communication Module */}
+          <Route path="communication" element={<Navigate to="broadcasts" replace />} />
+          <Route path="communication/broadcasts" element={<AdminPlaceholderPage title="Broadcasts" module="Communication" />} />
+          <Route path="communication/cms" element={<Navigate to="blogs" replace />} />
+          <Route path="communication/cms/blogs" element={<ContentManagementPage />} />
+
+          <Route path="communication/cms/homepage" element={<PublicPageManager />} />
+          <Route path="communication/cms/testimonials" element={<AdminPlaceholderPage title="Testimonials Manager" module="Content CMS" />} />
+          <Route path="communication/cms/resources" element={<AdminPlaceholderPage title="Resource Library" module="Content CMS" />} />
+          <Route path="communication/cms/banners" element={<AdminPlaceholderPage title="Banners & Highlights" module="Content CMS" />} />
+          <Route path="communication/promos" element={<AdminPlaceholderPage title="Promotions" module="Communication" />} />
+          <Route path="communication/support" element={<AdminPlaceholderPage title="Support Helpdesk" module="Communication" />} />
+
+          {/* 4. Settings Module */}
+          <Route path="settings" element={<Navigate to="general" replace />} />
+          <Route path="settings/general" element={<AdminSettingsPage />} />
+          <Route path="settings/branding" element={<BrandingSettings />} />
+          <Route path="settings/email" element={<EmailSettingsPage />} />
+          <Route path="settings/notifications" element={<AdminPlaceholderPage title="Notification Settings" module="Settings" />} />
+          {/* <Route path="settings/features" element={<AdminPlaceholderPage title="Feature Toggles" module="Settings" />} /> */}
+          {/* <Route path="settings/integrations" element={<AdminPlaceholderPage title="Integrations" module="Settings" />} /> */}
+          <Route path="settings/access" element={<AccessControlPage />} />
+          <Route path="settings/security" element={<AuditLogsPage />} /> 
+          {/* <Route path="settings/developers" element={<AdminPlaceholderPage title="Developer Tools" module="Settings" />} /> */}
+
+          {/* <Route path="settings/maintenance" element={<AdminPlaceholderPage title="System Maintenance" module="Settings" />} /> */}
+
+          {/* Admin Profile & Preferences */}
+          <Route path="profile" element={<AdminProfilePage />} />
+          <Route path="security" element={<AdminSecurityPage />} />
+          {/* <Route path="preferences" element={<AdminPreferencesPage />} /> */}
+          
+          {/* Design System (Keep accessible for dev) */}
           <Route path="design" element={<DesignSystemLayout />}>
             <Route index element={<DesignSystemIntroPage />} />
-            <Route index element={<Navigate to="foundations" replace />} />
             <Route path="foundations" element={<FoundationsPage />} />
             <Route path="components" element={<ComponentsPage />} />
             <Route path="layout" element={<LayoutPage />} />
@@ -112,16 +171,16 @@ export function AppRoutes() {
             <Route path="accessibility" element={<AccessibilityPage />} />
           </Route>
         </Route>
+      </Route>
 
-        {/* Onboarding Route (Standalone Layout) */}
-        <Route path="/onboarding/create-workspace" element={<CreateWorkspacePage />} />
-
-        {/* Protected Application Routes */}
+      {/* User Protected Routes */}
+      <Route element={<ProtectedRoute />}>
         <Route element={<DashboardLayout />}>
           <Route path="/dashboard" element={<DashboardOverview />} />
           <Route path="/settings" element={<UserSettingsPage />} />
           <Route path="/profile" element={<UserProfilePage />} />
           <Route path="/users/:id" element={<UserProfilePage />} />
+
           {/* Operations Module */}
           <Route path="/projects" element={<ProjectsDashboard />} />
           <Route path="/projects/:id" element={<ProjectDetailsPage />} />
@@ -131,16 +190,17 @@ export function AppRoutes() {
           <Route path="/financials" element={<FinancialOverview />} />
           <Route path="/financials/expenses" element={<ExpenseListPage />} />
           <Route path="/financials/analytics" element={<AnalyticsPage />} />
+
           {/* Talent Module */}
           <Route path="/talent" element={<TalentMarketplace />} />
-          \        <Route path="/talent/profile/:id" element={<FreelancerProfilePage />} />
+          <Route path="/talent/profile/:id" element={<FreelancerProfilePage />} />
           <Route path="/gigs" element={<GigListPage />} />
           <Route path="/gigs/:id" element={<GigDetailsPage />} />
           <Route path="/gigs/:id/applications" element={<GigApplicationsPage />} />
+
           {/* Fallback for app routes */}
           <Route path="/team" element={<TeamPage />} />
         </Route>
-
       </Route>
 
       {/* 404 Catch-all */}

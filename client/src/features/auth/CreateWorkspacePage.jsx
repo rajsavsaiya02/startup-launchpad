@@ -1,11 +1,7 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
-import { Building2, Users, Tag } from 'lucide-react';
-import { Input } from '../../components/ui/Input';
-import { Button } from '../../components/ui/Button';
-import { Logo } from '../../components/ui/Logo';
+import { useSettings } from '../../context/SettingsContext';
 
 export function CreateWorkspacePage() {
+  const { settings } = useSettings();
   return (
     <div className="min-h-screen bg-background-light dark:bg-background-dark flex flex-col md:flex-row font-sans text-text-primary transition-colors duration-300">
       
@@ -16,7 +12,7 @@ export function CreateWorkspacePage() {
           {/* Header */}
           <div className="flex items-center gap-2 mb-8">
             <Logo className="h-8 w-8 text-primary" />
-            <span className="text-xl font-bold text-text-primary dark:text-white">Startup LaunchPad</span>
+            <span className="text-xl font-bold text-text-primary dark:text-white">{settings?.platform_name || 'Startup LaunchPad'}</span>
           </div>
 
           <div className="space-y-2">

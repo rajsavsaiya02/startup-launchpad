@@ -1,6 +1,7 @@
 import React from 'react';
-import { Link, NavLink, useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import { Link, NavLink } from 'react-router-dom';
+import { apiClient } from '../../lib/axios';
+import { useAuth } from '../../context/AuthContext';
 import {
   LayoutDashboard,
   FolderOpen,
@@ -34,16 +35,10 @@ const NAV_ITEMS = [
 ];
 
 export function Sidebar({ className }) {
-  const navigate = useNavigate();
+  const { logout } = useAuth();
 
   const handleLogout = async () => {
-    try {
-      await axios.post('http://localhost:5000/api/auth/logout', {}, { withCredentials: true });
-      navigate('/auth/login');
-    } catch (error) {
-      console.error('Logout failed:', error);
-      navigate('/auth/login');
-    }
+    await logout();
   };
 
   return (

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Check, Phone, ChevronDown } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { cn } from '../utils/cn';
+import { useSettings } from '../context/SettingsContext';
 
 // --- Data Constants ---
 const PLANS = [
@@ -52,6 +53,8 @@ const FAQS = [
 
 export function PricingPage() {
   const [billingCycle, setBillingCycle] = useState('monthly');
+  const { settings } = useSettings();
+  const platformName = settings?.platform_name || 'Startup LaunchPad';
 
   return (
     <div className="font-sans text-gray-900 dark:text-white">
@@ -240,7 +243,7 @@ export function PricingPage() {
           <div className="relative z-10">
              <h2 className="text-3xl sm:text-4xl font-bold text-white mb-6">Ready to build your startup faster?</h2>
              <p className="text-lg text-blue-100 mb-10 max-w-2xl mx-auto">
-               Join thousands of founders using Startup LaunchPad to execute with clarity.
+               Join thousands of founders using {platformName} to execute with clarity.
              </p>
              <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
                <Link to="/auth/signup" className="w-full sm:w-auto">

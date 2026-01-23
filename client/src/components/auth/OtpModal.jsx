@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
+import { apiClient } from '../../lib/axios';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 
@@ -18,7 +18,7 @@ export function OtpModal({ email, isOpen, onClose }) {
         setError('');
 
         try {
-            await axios.post('http://localhost:5000/api/auth/verify-email', { email, otp });
+            await apiClient.post('/auth/verify-email', { email, otp });
             // On success, redirect to login or dashboard
             // For now, goto login
             navigate('/auth/login?verified=true');

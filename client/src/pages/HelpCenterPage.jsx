@@ -4,6 +4,7 @@ import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { Link } from 'react-router-dom';
+import { useSettings } from '../context/SettingsContext';
 
 const CATEGORIES = [
   { id: 'general', name: 'General', icon: HelpCircle },
@@ -12,26 +13,29 @@ const CATEGORIES = [
   { id: 'features', name: 'Features', icon: Settings },
 ];
 
-const FAQS = {
-  general: [
-    { q: "What is Startup LaunchPad?", a: "Startup LaunchPad is a unified operating system designed to help early-stage startups manage Operations, Finance, and Talent in one place." },
-    { q: "Who is this platform for?", a: "It is built for early-stage founders, small teams, and accelerators who need to move fast without the chaos of using 10 different tools." },
-  ],
-  account: [
-    { q: "How do I invite team members?", a: "Go to Settings > Team > Invite Member. Enter their email address and select their role (Admin, Member, Viewer)." },
-    { q: "Can I change my email address?", a: "Yes, you can update your email in your Profile settings. You will need to verify the new address via email." },
-  ],
-  billing: [
-    { q: "Do you offer a free trial?", a: "Yes, all paid plans come with a 14-day free trial. No credit card required to start." },
-    { q: "What payment methods are accepted?", a: "We accept all major credit cards (Visa, Mastercard, Amex) and process payments securely via Stripe." },
-  ],
-  features: [
-    { q: "How does the Talent Marketplace work?", a: "You can post short-term 'gigs' or tasks directly from your project board. Vetted freelancers can apply, and you can hire them with one click." },
-    { q: "Is my financial data secure?", a: "Absolutely. We use bank-level 256-bit encryption and never sell your data. See our Security Statement for more details." },
-  ]
-};
-
 export function HelpCenterPage() {
+  const { settings } = useSettings();
+  const platformName = settings?.platform_name || 'Startup LaunchPad';
+
+  const FAQS = {
+    general: [
+      { q: `What is ${platformName}?`, a: `${platformName} is a unified operating system designed to help early-stage startups manage Operations, Finance, and Talent in one place.` },
+      { q: "Who is this platform for?", a: "It is built for early-stage founders, small teams, and accelerators who need to move fast without the chaos of using 10 different tools." },
+    ],
+    account: [
+      { q: "How do I invite team members?", a: "Go to Settings > Team > Invite Member. Enter their email address and select their role (Admin, Member, Viewer)." },
+      { q: "Can I change my email address?", a: "Yes, you can update your email in your Profile settings. You will need to verify the new address via email." },
+    ],
+    billing: [
+      { q: "Do you offer a free trial?", a: "Yes, all paid plans come with a 14-day free trial. No credit card required to start." },
+      { q: "What payment methods are accepted?", a: "We accept all major credit cards (Visa, Mastercard, Amex) and process payments securely via Stripe." },
+    ],
+    features: [
+      { q: "How does the Talent Marketplace work?", a: "You can post short-term 'gigs' or tasks directly from your project board. Vetted freelancers can apply, and you can hire them with one click." },
+      { q: "Is my financial data secure?", a: "Absolutely. We use bank-level 256-bit encryption and never sell your data. See our Security Statement for more details." },
+    ]
+  };
+
   const [activeCategory, setActiveCategory] = useState('general');
   const [searchQuery, setSearchQuery] = useState('');
 

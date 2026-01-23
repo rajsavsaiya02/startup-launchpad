@@ -3,102 +3,108 @@ import { useParams, Link, Navigate } from 'react-router-dom';
 import { ArrowLeft, Calendar } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 
-// --- Legal Content Database ---
-const LEGAL_CONTENT = {
-  privacy: {
-    title: "Privacy Policy",
-    lastUpdated: "October 26, 2023",
-    sections: [
-      {
-        id: "collection",
-        title: "Information We Collect",
-        content: "We collect information that you voluntarily provide when creating an account, using our services, contacting support, or interacting with our platform. This includes your name, email address, billing details, usage data, device information, and actions taken within the app."
-      },
-      {
-        id: "usage",
-        title: "How We Use Your Information",
-        content: `We use your data to:
-        <ul class="list-disc pl-6 mt-2 space-y-2">
-          <li>Provide, maintain, and improve our services</li>
-          <li>Personalize your experience</li>
-          <li>Offer customer support</li>
-          <li>Deliver relevant product updates</li>
-          <li>Detect, prevent, and respond to security incidents</li>
-        </ul>`
-      },
-      {
-        id: "security",
-        title: "Data Protection & Security",
-        content: "Your data is encrypted in transit and at rest. We follow modern SaaS security standards including access controls, monitoring, network protection, and regular audits."
-      },
-      {
-        id: "cookies",
-        title: "Cookies & Tracking",
-        content: "We use cookies, analytics tools, and tracking technologies to improve product performance and understand usage patterns."
-      },
-      {
-        id: "rights",
-        title: "User Rights & Control",
-        content: "You may request access, deletion, correction, or export of your personal data at any time by contacting us at <a href='mailto:privacy@launchpad.com' class='text-primary hover:underline'>privacy@launchpad.com</a>."
-      }
-    ]
-  },
-  terms: {
-    title: "Terms & Conditions",
-    lastUpdated: "September 15, 2023",
-    sections: [
-      {
-        id: "acceptance",
-        title: "1. Acceptance of Terms",
-        content: "By using Startup LaunchPad, you agree to these Terms & Conditions and all applicable laws. If you do not agree, you may not use the service."
-      },
-      {
-        id: "accounts",
-        title: "2. User Accounts",
-        content: "You must provide accurate information when creating an account. You are responsible for safeguarding login credentials and for all activities that occur under your account."
-      },
-      {
-        id: "usage",
-        title: "3. Use of Service",
-        content: "You agree not to misuse the platform, engage in unauthorized access, reverse engineer the software, or attempt to disrupt operations."
-      },
-      {
-        id: "payment",
-        title: "4. Payments & Billing",
-        content: "Paid plans automatically renew unless cancelled. Refunds are handled on a case-by-case basis as per our Refund Policy."
-      },
-      {
-        id: "termination",
-        title: "5. Termination",
-        content: "We may suspend or terminate your account for violating these terms or for harmful activities without prior notice."
-      }
-    ]
-  },
-  security: {
-    title: "Security Statement",
-    lastUpdated: "November 01, 2023",
-    sections: [
-      {
-        id: "infrastructure",
-        title: "Infrastructure Security",
-        content: "Our services are hosted on AWS (Amazon Web Services), providing industry-leading physical and environmental security."
-      },
-      {
-        id: "encryption",
-        title: "Data Encryption",
-        content: "All data is encrypted in transit using TLS 1.2+ and at rest using AES-256 encryption standards."
-      },
-      {
-        id: "access",
-        title: "Access Control",
-        content: "We enforce strict Role-Based Access Control (RBAC) internally. Only authorized personnel have access to production data, and access is logged."
-      }
-    ]
-  }
-};
+import { useSettings } from '../context/SettingsContext';
 
 export function PolicyViewerPage() {
   const { docId } = useParams();
+  const { settings } = useSettings();
+  const platformName = settings?.platform_name || 'Startup LaunchPad';
+  const supportEmail = settings?.support_email || 'support@launchpad.com';
+
+  // --- Legal Content Database ---
+  const LEGAL_CONTENT = {
+    privacy: {
+      title: "Privacy Policy",
+      lastUpdated: "October 26, 2023",
+      sections: [
+        {
+          id: "collection",
+          title: "Information We Collect",
+          content: "We collect information that you voluntarily provide when creating an account, using our services, contacting support, or interacting with our platform. This includes your name, email address, billing details, usage data, device information, and actions taken within the app."
+        },
+        {
+          id: "usage",
+          title: "How We Use Your Information",
+          content: `We use your data to:
+          <ul class="list-disc pl-6 mt-2 space-y-2">
+            <li>Provide, maintain, and improve our services</li>
+            <li>Personalize your experience</li>
+            <li>Offer customer support</li>
+            <li>Deliver relevant product updates</li>
+            <li>Detect, prevent, and respond to security incidents</li>
+          </ul>`
+        },
+        {
+          id: "security",
+          title: "Data Protection & Security",
+          content: "Your data is encrypted in transit and at rest. We follow modern SaaS security standards including access controls, monitoring, network protection, and regular audits."
+        },
+        {
+          id: "cookies",
+          title: "Cookies & Tracking",
+          content: "We use cookies, analytics tools, and tracking technologies to improve product performance and understand usage patterns."
+        },
+        {
+          id: "rights",
+          title: "User Rights & Control",
+          content: `You may request access, deletion, correction, or export of your personal data at any time by contacting us at <a href='mailto:${supportEmail}' class='text-primary hover:underline'>${supportEmail}</a>.`
+        }
+      ]
+    },
+    terms: {
+      title: "Terms & Conditions",
+      lastUpdated: "September 15, 2023",
+      sections: [
+        {
+          id: "acceptance",
+          title: "1. Acceptance of Terms",
+          content: `By using ${platformName}, you agree to these Terms & Conditions and all applicable laws. If you do not agree, you may not use the service.`
+        },
+        {
+          id: "accounts",
+          title: "2. User Accounts",
+          content: "You must provide accurate information when creating an account. You are responsible for safeguarding login credentials and for all activities that occur under your account."
+        },
+        {
+          id: "usage",
+          title: "3. Use of Service",
+          content: "You agree not to misuse the platform, engage in unauthorized access, reverse engineer the software, or attempt to disrupt operations."
+        },
+        {
+          id: "payment",
+          title: "4. Payments & Billing",
+          content: "Paid plans automatically renew unless cancelled. Refunds are handled on a case-by-case basis as per our Refund Policy."
+        },
+        {
+          id: "termination",
+          title: "5. Termination",
+          content: "We may suspend or terminate your account for violating these terms or for harmful activities without prior notice."
+        }
+      ]
+    },
+    security: {
+      title: "Security Statement",
+      lastUpdated: "November 01, 2023",
+      sections: [
+        {
+          id: "infrastructure",
+          title: "Infrastructure Security",
+          content: "Our services are hosted on AWS (Amazon Web Services), providing industry-leading physical and environmental security."
+        },
+        {
+          id: "encryption",
+          title: "Data Encryption",
+          content: "All data is encrypted in transit using TLS 1.2+ and at rest using AES-256 encryption standards."
+        },
+        {
+          id: "access",
+          title: "Access Control",
+          content: "We enforce strict Role-Based Access Control (RBAC) internally. Only authorized personnel have access to production data, and access is logged."
+        }
+      ]
+    }
+  };
+
   const doc = LEGAL_CONTENT[docId];
 
   // Handle 404

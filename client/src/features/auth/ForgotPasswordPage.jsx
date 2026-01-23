@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import axios from 'axios';
 import { ArrowLeft, Mail, KeyRound } from 'lucide-react';
+import { apiClient } from '../../lib/axios';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 
@@ -20,7 +20,7 @@ export function ForgotPasswordPage() {
     setLoading(true);
     setError('');
     try {
-      await axios.post('http://localhost:5000/api/auth/forgot-password', { email });
+      await apiClient.post('/auth/forgot-password', { email });
       setStep(2);
       setMessage('Reset code sent to your email.');
     } catch (err) {
@@ -35,7 +35,7 @@ export function ForgotPasswordPage() {
     setLoading(true);
     setError('');
     try {
-      await axios.post('http://localhost:5000/api/auth/reset-password', { email, otp, newPassword });
+      await apiClient.post('/auth/reset-password', { email, otp, newPassword });
       navigate('/auth/login', { replace: true }); // Maybe add state to show success
     } catch (err) {
       setError(err.response?.data?.message || 'Reset failed');

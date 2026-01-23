@@ -1,6 +1,7 @@
 import React from 'react';
 import { Lightbulb, Target, Users, Rocket, ShieldCheck, HeartHandshake } from 'lucide-react';
 import { Card } from '../components/ui/Card';
+import { useSettings } from '../context/SettingsContext';
 
 const TEAM = [
   { name: "Raj Savsaiya", role: "Cross Platfrom Developer (TL)", img: "https://placehold.co/150" },
@@ -20,6 +21,9 @@ const VALUES = [
 ];
 
 export function AboutPage() {
+  const { settings } = useSettings();
+  const platformName = settings?.platform_name || 'Startup LaunchPad';
+
   return (
     <div className="bg-background-light dark:bg-background-dark font-sans text-text-primary transition-colors duration-300">
       
@@ -32,7 +36,7 @@ export function AboutPage() {
             Empowering the next generation of <span className="text-primary">Indian Unicorns.</span>
           </h1>
           <p className="text-xl text-text-secondary dark:text-gray-300 leading-relaxed max-w-3xl mx-auto">
-            Startup LaunchPad was born from a simple observation: 90% of startups fail not because of bad ideas, but because of operational chaos. We exist to close the gap between vision and execution.
+            {platformName} was born from a simple observation: 90% of startups fail not because of bad ideas, but because of operational chaos. We exist to close the gap between vision and execution.
           </p>
         </div>
       </section>
@@ -55,7 +59,7 @@ export function AboutPage() {
                 Early-stage founders are often overwhelmed. They juggle project management in one tool, finances in a spreadsheet, and hiring on a third platform.
               </p>
               <p>
-                This fragmentation drains cognitive resources. Startup LaunchPad unifies these three critical pillars—<strong>Operations, Finance, and Talent</strong>—into a single operating system.
+                This fragmentation drains cognitive resources. {platformName} unifies these three critical pillars—<strong>Operations, Finance, and Talent</strong>—into a single operating system.
               </p>
               <p>
                 Built under the guidance of <strong>Prof. Jay Parmar</strong>, our platform is designed for the "product-rich but process-poor" founder.

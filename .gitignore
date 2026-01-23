@@ -151,3 +151,10 @@ storybook-static
 
 # Temporary Files
 Temp/
+
+# User Generated Content / Server Storage
+server/storage/
+server/public/uploads/
+server/debug-*.js
+server/probe-*.js
+

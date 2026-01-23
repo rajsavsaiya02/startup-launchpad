@@ -1,25 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
-import axios from 'axios';
+import { useAuth } from '../../context/AuthContext';
 
 export function ProtectedRoute() {
-    const [isAuthenticated, setIsAuthenticated] = useState(null); // null = loading
+    const { isAuthenticated, isLoading, user } = useAuth();
 
-    useEffect(() => {
-        const verifySession = async () => {
-            try {
-                await axios.get('http://localhost:5000/api/auth/me', { withCredentials: true });
-                setIsAuthenticated(true);
-            } catch (error) {
-                setIsAuthenticated(false);
-            }
-        };
-
-        verifySession();
-    }, []);
-
-    if (isAuthenticated === null) {
-        // specific spinner or loading state
+    if (isLoading) {
         return (
             <div className="flex h-screen items-center justify-center">
                 <div className="text-gray-500">Verifying access...</div>
@@ -27,5 +13,12 @@ export function ProtectedRoute() {
         );
     }
 
-    return isAuthenticated ? <Outlet /> : <Navigate to="/auth/login" replace />;
+    if (isAuthenticated) {
+        if (user?.role === 'admin' || user?.role === 'super_admin') {
+            return <Navigate to="/admin/dashboard" replace />;
+        }
+        return <Outlet />;
+    }
+
+    return <Navigate to="/auth/login" replace />;
 }

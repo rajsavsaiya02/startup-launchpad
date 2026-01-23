@@ -3,8 +3,14 @@ import { Mail, Phone, MapPin, MessageSquare, Twitter, Facebook, Linkedin, Github
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { cn } from '../utils/cn';
+import { useSettings } from '../context/SettingsContext';
 
 export function ContactPage() {
+  const { settings } = useSettings();
+  const contactEmail = settings?.support_email || 'support@launchpad.com';
+  const contactPhone = settings?.contact_phone || '+91 6353239217';
+  const contactAddress = settings?.contact_address || 'The Palladium, Yogi Chowk Ground, Chikuwadi, Puna Simada Road, Yogi Chowk, Surat-395011, Gujarat';
+
   return (
     <div className="bg-background-light dark:bg-background-dark font-sans text-text-primary transition-colors duration-300">
       
@@ -57,7 +63,7 @@ export function ContactPage() {
                 <div className="flex items-start gap-3">
                   <input type="checkbox" id="consent" className="mt-1 h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary" />
                   <label htmlFor="consent" className="text-sm text-text-tertiary">
-                    I consent to receive replies from Startup LaunchPad and agree to the <a href="#" className="text-primary hover:underline">Privacy Policy</a>.
+                    I consent to receive replies from {settings?.platform_name || 'Startup LaunchPad'} and agree to the <a href="#" className="text-primary hover:underline">Privacy Policy</a>.
                   </label>
                 </div>
 
@@ -84,16 +90,16 @@ export function ContactPage() {
                 </div>
 
                 <div>
-                  <a href="tel:+18005550123" className="flex items-center gap-2 text-primary font-medium hover:underline">
-                    <Phone className="h-4 w-4" /> +1 (800) 555-0123
+                  <a href={`tel:${contactPhone}`} className="flex items-center gap-2 text-primary font-medium hover:underline">
+                    <Phone className="h-4 w-4" /> {contactPhone}
                   </a>
                   <p className="text-xs text-text-tertiary mt-1">Sales: M–F, 9am–5pm PT.</p>
                 </div>
 
                 <div>
                   <p className="text-sm font-medium text-text-secondary">Email Us</p>
-                  <a href="mailto:support@launchpad.com" className="text-primary hover:underline flex items-center gap-2">
-                    <Mail className="h-4 w-4" /> support@launchpad.com
+                  <a href={`mailto:${contactEmail}`} className="text-primary hover:underline flex items-center gap-2">
+                    <Mail className="h-4 w-4" /> {contactEmail}
                   </a>
                 </div>
               </div>

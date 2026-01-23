@@ -2,8 +2,12 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { Zap, Shield, CheckCircle } from 'lucide-react';
 import { Button } from '../components/ui/Button';
+import { useSettings } from '../context/SettingsContext';
 
 export function LandingPage() {
+  const { settings } = useSettings();
+  const platformName = settings?.platform_name || 'Startup LaunchPad';
+
   return (
     <div className="bg-surface-light dark:bg-background-dark font-sans text-text-primary transition-colors duration-300">
       
@@ -17,7 +21,7 @@ export function LandingPage() {
               <span className="text-primary">All in One Platform.</span>
             </h1>
             <p className="text-lg text-text-secondary dark:text-gray-400 leading-relaxed">
-              Startup LaunchPad gives founders a unified workspace to run projects, track finances, hire talent, and collaborate—without the friction.
+              {platformName} gives founders a unified workspace to run projects, track finances, hire talent, and collaborate—without the friction.
             </p>
             <div className="flex flex-wrap items-center gap-4 mt-2">
               <Link to="/auth/signup">
@@ -193,7 +197,7 @@ export function LandingPage() {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {[
-              { name: "Sarah L.", role: "Founder, Tech Innovate", text: "Startup LaunchPad has been a game-changer. The ability to manage everything from projects to finances in one place is invaluable.", img: "https://i.pravatar.cc/150?u=1" },
+              { name: "Sarah L.", role: "Founder, Tech Innovate", text: `${platformName} has been a game-changer. The ability to manage everything from projects to finances in one place is invaluable.`, img: "https://i.pravatar.cc/150?u=1" },
               { name: "Mark C.", role: "CEO, Future Solutions", text: "The financial hub alone is worth it. We finally have a clear view of our runway without complicated spreadsheets.", img: "https://i.pravatar.cc/150?u=2" },
               { name: "Emily R.", role: "Product Lead, NextGen AI", text: "Hiring quality freelancers used to be a headache. The talent marketplace connected us with amazing designers in days.", img: "https://i.pravatar.cc/150?u=3" }
             ].map((testim, idx) => (
@@ -220,7 +224,7 @@ export function LandingPage() {
         <div className="mx-auto max-w-5xl rounded-3xl bg-linear-to-r from-primary to-blue-600 px-6 py-16 text-center text-white shadow-2xl">
           <h2 className="text-3xl md:text-4xl font-bold mb-6">Ready to launch your next big idea?</h2>
           <p className="text-lg text-blue-100 mb-10 max-w-2xl mx-auto">
-            Join thousands of founders using Startup LaunchPad to build, grow, and scale smarter.
+            Join thousands of founders using {platformName} to build, grow, and scale smarter.
           </p>
           <div className="flex flex-col sm:flex-row justify-center gap-4">
             <Link to="/auth/signup">

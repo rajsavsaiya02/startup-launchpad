@@ -1,13 +1,40 @@
+const fs = require('fs');
+const path = require('path');
+
+const logDir = path.join(__dirname, '../../logs');
+if (!fs.existsSync(logDir)) {
+    fs.mkdirSync(logDir, { recursive: true });
+}
+
+const infoLogPath = path.join(logDir, 'app.log');
+const errorLogPath = path.join(logDir, 'error.log');
+
+const writeToFile = (filePath, message) => {
+    fs.appendFile(filePath, message + '\n', (err) => {
+        if (err) console.error('Failed to write to log file:', err);
+    });
+};
+
 const logger = {
     info: (message) => {
-        console.log(`[INFO] ${new Date().toISOString()}: ${message}`);
+        const timestamp = new Date().toISOString();
+        const logMessage = `[INFO] ${timestamp}: ${message}`;
+        console.log(logMessage);
+        writeToFile(infoLogPath, logMessage);
     },
     error: (message, error) => {
-        console.error(`[ERROR] ${new Date().toISOString()}: ${message}`, error || '');
+        const timestamp = new Date().toISOString();
+        const logMessage = `[ERROR] ${timestamp}: ${message} ${error ? JSON.stringify(error) : ''}`;
+        console.error(logMessage);
+        writeToFile(errorLogPath, logMessage);
+        writeToFile(infoLogPath, logMessage); // Also write errors to main log
     },
     debug: (message) => {
         if (process.env.NODE_ENV !== 'production') {
-            console.log(`[DEBUG] ${new Date().toISOString()}: ${message}`);
+            const timestamp = new Date().toISOString();
+            const logMessage = `[DEBUG] ${timestamp}: ${message}`;
+            console.log(logMessage);
+            writeToFile(infoLogPath, logMessage);
         }
     },
 };

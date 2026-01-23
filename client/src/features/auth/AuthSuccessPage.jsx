@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import { apiClient } from '../../lib/axios';
 
 export function AuthSuccessPage() {
     const navigate = useNavigate();
@@ -11,10 +11,8 @@ export function AuthSuccessPage() {
     useEffect(() => {
         const fetchUser = async () => {
             try {
-                // Ensure cookies are sent
-                const response = await axios.get('http://localhost:5000/api/auth/me', {
-                    withCredentials: true
-                });
+                // Ensure cookies are sent (handled by apiClient defaults)
+                const response = await apiClient.get('/auth/me');
                 setUser(response.data);
             } catch (err) {
                 setError('Failed to fetch user session. Cookies might be missing.');
