@@ -17,7 +17,8 @@ app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" } // Allow images to be loaded from other origins if needed, or by client
 }));
 app.use(cors({ origin: process.env.CLIENT_URL, credentials: true })); // Important: CORS must allow credentials
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(cookieParser());
 app.use(morgan('combined', { stream: { write: (message) => logger.info(message.trim()) } }));
 app.use(passport.initialize());
@@ -29,6 +30,13 @@ app.use(express.static(path.join(__dirname, '../public')));
 const maintenanceMiddleware = require('./middleware/maintenanceMiddleware');
 app.use(maintenanceMiddleware);
 
+const seoMiddleware = require('./middleware/seoMiddleware');
+const cmsController = require('./controllers/cmsController');
+
+// Global SEO Routes (Robots & Sitemap)
+app.get('/robots.txt', cmsController.generateRobots);
+app.get('/sitemap.xml', cmsController.generateSitemap);
+
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/files', fileRoutes);
@@ -36,7 +44,13 @@ app.use('/api/sessions', require('./routes/sessionRoutes'));
 app.use('/api/settings', require('./routes/settingsRoutes'));
 app.use('/api', routes);
 
-// 404 Handler
+// Serve React Static Files (JS/CSS/Images) - Avoid index.html to allow SEO Injection
+app.use(express.static(path.join(__dirname, '../../client/dist'), { index: false }));
+
+// SEO Middleware for Frontend Routes (SSR-like behavior)
+app.use('*', seoMiddleware);
+
+// 404 Handler (Falls through here if API route matches nothing or SEO middleware skips)
 app.use((req, res, next) => {
     res.status(404).json({ message: 'Route not found' });
 });

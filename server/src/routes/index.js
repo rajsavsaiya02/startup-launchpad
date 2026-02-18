@@ -7,12 +7,14 @@ const healthRoutes = require('./healthRoutes');
 
 const auditRoutes = require('./auditRoutes');
 const systemRoutes = require('./systemRoutes');
+const cmsRoutes = require('./cmsRoutes');
 
 router.use('/auth', authRoutes);
 router.use('/admin/audit', auditRoutes);
 router.use('/admin/system', systemRoutes);
 router.use('/admin', adminRoutes);
 router.use('/configs', configRoutes);
+router.use('/cms', cmsRoutes);
 router.use('/', healthRoutes);
 
 module.exports = router;

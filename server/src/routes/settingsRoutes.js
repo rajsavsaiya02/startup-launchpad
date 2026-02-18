@@ -26,6 +26,7 @@ router.get('/', settingsController.getSettings); // Public: Required for Login/L
 router.put('/branding', verifyAdminToken, settingsController.updateBranding);
 router.put('/general', verifyAdminToken, settingsController.updateGeneral);
 router.put('/email', verifyAdminToken, settingsController.updateEmail);
+router.put('/navigation', verifyAdminToken, settingsController.updateNavigation);
 
 // Deprecated: Monolithic update (kept if needed for fallback, but frontend will use specific ones)
 // router.put('/', verifyAdminToken, settingsController.updateSettings);

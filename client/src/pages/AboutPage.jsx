@@ -2,6 +2,8 @@ import React from 'react';
 import { Lightbulb, Target, Users, Rocket, ShieldCheck, HeartHandshake } from 'lucide-react';
 import { Card } from '../components/ui/Card';
 import { useSettings } from '../context/SettingsContext';
+import { useCMSContent } from '../hooks/useCMSContent';
+import { QuillEditor } from '../features/admin/content/QuillEditor';
 
 const TEAM = [
   { name: "Raj Savsaiya", role: "Cross Platfrom Developer (TL)", img: "https://placehold.co/150" },
@@ -24,8 +26,26 @@ export function AboutPage() {
   const { settings } = useSettings();
   const platformName = settings?.platform_name || 'Startup LaunchPad';
 
+  const { content, raw, SEO, loading } = useCMSContent('about');
+
+  if (loading) return <div className="min-h-screen bg-white dark:bg-background-dark"></div>;
+
+  if (content && Object.keys(content).length > 0) {
+      return (
+          <div className="min-h-screen bg-white dark:bg-background-dark pt-20">
+              <SEO />
+              <div className="container mx-auto px-4 max-w-5xl">
+                  <div className="prose dark:prose-invert max-w-none">
+                     <QuillEditor content={content} readOnly={true} onChange={() => {}} />
+                  </div>
+              </div>
+          </div>
+      );
+  }
+
   return (
     <div className="bg-background-light dark:bg-background-dark font-sans text-text-primary transition-colors duration-300">
+      <SEO />
       
       {/* Hero Section */}
       <section className="relative py-24 px-6 text-center overflow-hidden">

@@ -64,6 +64,14 @@ import { DashboardOverview } from '../features/dashboard/DashboardOverview';
 import { TeamPage } from '../features/team/TeamPage';
 import { UserSettingsPage } from '../features/settings/UserSettingsPage';
 import { UserProfilePage } from '../features/users/UserProfilePage';
+// import { CMSPageList } from '../features/admin/content/CMSPageList'; // Removed in favor of PublicPageManager
+import { CMSEditorPage } from '../features/admin/content/CMSEditorPage';
+import { NavigationManager } from '../features/admin/content/NavigationManager';
+import { DynamicPage } from '../pages/DynamicPage';
+import { MaintenancePage } from '../pages/MaintenancePage';
+import { NotFoundPage } from '../pages/NotFoundPage';
+import { SitemapPage } from '../pages/SitemapPage';
+
 import AdminLogin from '../pages/admin/AdminLogin';
 
 import { ProtectedRoute } from '../components/layout/ProtectedRoute';
@@ -77,6 +85,9 @@ export function AppRoutes() {
       {/* Public Routes (Landing, Pricing, etc.) */}
       <Route element={<PublicLayout />}>
         <Route path="/" element={<LandingPage />} />
+        <Route path="/home" element={<Navigate to="/" replace />} />
+        <Route path="/homepage" element={<Navigate to="/" replace />} />
+        <Route path="/home-page" element={<Navigate to="/" replace />} />
         <Route path="/pricing" element={<PricingPage />} />
         <Route path="/contact" element={<ContactPage />} />
         <Route path="/about" element={<AboutPage />} />
@@ -132,10 +143,13 @@ export function AppRoutes() {
           {/* 3. Communication Module */}
           <Route path="communication" element={<Navigate to="broadcasts" replace />} />
           <Route path="communication/broadcasts" element={<AdminPlaceholderPage title="Broadcasts" module="Communication" />} />
-          <Route path="communication/cms" element={<Navigate to="blogs" replace />} />
-          <Route path="communication/cms/blogs" element={<ContentManagementPage />} />
-
+          <Route path="communication/cms" element={<Navigate to="homepage" replace />} />
+          {/* Dashboard is the new Home */}
           <Route path="communication/cms/homepage" element={<PublicPageManager />} />
+          <Route path="communication/cms/pages" element={<PublicPageManager />} /> {/* Alias for dashboard */}
+          <Route path="communication/cms/pages/:slug" element={<CMSEditorPage />} />
+          <Route path="communication/cms/navigation" element={<NavigationManager />} />
+          <Route path="communication/cms/blogs" element={<ContentManagementPage />} />
           <Route path="communication/cms/testimonials" element={<AdminPlaceholderPage title="Testimonials Manager" module="Content CMS" />} />
           <Route path="communication/cms/resources" element={<AdminPlaceholderPage title="Resource Library" module="Content CMS" />} />
           <Route path="communication/cms/banners" element={<AdminPlaceholderPage title="Banners & Highlights" module="Content CMS" />} />
@@ -203,7 +217,18 @@ export function AppRoutes() {
         </Route>
       </Route>
 
-      {/* 404 Catch-all */}
+      {/* 404 Catch-all - MOVED to handle dynamic root routes */}
+      {/* Dynamic CMS Route (Catch-all for pages like /terms, /privacy, etc.) */}
+      {/* This MUST be the last route before 404 to avoid conflicts with specific routes */}
+      <Route element={<PublicLayout />}>
+         <Route path="/upcoming" element={<MaintenancePage />} />
+         <Route path="/upcoming" element={<MaintenancePage />} />
+         <Route path="/not-found" element={<NotFoundPage />} />
+         <Route path="/404" element={<NotFoundPage />} />
+         <Route path="/sitemap" element={<SitemapPage />} />
+         <Route path="/:slug" element={<DynamicPage />} />
+      </Route>
+      
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

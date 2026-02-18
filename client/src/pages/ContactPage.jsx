@@ -4,6 +4,8 @@ import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { cn } from '../utils/cn';
 import { useSettings } from '../context/SettingsContext';
+import { useCMSContent } from '../hooks/useCMSContent';
+import { QuillEditor } from '../features/admin/content/QuillEditor';
 
 export function ContactPage() {
   const { settings } = useSettings();
@@ -11,8 +13,26 @@ export function ContactPage() {
   const contactPhone = settings?.contact_phone || '+91 6353239217';
   const contactAddress = settings?.contact_address || 'The Palladium, Yogi Chowk Ground, Chikuwadi, Puna Simada Road, Yogi Chowk, Surat-395011, Gujarat';
 
+  const { content, raw, SEO, loading } = useCMSContent('contact');
+
+  if (loading) return <div className="min-h-screen bg-white dark:bg-background-dark"></div>;
+
+  if (content && Object.keys(content).length > 0) {
+      return (
+          <div className="min-h-screen bg-white dark:bg-background-dark pt-20">
+              <SEO />
+              <div className="container mx-auto px-4 max-w-5xl">
+                  <div className="prose dark:prose-invert max-w-none">
+                     <QuillEditor content={content} readOnly={true} onChange={() => {}} />
+                  </div>
+              </div>
+          </div>
+      );
+  }
+
   return (
     <div className="bg-background-light dark:bg-background-dark font-sans text-text-primary transition-colors duration-300">
+      <SEO />
       
       {/* Header Section */}
       <section className="py-20 text-center px-4">

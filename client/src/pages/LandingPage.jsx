@@ -3,13 +3,41 @@ import { Link } from 'react-router-dom';
 import { Zap, Shield, CheckCircle } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { useSettings } from '../context/SettingsContext';
+import { useCMSContent } from '../hooks/useCMSContent';
+import { QuillEditor } from '../features/admin/content/QuillEditor';
 
 export function LandingPage() {
+  // CMS Integration
   const { settings } = useSettings();
   const platformName = settings?.platform_name || 'Startup LaunchPad';
+  const homepageSlug = settings?.homepage_slug || 'home';
+  const { content, raw, SEO, loading } = useCMSContent(homepageSlug);
 
+  // If loading, show skeleton or just fall through to default (avoids layout shift if cached, but for first load it might flash)
+  // For 'home', we might prefer to wait if we suspect CMS content exists, or just show default until loaded.
+  // Better: if loading, show loading spinner slightly? 
+  // Let's just block render on loading if we want "CMS First" experience, or flash default.
+  // Given "Professional CMS", user expects CMS content to be primary.
+  if (loading) return <div className="min-h-screen bg-white dark:bg-background-dark"></div>; 
+
+  // If CMS content exists (published OR draft/preview), render it.
+  if (content && Object.keys(content).length > 0) {
+      return (
+          <div className="min-h-screen bg-white dark:bg-background-dark pt-20">
+              <SEO />
+              <div className="container mx-auto px-4 max-w-5xl">
+                  <div className="prose dark:prose-invert max-w-none">
+                     <QuillEditor content={content} readOnly={true} onChange={() => {}} />
+                  </div>
+              </div>
+          </div>
+      );
+  }
+
+  // Fallback to Hardcoded Layout
   return (
     <div className="bg-surface-light dark:bg-background-dark font-sans text-text-primary transition-colors duration-300">
+      <SEO /> {/* Inject SEO metadata even if using hardcoded layout, if 'home' page exists in CMS but has no content or is just for SEO tags */}
       
       {/* SECTION 1 — HERO */}
       <section className="relative overflow-hidden px-6 pt-20 pb-24 lg:pt-32 lg:px-8">

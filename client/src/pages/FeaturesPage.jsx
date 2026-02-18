@@ -159,7 +159,7 @@ export function FeaturesPage() {
       </section>
 
       {/* SECTION 5 — AI INTELLIGENCE LAYER */}
-      <section className="py-24 px-6 bg-background-dark text-white relative overflow-hidden">
+      <section id="ai" className="py-24 px-6 bg-background-dark text-white relative overflow-hidden">
         <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
         <div className="max-w-7xl mx-auto relative z-10">
           <div className="text-center mb-16">
