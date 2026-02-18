@@ -80,7 +80,7 @@ const PRESETS = {
           { name: "Case Studies", icon: "FileText", path: "/case-studies" },
         ],
       },
-      { label: "Pricing", type: "link", path: "/pricing" },
+
       {
         label: "Company",
         type: "dropdown",

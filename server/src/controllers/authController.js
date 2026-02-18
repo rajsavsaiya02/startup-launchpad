@@ -57,7 +57,10 @@ exports.register = async (req, res) => {
       });
     }
 
-    let { name, email, password, role } = req.body;
+    let { firstName, lastName, email, password, role } = req.body;
+
+    // Construct full name for legacy support or display
+    const name = `${firstName} ${lastName}`.trim();
 
     // Default role logic
     if (!role) role = "normal_user";
@@ -76,10 +79,39 @@ exports.register = async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
+    // Generate unique username: user_ + random hex
+    let username = `user_${crypto.randomBytes(4).toString("hex")}`;
+
+    // Ensure uniqueness (simple retry mechanism)
+    let isUnique = false;
+    let attempts = 0;
+    while (!isUnique && attempts < 5) {
+      const check = await pool.query(
+        "SELECT id FROM users WHERE username = $1",
+        [username],
+      );
+      if (check.rows.length === 0) {
+        isUnique = true;
+      } else {
+        username = `user_${crypto.randomBytes(4).toString("hex")}`;
+        attempts++;
+      }
+    }
+
     // Create user (unverified by default)
     const newUser = await pool.query(
-      "INSERT INTO users (name, email, password_hash, is_verified, provider, role) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *",
-      [name, email, hashedPassword, false, "local", role],
+      "INSERT INTO users (first_name, last_name, name, email, password_hash, is_verified, provider, role, username) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *",
+      [
+        firstName,
+        lastName,
+        name,
+        email,
+        hashedPassword,
+        false,
+        "local",
+        role,
+        username,
+      ],
     );
     const user = newUser.rows[0];
 
@@ -125,6 +157,52 @@ exports.verifyEmail = async (req, res) => {
     await pool.query("DELETE FROM otps WHERE id = $1", [otpRecord.rows[0].id]);
 
     res.json({ message: "Email verified successfully. You can now log in." });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+exports.resendOtp = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    const userResult = await pool.query(
+      "SELECT * FROM users WHERE email = $1",
+      [email],
+    );
+    if (userResult.rows.length === 0) {
+      // Security: Don't reveal if user exists or not, but for UX on resend we might want to be strict or just generic
+      // For now, let's just return success to avoid enumeration, or error if client relies on it?
+      // Actually, for resend flow, usually we want to ensure it works for legitimate users.
+      // If user doesn't exist, we can't send OTP.
+      return res.status(400).json({ message: "Email not found" });
+    }
+
+    const user = userResult.rows[0];
+    if (user.is_verified) {
+      return res.status(400).json({ message: "Email already verified" });
+    }
+
+    // Rate Limit Check (Optional but good) - Check last OTP sent time?
+    // For now, simple implementation: DELETE old OTPs, CREATE new one.
+    // Ideally update existing or delete.
+    await pool.query(
+      "DELETE FROM otps WHERE email = $1 AND type = 'verification'",
+      [email],
+    );
+
+    const otp = crypto.randomInt(100000, 999999).toString();
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 mins
+
+    await pool.query(
+      "INSERT INTO otps (email, otp, type, expires_at) VALUES ($1, $2, $3, $4)",
+      [email, otp, "verification", expiresAt],
+    );
+
+    await emailService.sendVerificationEmail(email, otp);
+
+    res.json({ message: "New verification code sent." });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Server error" });

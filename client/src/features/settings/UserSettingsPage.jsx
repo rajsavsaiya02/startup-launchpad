@@ -1,172 +1,466 @@
-import React, { useState } from 'react';
-import { 
-  User, Settings, Bell, Shield, CreditCard, LogOut, Upload, Save 
-} from 'lucide-react';
-import { Button } from '../../components/ui/Button';
-import { Input } from '../../components/ui/Input';
-import { Avatar } from '../../components/ui/Avatar';
-import { Card } from '../../components/ui/Card';
+import React, { useState, useEffect } from "react";
+import {
+  Settings,
+  Upload,
+  Save,
+  Shield,
+  Key,
+  LogOut,
+  Laptop,
+  Smartphone,
+  Tablet,
+  Monitor,
+  HardDrive,
+  MapPin,
+  Clock,
+} from "lucide-react";
+import { Button } from "../../components/ui/Button";
+import { Input } from "../../components/ui/Input";
+import { Avatar } from "../../components/ui/Avatar";
+import { Card } from "../../components/ui/Card";
+import { Badge } from "../../components/ui/Badge";
+import { apiClient } from "../../lib/axios";
+import { useAuth } from "../../context/AuthContext";
+import { useToast } from "../../components/ui/Toast";
+import { DeviceIcon } from "../../components/security/DeviceIcon";
+import { cn } from "../../utils/cn";
+import { PublicProfile } from "./PublicProfile";
 
-const SETTINGS_NAV = [
-  { id: 'profile', label: 'My Profile', icon: User },
-  { id: 'account', label: 'Account Security', icon: Shield },
-  { id: 'notifications', label: 'Notifications', icon: Bell },
-  { id: 'billing', label: 'Billing & Plans', icon: CreditCard },
-  { id: 'workspace', label: 'Workspace Settings', icon: Settings },
-];
+const SECTION_TITLES = {
+  profile: "Public Profile",
+  account: "Account Security", // Legacy mapping
+  security: "Account Security",
+  notifications: "Notifications",
+  billing: "Billing & Plans",
+  workspace: "Workspace Settings",
+};
 
-export function UserSettingsPage() {
-  const [activeTab, setActiveTab] = useState('profile');
+export function UserSettingsPage({ section = "profile" }) {
+  const { addToast } = useToast();
+  const { user } = useAuth();
+
+  // Map 'account' to 'security' if needed, or handle as alias
+  const activeSection = section === "account" ? "security" : section;
+
+  const title = SECTION_TITLES[activeSection] || "Settings";
+
+  // State for Security Section
+  const [sessions, setSessions] = useState([]);
+  const [loadingSessions, setLoadingSessions] = useState(false);
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  });
+  const [loadingPassword, setLoadingPassword] = useState(false);
+
+  // Fetch data based on active section
+  useEffect(() => {
+    if (activeSection === "security") {
+      fetchSessions();
+    }
+  }, [activeSection]);
+
+  const fetchSessions = async () => {
+    setLoadingSessions(true);
+    try {
+      const res = await apiClient.get("/sessions");
+      setSessions(res.data.sessions);
+    } catch (err) {
+      console.error("Failed to fetch sessions", err);
+      // Fallback mock data if API fails for demo
+      // setSessions([]);
+    } finally {
+      setLoadingSessions(false);
+    }
+  };
+
+  const handleRevokeSession = async (sessionId) => {
+    if (!window.confirm("Are you sure you want to revoke this session?"))
+      return;
+    try {
+      await apiClient.delete(`/sessions/${sessionId}`);
+      addToast("Session revoked successfully", "success");
+      fetchSessions();
+    } catch (err) {
+      console.error(err);
+      addToast("Failed to revoke session", "error");
+    }
+  };
+
+  const handleRevokeAllOther = async () => {
+    if (
+      !window.confirm(
+        "Are you sure you want to log out from all other devices?",
+      )
+    )
+      return;
+    try {
+      await apiClient.delete("/sessions");
+      addToast("All other sessions signed out", "success");
+      fetchSessions();
+    } catch (err) {
+      console.error(err);
+      addToast("Failed to sign out other sessions", "error");
+    }
+  };
+
+  const handlePasswordChange = async (e) => {
+    e.preventDefault();
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      addToast("New passwords do not match", "error");
+      return;
+    }
+
+    setLoadingPassword(true);
+    try {
+      await apiClient.put("/users/password", {
+        currentPassword: passwordForm.currentPassword,
+        newPassword: passwordForm.newPassword,
+      });
+
+      addToast("Password updated successfully", "success");
+      setPasswordForm({
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+      });
+    } catch (err) {
+      console.error(err);
+      const msg = err.response?.data?.message || "Failed to update password";
+      addToast(msg, "error");
+    } finally {
+      setLoadingPassword(false);
+    }
+  };
+
+  // Security Redirect: If user tries to access workspace but isn't a founder
+  if (activeSection === "workspace" && user?.role !== "founder") {
+    return (
+      <div className="space-y-8 animate-in fade-in duration-500 pb-20 max-w-5xl mx-auto">
+        <div className="pt-6 pb-2 border-b border-border-light dark:border-border-dark mb-6">
+          <h1 className="text-3xl font-bold text-text-primary dark:text-white tracking-tight mb-2">
+            Settings
+          </h1>
+        </div>
+        <div className="flex flex-col items-center justify-center p-12 text-center h-[60vh]">
+          <Shield className="h-16 w-16 text-text-tertiary mb-4" />
+          <h2 className="text-xl font-bold text-text-primary dark:text-white">
+            Access Denied
+          </h2>
+          <p className="text-text-secondary mt-2">
+            You do not have permission to view this section.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500 pb-20">
-      
+    <div
+      className={cn(
+        "space-y-8 animate-in fade-in duration-500 pb-20 mx-auto",
+        activeSection === "profile"
+          ? "w-full max-w-[1920px] px-6"
+          : "max-w-5xl",
+      )}
+    >
       {/* Page Header */}
-      <div className="pt-6 pb-2">
-        <h1 className="text-4xl font-bold text-text-primary dark:text-white tracking-tight mb-2">Settings</h1>
-        <p className="text-lg text-text-secondary dark:text-gray-400">Manage your personal profile, security, and workspace preferences.</p>
+      <div className="pt-6 pb-2 border-b border-border-light dark:border-border-dark mb-6">
+        <h1 className="text-3xl font-bold text-text-primary dark:text-white tracking-tight mb-2">
+          {title}
+        </h1>
+        <p className="text-lg text-text-secondary dark:text-gray-400">
+          Manage your {activeSection} preferences.
+        </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        
-        {/* Left Column: Settings Navigation */}
-        <aside className="lg:col-span-3">
-          <div className="sticky top-24 flex flex-col bg-white dark:bg-surface-dark rounded-xl border border-border-light dark:border-border-dark shadow-sm overflow-hidden">
-            <nav className="flex flex-col p-2">
-              {SETTINGS_NAV.map((item) => (
-                <button
-                  key={item.id}
-                  onClick={() => setActiveTab(item.id)}
-                  className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all ${
-                    activeTab === item.id 
-                      ? 'bg-primary/10 text-primary font-semibold' 
-                      : 'text-text-secondary hover:bg-gray-100 dark:hover:bg-gray-800 dark:text-gray-300'
-                  }`}
-                >
-                  <item.icon className={`h-5 w-5 ${activeTab === item.id ? 'text-primary' : 'text-text-tertiary'}`} />
-                  {item.label}
-                </button>
-              ))}
-              <div className="my-2 border-t border-border-light dark:border-border-dark"></div>
-              <button className="flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-error hover:bg-error/10 transition-colors">
-                <LogOut className="h-5 w-5" />
-                Sign Out
-              </button>
-            </nav>
-          </div>
-        </aside>
+      <div className="space-y-6">
+        {/* PROFILE SETTINGS TAB */}
+        {activeSection === "profile" && <PublicProfile />}
 
-        {/* Right Column: Content Area */}
-        <section className="lg:col-span-9 space-y-6">
-          
-          {/* PROFILE SETTINGS TAB */}
-          {activeTab === 'profile' && (
+        {/* SECURITY SETTINGS TAB */}
+        {activeSection === "security" && (
+          <div className="space-y-6">
+            {/* Change Password Card */}
             <Card className="p-8 bg-white dark:bg-surface-dark border-border-light dark:border-border-dark">
-              
               <div className="border-b border-border-light dark:border-border-dark pb-6 mb-6">
-                <h2 className="text-2xl font-bold text-text-primary dark:text-white">General Profile</h2>
-                <p className="text-text-secondary dark:text-gray-400 text-sm mt-1">Update your photo and personal details.</p>
+                <h2 className="text-xl font-bold text-text-primary dark:text-white flex items-center gap-2">
+                  <Key className="h-5 w-5 text-primary" /> Change Password
+                </h2>
+                <p className="text-text-secondary dark:text-gray-400 text-sm mt-1">
+                  Ensure your account is secure by using a strong password.
+                </p>
               </div>
 
-              <div className="space-y-8">
-                {/* Avatar Upload */}
-                <div className="flex items-center gap-6">
-                  <Avatar src="https://i.pravatar.cc/150?u=alex" size="xl" className="h-24 w-24 ring-4 ring-gray-50 dark:ring-gray-800" />
-                  <div className="space-y-2">
-                    <div className="flex gap-3">
-                      <Button variant="outline" className="gap-2">
-                        <Upload className="h-4 w-4" /> Change Photo
-                      </Button>
-                      <Button variant="ghost" className="text-error hover:bg-error/10 hover:text-error">Remove</Button>
-                    </div>
-                    <p className="text-xs text-text-tertiary">JPG, GIF or PNG. Max size of 800K</p>
-                  </div>
-                </div>
-
-                {/* Form Fields */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <Input label="First Name" defaultValue="Alex" />
-                  <Input label="Last Name" defaultValue="Johnson" />
-                  <Input label="Email Address" defaultValue="alex@launchpad.inc" disabled />
-                  <Input label="Job Title" defaultValue="Product Manager" />
-                  
-                  <div className="space-y-1.5">
-                    <label className="text-sm font-medium text-text-secondary">Timezone</label>
-                    <select className="w-full h-11 rounded-lg border border-border-light bg-background-light px-3 text-sm focus:ring-2 focus:ring-primary/20 dark:bg-background-dark dark:border-border-dark dark:text-white">
-                      <option>Pacific Time (US & Canada)</option>
-                      <option>Eastern Time (US & Canada)</option>
-                      <option>Greenwich Mean Time</option>
-                    </select>
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="text-sm font-medium text-text-secondary">Language</label>
-                    <select className="w-full h-11 rounded-lg border border-border-light bg-background-light px-3 text-sm focus:ring-2 focus:ring-primary/20 dark:bg-background-dark dark:border-border-dark dark:text-white">
-                      <option>English</option>
-                      <option>Spanish</option>
-                      <option>French</option>
-                    </select>
-                  </div>
-                </div>
-
-                {/* Bio */}
-                <div className="space-y-1.5">
-                  <label className="text-sm font-medium text-text-secondary">Bio</label>
-                  <textarea 
-                    className="w-full rounded-lg border border-border-light bg-background-light p-3 text-sm h-32 focus:ring-2 focus:ring-primary/20 dark:bg-background-dark dark:border-border-dark dark:text-white resize-none"
-                    placeholder="Tell us a little about yourself..."
-                    defaultValue="Product enthusiast building the next big thing in fintech."
+              <form
+                onSubmit={handlePasswordChange}
+                className="space-y-4 max-w-xl"
+              >
+                <Input
+                  label="Current Password"
+                  type="password"
+                  placeholder="Enter your current password"
+                  value={passwordForm.currentPassword}
+                  onChange={(e) =>
+                    setPasswordForm({
+                      ...passwordForm,
+                      currentPassword: e.target.value,
+                    })
+                  }
+                />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Input
+                    label="New Password"
+                    type="password"
+                    placeholder="Enter new password"
+                    value={passwordForm.newPassword}
+                    onChange={(e) =>
+                      setPasswordForm({
+                        ...passwordForm,
+                        newPassword: e.target.value,
+                      })
+                    }
+                  />
+                  <Input
+                    label="Confirm New Password"
+                    type="password"
+                    placeholder="Confirm new password"
+                    value={passwordForm.confirmPassword}
+                    onChange={(e) =>
+                      setPasswordForm({
+                        ...passwordForm,
+                        confirmPassword: e.target.value,
+                      })
+                    }
                   />
                 </div>
 
-                {/* Actions */}
-                <div className="flex justify-end pt-4 border-t border-border-light dark:border-border-dark">
-                  <Button size="lg" className="gap-2">
-                    <Save className="h-4 w-4" /> Save Changes
+                <div className="flex justify-end pt-2">
+                  <Button
+                    type="submit"
+                    disabled={loadingPassword}
+                    className="gap-2"
+                  >
+                    <Save className="h-4 w-4" />{" "}
+                    {loadingPassword ? "Updating..." : "Update Password"}
                   </Button>
                 </div>
+              </form>
+            </Card>
 
+            {/* Session Management Card */}
+            <Card className="p-8 bg-white dark:bg-surface-dark border-border-light dark:border-border-dark">
+              <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-border-light dark:border-border-dark pb-6 mb-6 gap-4">
+                <div>
+                  <h2 className="text-xl font-bold text-text-primary dark:text-white flex items-center gap-2">
+                    <Shield className="h-5 w-5 text-primary" /> Active Sessions
+                  </h2>
+                  <p className="text-text-secondary dark:text-gray-400 text-sm mt-1">
+                    Manage devices where your account is currently logged in.
+                  </p>
+                </div>
+                {sessions.length > 1 && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleRevokeAllOther}
+                    className="text-error hover:text-white hover:bg-error border-error/30 gap-2"
+                  >
+                    <LogOut className="h-4 w-4" /> Sign Out All Other Devices
+                  </Button>
+                )}
+              </div>
+
+              <div className="overflow-hidden rounded-lg border border-border-light dark:border-border-dark">
+                <table className="w-full text-left text-sm">
+                  <thead className="bg-gray-50 dark:bg-gray-800/50 text-text-secondary border-b border-border-light dark:border-border-dark">
+                    <tr>
+                      <th className="px-6 py-4 font-medium">
+                        Device / Browser
+                      </th>
+                      <th className="px-6 py-4 font-medium hidden md:table-cell">
+                        Location
+                      </th>
+                      <th className="px-6 py-4 font-medium hidden sm:table-cell">
+                        IP Address
+                      </th>
+                      <th className="px-6 py-4 font-medium">Last Active</th>
+                      <th className="px-6 py-4 font-medium text-right">
+                        Action
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border-light dark:divide-border-dark bg-white dark:bg-surface-dark">
+                    {loadingSessions ? (
+                      <tr>
+                        <td
+                          colSpan="5"
+                          className="px-6 py-8 text-center text-text-tertiary"
+                        >
+                          Loading sessions...
+                        </td>
+                      </tr>
+                    ) : sessions.length === 0 ? (
+                      <tr>
+                        <td
+                          colSpan="5"
+                          className="px-6 py-8 text-center text-text-tertiary"
+                        >
+                          No active sessions found.
+                        </td>
+                      </tr>
+                    ) : (
+                      sessions.map((session) => (
+                        <tr
+                          key={session.id}
+                          className={cn(
+                            "transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/50",
+                            session.isCurrent &&
+                              "bg-primary/5 hover:bg-primary/10",
+                          )}
+                        >
+                          <td className="px-6 py-4">
+                            <div className="flex items-center gap-3">
+                              <DeviceIcon
+                                deviceType={session.device_type}
+                                os={session.os}
+                                className={cn(
+                                  "h-10 w-10 shrink-0",
+                                  session.isCurrent
+                                    ? "bg-primary/10 text-primary"
+                                    : "",
+                                )}
+                              />
+                              <div>
+                                <div className="font-medium text-text-primary dark:text-white flex items-center gap-2">
+                                  {session.os}{" "}
+                                  <span className="text-text-tertiary font-normal">
+                                    • {session.browser}
+                                  </span>
+                                  {session.isCurrent && (
+                                    <Badge
+                                      variant="success"
+                                      className="h-5 px-1.5 text-[10px] uppercase tracking-wide"
+                                    >
+                                      Active Now
+                                    </Badge>
+                                  )}
+                                </div>
+                                <div className="text-xs text-text-tertiary md:hidden">
+                                  {session.location_city},{" "}
+                                  {session.location_country}
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 text-text-secondary hidden md:table-cell">
+                            <div className="flex items-center gap-2">
+                              <MapPin className="h-3.5 w-3.5 text-text-tertiary" />
+                              <span>
+                                {session.location_city},{" "}
+                                {session.location_country}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 text-text-tertiary font-mono text-xs hidden sm:table-cell">
+                            {session.ip_address}
+                          </td>
+                          <td className="px-6 py-4 text-text-secondary">
+                            <div
+                              className="flex items-center gap-2"
+                              title={new Date(
+                                session.last_active,
+                              ).toLocaleString()}
+                            >
+                              <Clock className="h-3.5 w-3.5 text-text-tertiary" />
+                              <span>
+                                {session.isCurrent
+                                  ? "Just now"
+                                  : new Date(
+                                      session.last_active,
+                                    ).toLocaleDateString()}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 text-right">
+                            {!session.isCurrent && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleRevokeSession(session.id)}
+                                className="text-error hover:bg-error/10 hover:text-error h-8 w-8 p-0 rounded-full"
+                                title="Revoke Session"
+                              >
+                                <LogOut className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
               </div>
             </Card>
-          )}
+          </div>
+        )}
 
-          {/* Placeholder for other tabs */}
-          {(activeTab !== 'profile' && activeTab !== 'workspace')&& (
-            <Card className="p-12 flex flex-col items-center justify-center text-center bg-white dark:bg-surface-dark border-dashed border-2">
-              <div className="h-16 w-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-4">
-                <Settings className="h-8 w-8 text-text-tertiary" />
+        {/* WORKSPACE TAB */}
+        {activeSection === "workspace" && (
+          <Card className="p-8 bg-white dark:bg-surface-dark border-border-light dark:border-border-dark">
+            <div className="border-b border-border-light dark:border-border-dark pb-6 mb-6">
+              <h2 className="text-xl font-bold text-text-primary dark:text-white">
+                Organization Identity
+              </h2>
+              <p className="text-text-secondary dark:text-gray-400 text-sm mt-1">
+                Manage your organization's display settings.
+              </p>
+            </div>
+            <div className="space-y-6">
+              <Input label="Workspace Name" defaultValue="LaunchPad Inc." />
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-text-secondary">
+                  Workspace URL
+                </label>
+                <div className="flex items-center">
+                  <span className="bg-gray-100 dark:bg-gray-800 border border-r-0 border-border-light dark:border-border-dark rounded-l-lg px-3 py-2.5 text-sm text-text-tertiary">
+                    launchpad.com/
+                  </span>
+                  <input
+                    type="text"
+                    defaultValue="startup-inc"
+                    className="flex-1 rounded-r-lg border border-border-light bg-white dark:bg-background-dark dark:border-border-dark px-3 py-2.5 text-sm focus:ring-2 focus:ring-primary/20"
+                  />
+                </div>
               </div>
-              <h3 className="text-xl font-bold text-text-primary dark:text-white">Coming Soon</h3>
+              <div className="flex justify-end pt-4">
+                <Button>Update Workspace</Button>
+              </div>
+            </div>
+          </Card>
+        )}
+
+        {/* Placeholder for other tabs */}
+        {activeSection !== "profile" &&
+          activeSection !== "workspace" &&
+          activeSection !== "security" && (
+            <Card className="p-16 flex flex-col items-center justify-center text-center bg-white dark:bg-surface-dark border-dashed border-2">
+              <div className="h-20 w-20 bg-gray-50 dark:bg-gray-800 rounded-full flex items-center justify-center mb-6">
+                <Settings className="h-10 w-10 text-text-tertiary/50" />
+              </div>
+              <h3 className="text-xl font-bold text-text-primary dark:text-white">
+                Coming Soon
+              </h3>
               <p className="text-text-secondary mt-2 max-w-md">
-                The {SETTINGS_NAV.find(i => i.id === activeTab)?.label} panel is currently under development. Check back later for updates.
+                The{" "}
+                <span className="font-semibold text-primary">
+                  {SECTION_TITLES[activeSection]}
+                </span>{" "}
+                panel is currently under development.
               </p>
             </Card>
           )}
-
-          {/* WORKSPACE TAB */}
-          {activeTab === 'workspace' && (
-            <Card className="p-8 bg-white dark:bg-surface-dark border-border-light dark:border-border-dark">
-              <div className="border-b border-border-light dark:border-border-dark pb-6 mb-6">
-                <h2 className="text-2xl font-bold text-text-primary dark:text-white">Workspace Settings</h2>
-                <p className="text-text-secondary dark:text-gray-400 text-sm mt-1">Manage your organization's identity.</p>
-              </div>
-              <div className="space-y-6">
-                 <Input label="Workspace Name" defaultValue="LaunchPad Inc." />
-                 <div className="space-y-1.5">
-                    <label className="text-sm font-medium text-text-secondary">Workspace URL</label>
-                    <div className="flex items-center">
-                      <span className="bg-gray-100 dark:bg-gray-800 border border-r-0 border-border-light dark:border-border-dark rounded-l-lg px-3 py-2.5 text-sm text-text-tertiary">launchpad.com/</span>
-                      <input type="text" defaultValue="startup-inc" className="flex-1 rounded-r-lg border border-border-light bg-white dark:bg-background-dark dark:border-border-dark px-3 py-2.5 text-sm focus:ring-2 focus:ring-primary/20" />
-                    </div>
-                 </div>
-                 <div className="flex justify-end pt-4">
-                    <Button>Update Workspace</Button>
-                 </div>
-              </div>
-            </Card>
-          )}
-
-        </section>
       </div>
     </div>
   );
