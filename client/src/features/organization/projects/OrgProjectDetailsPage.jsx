@@ -26,12 +26,12 @@ import {
   DollarSign,
   X,
 } from "lucide-react";
-import { Button } from "../../components/ui/Button";
-import { Avatar } from "../../components/ui/Avatar";
-import { Badge } from "../../components/ui/Badge";
-import { Card } from "../../components/ui/Card";
-import { cn } from "../../utils/cn";
-import { TaskDrawer } from "./components/TaskDrawer";
+import { Button } from "../../../components/ui/Button";
+import { Avatar } from "../../../components/ui/Avatar";
+import { Badge } from "../../../components/ui/Badge";
+import { Card } from "../../../components/ui/Card";
+import { cn } from "../../../utils/cn";
+import { OrgTaskDrawer as TaskDrawer } from "./components/OrgTaskDrawer";
 
 // --- Mock Data for Board ---
 const BOARD_DATA = {
@@ -138,7 +138,7 @@ const PROJECT_EXPENSES = [
   },
 ];
 
-export function ProjectDetailsPage() {
+export function OrgProjectDetailsPage() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("Overview");
   const [selectedTask, setSelectedTask] = useState(null);
@@ -153,7 +153,7 @@ export function ProjectDetailsPage() {
           {/* Top Bar: Navigation & Main Action (Same Row for Compactness) */}
           <div className="flex justify-between items-center mb-4">
             <button
-              onClick={() => navigate("/productivity/projects")}
+              onClick={() => navigate("/organization/projects")}
               className="flex items-center gap-2 text-text-tertiary hover:text-text-primary transition-colors text-xs font-bold group"
             >
               <ArrowLeft className="h-3.5 w-3.5 group-hover:-translate-x-1 transition-transform" />
@@ -176,7 +176,7 @@ export function ProjectDetailsPage() {
               {/* Project Title & Status */}
               <div className="flex items-center gap-3 mb-2">
                 <h1 className="text-2xl font-black text-text-primary dark:text-white tracking-tight">
-                  Website Redesign
+                  Organization Website Redesign
                 </h1>
                 <Badge
                   variant="success"

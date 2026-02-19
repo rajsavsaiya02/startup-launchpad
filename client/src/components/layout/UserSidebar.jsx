@@ -30,7 +30,12 @@ const USER_MODULE_NAV_CONFIG = {
     { name: "Tasks", path: "/productivity/tasks", icon: CheckSquare },
     { name: "Find Gigs", path: "/productivity/gigs", icon: Briefcase },
   ],
-  organization: [{ name: "Team", path: "/organization/team", icon: Users }],
+  organization: [
+    { name: "Projects", path: "/organization/projects", icon: FolderOpen },
+    { name: "Tasks", path: "/organization/tasks", icon: CheckSquare },
+    { name: "Gigs", path: "/organization/gigs", icon: Briefcase },
+    { name: "Team", path: "/organization/team", icon: Users },
+  ],
   settings: [
     { name: "My Profile", path: "/settings/profile", icon: User },
     { name: "Public Profile", path: "/settings/general", icon: Globe },

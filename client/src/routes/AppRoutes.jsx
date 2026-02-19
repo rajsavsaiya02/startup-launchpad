@@ -14,6 +14,12 @@ import { AuthSuccessPage } from "../features/auth/AuthSuccessPage";
 import { ForgotPasswordPage } from "../features/auth/ForgotPasswordPage";
 import { CreateWorkspacePage } from "../features/auth/CreateWorkspacePage";
 import { ProjectsDashboard } from "../features/operations/ProjectsDashboard";
+import { OrgProjectsDashboard } from "../features/organization/projects/OrgProjectsDashboard";
+import { OrgProjectDetailsPage } from "../features/organization/projects/OrgProjectDetailsPage";
+import { OrgProjectTasksPage } from "../features/organization/tasks/OrgProjectTasksPage";
+import { OrgGigListPage } from "../features/organization/gigs/OrgGigListPage";
+import { OrgGigDetailsPage } from "../features/organization/gigs/OrgGigDetailsPage";
+import { OrgGigApplicationsPage } from "../features/organization/gigs/OrgGigApplicationsPage";
 import { FinancialOverview } from "../features/finance/FinancialOverview";
 import { TalentMarketplace } from "../features/talent/TalentMarketplace";
 import { LandingPage } from "../pages/LandingPage";
@@ -327,10 +333,27 @@ export function AppRoutes() {
             element={<GigApplicationsPage />}
           />
 
-          {/* Organization Module (Renamed from Community) */}
           <Route
             path="/organization"
-            element={<Navigate to="team" replace />}
+            element={<Navigate to="projects" replace />}
+          />
+          <Route
+            path="/organization/projects"
+            element={<OrgProjectsDashboard />}
+          />
+          <Route
+            path="/organization/projects/:id"
+            element={<OrgProjectDetailsPage />}
+          />
+          <Route path="/organization/tasks" element={<OrgProjectTasksPage />} />
+          <Route path="/organization/gigs" element={<OrgGigListPage />} />
+          <Route
+            path="/organization/gigs/:id"
+            element={<OrgGigDetailsPage />}
+          />
+          <Route
+            path="/organization/gigs/:id/applications"
+            element={<OrgGigApplicationsPage />}
           />
           <Route path="/organization/team" element={<TeamPage />} />
           <Route path="/talent" element={<TalentMarketplace />} />

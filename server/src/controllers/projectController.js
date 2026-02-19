@@ -34,8 +34,8 @@ exports.createProject = async (req, res) => {
         category || "General",
         start_date || null,
         due_date || null,
-        userId, // For personal projects, owner is the user. For org projects, this might need logic.
-        owner_org_id || null, // Future proofing
+        req.body.is_organizational ? null : userId,
+        req.body.is_organizational ? owner_org_id || 1 : null,
         userId,
       ],
     );
@@ -59,16 +59,26 @@ exports.createProject = async (req, res) => {
 exports.getProjects = async (req, res) => {
   try {
     const userId = req.user.id;
+    const { scope } = req.query;
 
-    const result = await pool.query(
-      `SELECT p.*, pm.role as user_role 
-       FROM projects p
-       JOIN project_members pm ON p.id = pm.project_id
-       WHERE pm.user_id = $1
-       ORDER BY p.updated_at DESC`,
-      [userId],
-    );
+    let query = `
+      SELECT p.*, pm.role as user_role 
+      FROM projects p
+      JOIN project_members pm ON p.id = pm.project_id
+      WHERE pm.user_id = $1
+    `;
+    const params = [userId];
 
+    if (scope === "organization") {
+      query += " AND p.owner_org_id IS NOT NULL";
+    } else {
+      // Default to personal projects (where owner_org_id is null)
+      query += " AND p.owner_org_id IS NULL";
+    }
+
+    query += " ORDER BY p.updated_at DESC";
+
+    const result = await pool.query(query, params);
     res.json(result.rows);
   } catch (error) {
     console.error("Error fetching projects:", error);
