@@ -15,7 +15,7 @@ cd "$CLIENT_DIR"
 
 if [ ! -d "node_modules" ]; then
     echo "Installing frontend dependencies..."
-    npm install
+    npm install --legacy-peer-deps
 fi
 
 printf "${GREEN}Running 'npm run dev'...${NC}\n"
