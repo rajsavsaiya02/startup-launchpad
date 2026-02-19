@@ -1,12 +1,13 @@
-import React from 'react';
-import { BrowserRouter } from 'react-router-dom';
-import { AppRoutes } from './routes/AppRoutes';
-import { AuthProvider } from './context/AuthContext';
+import React from "react";
+import { BrowserRouter } from "react-router-dom";
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+import { AppRoutes } from "./routes/AppRoutes";
+import { AuthProvider } from "./context/AuthContext";
 
+import { ToastProvider } from "./components/ui/Toast";
 
-import { ToastProvider } from './components/ui/Toast';
-
-import { HelmetProvider } from 'react-helmet-async';
+import { HelmetProvider } from "react-helmet-async";
 
 function App() {
   return (
@@ -15,6 +16,7 @@ function App() {
         <HelmetProvider>
           <ToastProvider>
             <AppRoutes />
+            <ToastContainer />
           </ToastProvider>
         </HelmetProvider>
       </AuthProvider>

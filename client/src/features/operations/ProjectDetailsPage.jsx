@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 import {
   Share2,
@@ -11,18 +12,19 @@ import {
   MessageSquare,
   CheckSquare,
   Filter,
+  ArrowLeft,
   ArrowRight,
-  ChevronDown,
-  Users,
-  X,
-  DollarSign,
-  PieChart,
   TrendingUp,
-  FileText,
   Download,
-  Briefcase,
-  CreditCard,
   Layers,
+  CreditCard,
+  Users,
+  FileText,
+  ChevronDown,
+  PieChart,
+  Briefcase,
+  DollarSign,
+  X,
 } from "lucide-react";
 import { Button } from "../../components/ui/Button";
 import { Avatar } from "../../components/ui/Avatar";
@@ -137,67 +139,141 @@ const PROJECT_EXPENSES = [
 ];
 
 export function ProjectDetailsPage() {
-  const [activeTab, setActiveTab] = useState("Board");
+  const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState("Overview");
   const [selectedTask, setSelectedTask] = useState(null);
+  const [isDescExpanded, setIsDescExpanded] = useState(false);
 
+  const projectDescription = `This project focuses on developing a new mobile application for our fintech division, aimed at simplifying personal finance management for millennials. The initial phase involves market research, UI/UX design, and backend architecture planning. We are currently in the high-fidelity prototyping stage and preparing for the first round of stakeholder reviews. The goal is to deliver a seamless user experience that addresses the unique financial needs of our target demographic.`;
   return (
-    <div className="flex flex-col h-[calc(100vh-4rem)] bg-white dark:bg-background-dark overflow-hidden">
-      {/* 1. Project Header */}
-      <div className="shrink-0 px-8 pt-8 pb-0">
-        <div className="flex items-center justify-between border-b border-border-light dark:border-border-dark pb-6">
-          <div>
-            <div className="flex items-center gap-3 mb-1">
-              <h1 className="text-[28px] font-semibold text-text-primary dark:text-white">
-                Website Redesign
-              </h1>
-              <Badge variant="success" className="text-xs px-2 py-0.5">
-                Active
-              </Badge>
-            </div>
-            <p className="text-sm text-text-secondary dark:text-gray-400">
-              Track progress for the new marketing website launch.
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
-            <Button variant="secondary" className="gap-2">
-              <Share2 className="h-4 w-4" /> Share
-            </Button>
-            <Button className="gap-2">
-              <Plus className="h-4 w-4" /> New Task
+    <div className="flex flex-col min-h-[calc(100vh-4rem)] bg-gray-50/50 dark:bg-background-dark overflow-y-auto p-6">
+      {/* 1. Consolidated Project Header Area */}
+      <div className="w-full bg-white/80 dark:bg-surface-dark/80 backdrop-blur-md border border-border-light dark:border-border-dark shadow-sm rounded-xl mb-6 shrink-0 sticky top-0 z-10 transition-all duration-300">
+        <div className="px-6 pt-4">
+          {/* Top Bar: Navigation & Main Action (Same Row for Compactness) */}
+          <div className="flex justify-between items-center mb-4">
+            <button
+              onClick={() => navigate("/productivity/projects")}
+              className="flex items-center gap-2 text-text-tertiary hover:text-text-primary transition-colors text-xs font-bold group"
+            >
+              <ArrowLeft className="h-3.5 w-3.5 group-hover:-translate-x-1 transition-transform" />
+              BACK TO PROJECTS
+            </button>
+            <Button className="gap-2 h-8 px-4 text-xs font-bold shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all active:scale-95">
+              <Plus className="h-3.5 w-3.5" /> NEW TASK
             </Button>
           </div>
-        </div>
 
-        {/* Tabs */}
-        <div className="mt-6 border-b border-border-light dark:border-border-dark">
-          <nav className="-mb-px flex space-x-8">
-            {[
-              "Overview",
-              "Board",
-              "Financials",
-              "Activity",
-              "Files",
-              "Members",
-            ].map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={cn(
-                  "whitespace-nowrap border-b-2 py-4 text-sm font-medium transition-colors",
-                  activeTab === tab
-                    ? "border-primary text-primary"
-                    : "border-transparent text-text-secondary hover:text-text-primary hover:border-gray-300",
-                )}
-              >
-                {tab}
-              </button>
-            ))}
-          </nav>
+          <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6 pb-4 border-b border-border-light dark:border-border-dark">
+            <div className="flex-1 min-w-0">
+              {/* Project Title & Status */}
+              <div className="flex items-center gap-3 mb-2">
+                <h1 className="text-2xl font-black text-text-primary dark:text-white tracking-tight">
+                  Website Redesign
+                </h1>
+                <Badge
+                  variant="success"
+                  className="text-[10px] px-2 py-0.5 rounded-full font-bold uppercase"
+                >
+                  Active
+                </Badge>
+              </div>
+
+              {/* Expandable Description (Compact by default) */}
+              <div className="max-w-3xl">
+                <p
+                  className={cn(
+                    "text-sm text-text-secondary dark:text-gray-400 leading-relaxed transition-all duration-300",
+                    !isDescExpanded && "line-clamp-1",
+                  )}
+                >
+                  {projectDescription}
+                </p>
+                <button
+                  onClick={() => setIsDescExpanded(!isDescExpanded)}
+                  className="text-[10px] font-black uppercase tracking-widest text-primary hover:text-primary-hover mt-1 flex items-center gap-1 transition-colors"
+                >
+                  {isDescExpanded ? "Collapse Brief" : "Read Full Brief"}
+                  <ChevronDown
+                    className={cn(
+                      "h-3 w-3 transition-transform duration-300",
+                      isDescExpanded && "rotate-180",
+                    )}
+                  />
+                </button>
+              </div>
+            </div>
+
+            {/* Logical Meta-Data Ribbon */}
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-3 bg-gray-50/50 dark:bg-gray-800/30 p-3 rounded-xl border border-border-light dark:border-border-dark">
+              <div className="flex flex-col gap-0.5">
+                <span className="text-[9px] uppercase tracking-tighter font-extrabold text-text-tertiary">
+                  Start Date
+                </span>
+                <span className="text-xs font-bold text-text-primary dark:text-white flex items-center gap-1.5">
+                  <Calendar className="h-3 w-3 text-primary" /> Jan 15, 2024
+                </span>
+              </div>
+              <div className="h-4 w-px bg-border-light dark:bg-border-dark hidden sm:block" />
+              <div className="flex flex-col gap-0.5">
+                <span className="text-[9px] uppercase tracking-tighter font-extrabold text-text-tertiary">
+                  Due Date
+                </span>
+                <span className="text-xs font-bold text-text-primary dark:text-white flex items-center gap-1.5">
+                  <Clock className="h-3 w-3 text-warning" /> Dec 31, 2024
+                </span>
+              </div>
+              <div className="h-4 w-px bg-border-light dark:bg-border-dark hidden sm:block" />
+              <div className="flex flex-col gap-1">
+                <span className="text-[9px] uppercase tracking-tighter font-extrabold text-text-tertiary">
+                  Progress
+                </span>
+                <div className="flex items-center gap-2">
+                  <div className="w-16 bg-gray-200 dark:bg-gray-700 rounded-full h-1">
+                    <div
+                      className="bg-primary h-1 rounded-full"
+                      style={{ width: "45%" }}
+                    ></div>
+                  </div>
+                  <span className="text-[10px] font-black text-text-primary dark:text-white">
+                    45%
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Tab Switcher at Bottom (Ultra Smooth) */}
+          <div className="flex justify-center py-3">
+            <nav className="inline-flex p-1 bg-gray-100/30 dark:bg-gray-800/20 rounded-full border border-border-light dark:border-border-dark overflow-x-auto no-scrollbar">
+              {[
+                "Overview",
+                "Board",
+                "Financials",
+                "Activity",
+                "Files",
+                "Members",
+              ].map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  className={cn(
+                    "relative flex items-center justify-center py-1.5 px-5 text-xs font-bold transition-all duration-200 rounded-full outline-none focus:outline-none whitespace-nowrap tracking-wide",
+                    activeTab === tab
+                      ? "bg-white dark:bg-surface-dark text-primary shadow-sm"
+                      : "text-text-secondary hover:text-text-primary",
+                  )}
+                >
+                  {tab}
+                </button>
+              ))}
+            </nav>
+          </div>
         </div>
       </div>
 
-      {/* 2. Tab Content Area */}
-      <div className="flex-1 overflow-y-auto bg-gray-50 dark:bg-[#161b22] p-8">
+      {/* 2. Content Area - Separate Container */}
+      <div className="w-full mx-auto">
         {/* --- BOARD VIEW --- */}
         {activeTab === "Board" && (
           <div className="flex h-full gap-6 min-w-max">
@@ -233,7 +309,7 @@ export function ProjectDetailsPage() {
 
         {/* --- FINANCIALS VIEW --- */}
         {activeTab === "Financials" && (
-          <div className="space-y-8 max-w-6xl mx-auto">
+          <div className="space-y-8 w-full">
             {/* Budget Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <Card className="p-6 border-l-4 border-primary">
@@ -353,42 +429,42 @@ export function ProjectDetailsPage() {
 
         {/* --- ACTIVITY VIEW --- */}
         {activeTab === "Activity" && (
-          <div className="max-w-3xl mx-auto">
-            <Card className="p-8 bg-white dark:bg-surface-dark">
-              <h3 className="text-lg font-bold mb-6 text-text-primary dark:text-white">
-                Project Audit Log
-              </h3>
-              <div className="space-y-8 relative pl-4 border-l border-border-light dark:border-border-dark ml-2">
-                {[
-                  {
-                    user: "Alex Johnson",
-                    action: "moved",
-                    target: "Homepage Copy",
-                    from: "To Do",
-                    to: "In Progress",
-                    time: "2 hours ago",
-                  },
-                  {
-                    user: "Sarah Lee",
-                    action: "added a comment to",
-                    target: "Design System Audit",
-                    time: "5 hours ago",
-                  },
-                  {
-                    user: "Daniel Kim",
-                    action: "attached file",
-                    target: "specs_v2.pdf",
-                    time: "Yesterday",
-                  },
-                  {
-                    user: "System",
-                    action: "updated budget",
-                    target: "+$5,000 allocation",
-                    time: "2 days ago",
-                  },
-                ].map((log, i) => (
-                  <div key={i} className="relative pl-6">
-                    <div className="absolute -left-[21px] top-1 h-4 w-4 rounded-full border-2 border-white dark:border-surface-dark bg-primary"></div>
+          <div className="w-full pt-4">
+            <h3 className="text-xl font-bold mb-6 text-text-primary dark:text-white px-2">
+              Project Audit Log
+            </h3>
+            <div className="space-y-8 relative pl-4 border-l-2 border-border-light dark:border-border-dark ml-4">
+              {[
+                {
+                  user: "Alex Johnson",
+                  action: "moved",
+                  target: "Homepage Copy",
+                  from: "To Do",
+                  to: "In Progress",
+                  time: "2 hours ago",
+                },
+                {
+                  user: "Sarah Lee",
+                  action: "added a comment to",
+                  target: "Design System Audit",
+                  time: "5 hours ago",
+                },
+                {
+                  user: "Daniel Kim",
+                  action: "attached file",
+                  target: "specs_v2.pdf",
+                  time: "Yesterday",
+                },
+                {
+                  user: "System",
+                  action: "updated budget",
+                  target: "+$5,000 allocation",
+                  time: "2 days ago",
+                },
+              ].map((log, i) => (
+                <div key={i} className="relative pl-8">
+                  <div className="absolute -left-[23px] top-1.5 h-3.5 w-3.5 rounded-full border-[3px] border-white dark:border-background-dark bg-gray-300 dark:bg-gray-600"></div>
+                  <div className="bg-white dark:bg-surface-dark p-4 rounded-xl border border-border-light dark:border-border-dark shadow-sm">
                     <p className="text-sm text-text-primary dark:text-white">
                       <span className="font-semibold">{log.user}</span>{" "}
                       {log.action}{" "}
@@ -405,15 +481,15 @@ export function ProjectDetailsPage() {
                       {log.time}
                     </p>
                   </div>
-                ))}
-              </div>
-            </Card>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
         {/* --- FILES VIEW --- */}
         {activeTab === "Files" && (
-          <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          <div className="w-full grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6">
             {[
               "Project_Brief.pdf",
               "UI_Kit_v2.fig",
@@ -451,7 +527,7 @@ export function ProjectDetailsPage() {
 
         {/* --- MEMBERS VIEW --- */}
         {activeTab === "Members" && (
-          <div className="max-w-4xl mx-auto">
+          <div className="w-full">
             <Card className="overflow-hidden bg-white dark:bg-surface-dark">
               <div className="p-6 border-b border-border-light dark:border-border-dark flex justify-between items-center">
                 <h3 className="text-lg font-bold text-text-primary dark:text-white">
@@ -529,62 +605,9 @@ export function ProjectDetailsPage() {
 
         {/* --- OVERVIEW TAB --- */}
         {activeTab === "Overview" && (
-          <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="w-full grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Left Column (Main Info) */}
             <div className="lg:col-span-2 flex flex-col gap-6">
-              {/* Project Summary Card (New Design) */}
-              <Card className="p-5 bg-white dark:bg-surface-dark border-border-light dark:border-border-dark">
-                <div className="flex items-center gap-2 mb-3">
-                  <Badge
-                    variant="success"
-                    className="px-2.5 py-0.5 text-xs rounded-full"
-                  >
-                    Active
-                  </Badge>
-                </div>
-                <p className="text-sm text-text-secondary dark:text-gray-300 leading-relaxed">
-                  This project focuses on developing a new mobile application
-                  for our fintech division, aimed at simplifying personal
-                  finance management for millennials. The initial phase involves
-                  market research, UI/UX design, and backend architecture
-                  planning.
-                </p>
-                <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-y-4 gap-x-6 text-sm">
-                  <div>
-                    <p className="text-text-tertiary">Start Date</p>
-                    <p className="font-medium text-text-primary dark:text-white">
-                      Jan 15, 2024
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-text-tertiary">Due Date</p>
-                    <p className="font-medium text-text-primary dark:text-white">
-                      Dec 31, 2024
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-text-tertiary">Priority</p>
-                    <p className="font-medium text-text-primary dark:text-white">
-                      High
-                    </p>
-                  </div>
-                  <div className="col-span-2 sm:col-span-1">
-                    <p className="text-text-tertiary">Progress</p>
-                    <div className="flex items-center gap-2 mt-1">
-                      <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
-                        <div
-                          className="bg-primary h-1.5 rounded-full"
-                          style={{ width: "45%" }}
-                        ></div>
-                      </div>
-                      <p className="font-medium text-text-primary dark:text-white">
-                        45%
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </Card>
-
               {/* Tasks Breakdown */}
               <Card className="p-5 bg-white dark:bg-surface-dark border-border-light dark:border-border-dark">
                 <h3 className="text-lg font-semibold text-text-primary dark:text-white mb-4">
@@ -613,8 +636,8 @@ export function ProjectDetailsPage() {
                   </div>
                   <div>
                     <p className="flex items-center gap-1.5 text-text-tertiary">
-                      <span className="size-2 rounded-full bg-warning"></span>In
-                      Progress
+                      <span className="size-2 rounded-full bg-warning"></span>
+                      In Progress
                     </p>
                     <p className="text-lg font-bold text-text-primary dark:text-white">
                       26

@@ -1,144 +1,370 @@
-import React from 'react';
-import { X, Calendar, UploadCloud, Plus, ChevronDown } from 'lucide-react';
-import { Button } from '../../../components/ui/Button';
-import { Input } from '../../../components/ui/Input';
-import { Avatar } from '../../../components/ui/Avatar';
+import React, { useState, useEffect } from "react";
+import { ChevronDown } from "lucide-react";
+import { Button } from "../../../components/ui/Button";
+import { Input } from "../../../components/ui/Input";
+import { Drawer } from "../../../components/ui/Drawer";
+import { CreatableSelect } from "../../../components/ui/CreatableSelect";
+import projectService from "../../../services/projectService";
+import userService from "../../../services/userService";
+import { toast } from "react-toastify";
 
-export function CreateProjectModal({ isOpen, onClose }) {
-  if (!isOpen) return null;
+const DEFAULT_CATEGORIES = [
+  "General",
+  "Development",
+  "Marketing",
+  "Design",
+  "Research",
+  "Sales",
+];
+
+const DEFAULT_STATUSES = ["Active", "Planning", "Completed", "On Hold"];
+
+// Helper to get formatted date string (YYYY-MM-DD)
+const getFormattedDate = (date) => {
+  return new Date(date).toISOString().split("T")[0];
+};
+
+export function CreateProjectModal({
+  isOpen,
+  onClose,
+  onProjectCreated,
+  projectToEdit,
+}) {
+  const [formData, setFormData] = useState({
+    title: "",
+    description: "",
+    category: "General",
+    start_date: "",
+    due_date: "",
+    priority: "Medium",
+    status: "Active",
+  });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  // Dynamic Options State
+  const [categories, setCategories] = useState(DEFAULT_CATEGORIES);
+  const [statuses, setStatuses] = useState(DEFAULT_STATUSES);
+
+  const isEditing = !!projectToEdit;
+
+  // Fetch User Preferences (Categories & Statuses)
+  useEffect(() => {
+    if (isOpen) {
+      const fetchPreferences = async () => {
+        try {
+          const prefs = await userService.getPreferences();
+          if (prefs.project_categories && prefs.project_categories.length > 0) {
+            setCategories(prefs.project_categories);
+          }
+          if (prefs.project_statuses && prefs.project_statuses.length > 0) {
+            setStatuses(prefs.project_statuses);
+          }
+        } catch (err) {
+          console.error("Failed to fetch user preferences:", err);
+          // Fallback to defaults is already handled by initial state
+        }
+      };
+      fetchPreferences();
+    }
+  }, [isOpen]);
+
+  // Reset/Pre-fill Form
+  useEffect(() => {
+    if (isOpen) {
+      if (projectToEdit) {
+        setFormData({
+          title: projectToEdit.title || "",
+          description: projectToEdit.description || "",
+          category: projectToEdit.category || "General",
+          start_date: projectToEdit.start_date
+            ? getFormattedDate(projectToEdit.start_date)
+            : "",
+          due_date: projectToEdit.due_date
+            ? getFormattedDate(projectToEdit.due_date)
+            : "",
+          priority: projectToEdit.priority || "Medium",
+          status: projectToEdit.status || "Active",
+        });
+      } else {
+        const today = new Date();
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+
+        setFormData({
+          title: "",
+          description: "",
+          category: "General",
+          start_date: getFormattedDate(today),
+          due_date: getFormattedDate(tomorrow),
+          priority: "Medium",
+          status: "Active",
+        });
+      }
+      setError(null);
+    }
+  }, [isOpen, projectToEdit]);
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  // Preference Handlers
+  const updatePreferencesInBackend = async (type, newItems, successMessage) => {
+    try {
+      await userService.updatePreferences({ [type]: newItems });
+      toast.success(successMessage);
+    } catch (err) {
+      console.error(`Failed to update ${type}:`, err);
+      toast.error("Failed to save changes.");
+    }
+  };
+
+  const handleCreateCategory = async (newCategory) => {
+    if (categories.includes(newCategory)) return;
+    const newCategories = [...categories, newCategory];
+    setCategories(newCategories);
+    await updatePreferencesInBackend(
+      "project_categories",
+      newCategories,
+      "Category added!",
+    );
+  };
+
+  const handleDeleteCategory = async (categoryToDelete) => {
+    const newCategories = categories.filter((c) => c !== categoryToDelete);
+    setCategories(newCategories);
+    // If current selection is deleted, revert to default
+    if (formData.category === categoryToDelete) {
+      setFormData((prev) => ({
+        ...prev,
+        category: newCategories[0] || "General",
+      }));
+    }
+    await updatePreferencesInBackend(
+      "project_categories",
+      newCategories,
+      "Category deleted!",
+    );
+  };
+
+  const handleCreateStatus = async (newStatus) => {
+    if (statuses.includes(newStatus)) return;
+    const newStatuses = [...statuses, newStatus];
+    setStatuses(newStatuses);
+    await updatePreferencesInBackend(
+      "project_statuses",
+      newStatuses,
+      "Status added!",
+    );
+  };
+
+  const handleDeleteStatus = async (statusToDelete) => {
+    const newStatuses = statuses.filter((s) => s !== statusToDelete);
+    setStatuses(newStatuses);
+    // If current selection is deleted, revert to default
+    if (formData.status === statusToDelete) {
+      setFormData((prev) => ({ ...prev, status: newStatuses[0] || "Active" }));
+    }
+    await updatePreferencesInBackend(
+      "project_statuses",
+      newStatuses,
+      "Status deleted!",
+    );
+  };
+
+  const validateForm = () => {
+    if (!formData.title.trim()) {
+      return "Project name is required.";
+    }
+    if (!formData.start_date) {
+      return "Start date is required.";
+    }
+    if (!formData.due_date) {
+      return "Due date is required.";
+    }
+    if (new Date(formData.due_date) < new Date(formData.start_date)) {
+      return "Due date cannot be earlier than the start date.";
+    }
+    return null;
+  };
+
+  const handleSubmit = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const validationError = validateForm();
+      if (validationError) {
+        setError(validationError);
+        setLoading(false);
+        return;
+      }
+
+      if (isEditing) {
+        await projectService.updateProject(projectToEdit.id, formData);
+        toast.success("Project updated successfully!");
+      } else {
+        await projectService.createProject(formData);
+        toast.success("Project created successfully!");
+      }
+
+      onProjectCreated?.(); // Refresh list
+      onClose();
+    } catch (err) {
+      console.error(err);
+      setError(
+        err.response?.data?.message ||
+          `Failed to ${isEditing ? "update" : "create"} project`,
+      );
+      toast.error(`Failed to ${isEditing ? "update" : "create"} project`);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <>
-      {/* Backdrop - z-[100] to ensure it covers fixed sidebars/headers */}
-      <div 
-        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-100 transition-opacity animate-in fade-in duration-200" 
-        onClick={onClose}
-      />
-      
-      {/* Modal Container - z-[101] */}
-      <div className="fixed inset-0 z-101 flex items-center justify-center p-4 pointer-events-none">
-        <div className="bg-white dark:bg-[#1E293B] w-full max-w-xl rounded-xl shadow-2xl pointer-events-auto flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200 border border-border-light dark:border-border-dark">
-          
-          {/* Header */}
-          <div className="flex items-start justify-between p-6 pb-4 border-b border-border-light dark:border-border-dark">
-            <div>
-              <h2 className="text-xl font-bold text-text-primary dark:text-white">Create New Project</h2>
-              <p className="text-sm text-text-secondary dark:text-gray-400">Fill in the details below to get started.</p>
-            </div>
-            <button 
-              onClick={onClose} 
-              className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 text-text-tertiary transition-colors"
-            >
-              <X className="h-5 w-5" />
-            </button>
+    <Drawer
+      isOpen={isOpen}
+      onClose={onClose}
+      title={isEditing ? "Edit Project" : "New Project"}
+      description={
+        isEditing
+          ? "Update the details of your project."
+          : "Create a new project to track your work."
+      }
+    >
+      <div className="space-y-6">
+        {error && (
+          <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm border border-red-100 dark:bg-red-900/20 dark:text-red-300 dark:border-red-900/50 flex items-center gap-2">
+            <span className="font-medium">Error:</span> {error}
           </div>
+        )}
 
-          {/* Form Content */}
-          <div className="p-6 overflow-y-auto space-y-6 custom-scrollbar">
-            
-            {/* Project Name */}
-            <Input 
-              label="Project Name" 
-              placeholder="e.g., Q4 Marketing Campaign" 
-              className="bg-white dark:bg-gray-800/50"
+        {/* Project Name */}
+        <div className="space-y-4">
+          <Input
+            label="Project Name"
+            name="title"
+            value={formData.title}
+            onChange={handleChange}
+            placeholder="e.g., Q4 Marketing Campaign"
+            className="bg-white dark:bg-gray-800/50"
+          />
+
+          {/* Category & Status */}
+          <div className="space-y-4">
+            <CreatableSelect
+              label="Category"
+              name="category"
+              value={formData.category}
+              options={categories}
+              onChange={handleChange}
+              onCreateOption={handleCreateCategory}
+              onDeleteOption={handleDeleteCategory}
+              placeholder="Select or create category"
             />
-            
-            {/* Description */}
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-text-secondary dark:text-gray-300">Description</label>
-              <textarea 
-                className="w-full rounded-lg border border-gray-300 dark:border-gray-700 p-3 text-sm min-h-[100px] bg-white dark:bg-gray-800/50 text-text-primary dark:text-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all resize-none"
-                placeholder="Add a short description..."
+
+            <CreatableSelect
+              label="Status"
+              name="status"
+              value={formData.status}
+              options={statuses}
+              onChange={handleChange}
+              onCreateOption={handleCreateStatus}
+              onDeleteOption={handleDeleteStatus}
+              placeholder="Select or create status"
+            />
+          </div>
+        </div>
+
+        {/* Description */}
+        <div className="space-y-1.5">
+          <label className="text-sm font-medium text-text-secondary dark:text-gray-300">
+            Description
+          </label>
+          <textarea
+            name="description"
+            value={formData.description}
+            onChange={handleChange}
+            className="w-full rounded-lg border border-gray-300 dark:border-gray-700 p-3 text-sm min-h-[100px] bg-white dark:bg-gray-800/50 text-text-primary dark:text-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all resize-none hover:border-gray-400 dark:hover:border-gray-600"
+            placeholder="Add a short description..."
+          />
+        </div>
+
+        {/* Dates */}
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-text-secondary dark:text-gray-300">
+              Start Date
+            </label>
+            <div className="relative">
+              <input
+                type="date"
+                name="start_date"
+                value={formData.start_date}
+                onChange={handleChange}
+                className="w-full h-11 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800/50 text-text-primary dark:text-white text-sm px-3 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all hover:border-gray-400 dark:hover:border-gray-600"
               />
             </div>
-
-            {/* Dates Row */}
-            <div className="grid grid-cols-2 gap-5">
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium text-text-secondary dark:text-gray-300">Start Date</label>
-                <div className="relative">
-                  <input 
-                    type="date" 
-                    className="w-full h-11 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800/50 text-text-primary dark:text-white text-sm px-3 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
-                  />
-                  <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-tertiary pointer-events-none" />
-                </div>
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium text-text-secondary dark:text-gray-300">Due Date</label>
-                <div className="relative">
-                  <input 
-                    type="date" 
-                    className="w-full h-11 rounded-lg border border-red-300 dark:border-red-900/50 bg-white dark:bg-gray-800/50 text-text-primary dark:text-white text-sm px-3 focus:ring-2 focus:ring-error/20 focus:border-error outline-none" 
-                  />
-                  <p className="text-xs text-error mt-1">Due date cannot be earlier than start date.</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Priority Dropdown (Fixed Visuals) */}
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-text-secondary dark:text-gray-300">Priority</label>
-              <div className="relative">
-                <select className="w-full h-11 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800/50 text-text-primary dark:text-white text-sm pl-3 pr-10 appearance-none focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none cursor-pointer">
-                  <option>Medium</option>
-                  <option>High</option>
-                  <option>Low</option>
-                </select>
-                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-tertiary pointer-events-none" />
-              </div>
-            </div>
-
-            {/* Team Members */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-text-secondary dark:text-gray-300">Team Members</label>
-              <div className="flex flex-wrap gap-2 p-3 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800/50 min-h-[52px]">
-                {[
-                  { name: 'Alina', img: 'https://i.pravatar.cc/50?u=alina' },
-                  { name: 'Maya', img: 'https://i.pravatar.cc/50?u=maya' }
-                ].map(member => (
-                  <div key={member.name} className="flex items-center gap-2 bg-primary/10 text-primary dark:bg-primary/20 dark:text-blue-300 pl-1 pr-2 py-1 rounded-full text-sm font-medium animate-in fade-in zoom-in">
-                    <Avatar src={member.img} size="xs" />
-                    <span>{member.name}</span>
-                    <button className="hover:text-primary-hover rounded-full hover:bg-black/5 p-0.5 transition-colors">
-                      <X className="h-3 w-3" />
-                    </button>
-                  </div>
-                ))}
-                <button className="h-7 w-7 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-text-tertiary hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
-                  <Plus className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
-
-            {/* File Upload */}
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-text-secondary dark:text-gray-300">Attachments</label>
-              <div className="border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg p-8 flex flex-col items-center justify-center text-center bg-gray-50 dark:bg-gray-800/30 hover:bg-gray-100 dark:hover:bg-gray-800/50 hover:border-primary/50 transition-all cursor-pointer group">
-                <div className="h-12 w-12 bg-white dark:bg-gray-800 rounded-full shadow-sm flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-                   <UploadCloud className="h-6 w-6 text-primary" />
-                </div>
-                <p className="text-sm text-text-primary dark:text-white">
-                  <span className="font-semibold text-primary hover:underline">Click to upload</span> or drag and drop
-                </p>
-                <p className="text-xs text-text-tertiary mt-1">PNG, JPG, PDF up to 10MB</p>
-              </div>
-            </div>
-
           </div>
-
-          {/* Footer */}
-          <div className="p-6 border-t border-border-light dark:border-border-dark flex justify-end gap-3 bg-gray-50 dark:bg-gray-900/50 rounded-b-xl">
-            <Button variant="secondary" onClick={onClose} className="dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-white dark:border-gray-700">
-              Cancel
-            </Button>
-            <Button className="shadow-lg shadow-primary/25">
-              Create Project
-            </Button>
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-text-secondary dark:text-gray-300">
+              Due Date
+            </label>
+            <div className="relative">
+              <input
+                type="date"
+                name="due_date"
+                value={formData.due_date}
+                onChange={handleChange}
+                className="w-full h-11 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800/50 text-text-primary dark:text-white text-sm px-3 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all hover:border-gray-400 dark:hover:border-gray-600"
+              />
+            </div>
           </div>
+        </div>
 
+        {/* Priority */}
+        <div className="space-y-1.5">
+          <label className="text-sm font-medium text-text-secondary dark:text-gray-300">
+            Priority
+          </label>
+          <div className="relative group">
+            <select
+              name="priority"
+              value={formData.priority}
+              onChange={handleChange}
+              className="w-full h-11 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800/50 text-text-primary dark:text-white text-sm pl-3 pr-10 appearance-none focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none cursor-pointer transition-all hover:border-gray-400 dark:hover:border-gray-600"
+            >
+              <option value="Medium">Medium</option>
+              <option value="High">High</option>
+              <option value="Low">Low</option>
+              <option value="Critical">Critical</option>
+            </select>
+            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-tertiary pointer-events-none group-hover:text-primary transition-colors" />
+          </div>
+        </div>
+
+        {/* Footer Actions */}
+        <div className="pt-6 mt-4 border-t border-border-light dark:border-border-dark flex gap-3">
+          <Button
+            className="flex-1 shadow-lg shadow-primary/25"
+            onClick={handleSubmit}
+            isLoading={loading}
+          >
+            {isEditing ? "Update Project" : "Create Project"}
+          </Button>
+          <Button
+            variant="secondary"
+            onClick={onClose}
+            disabled={loading}
+            className="flex-1 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-white dark:border-gray-700"
+          >
+            Cancel
+          </Button>
         </div>
       </div>
-    </>
+    </Drawer>
   );
 }

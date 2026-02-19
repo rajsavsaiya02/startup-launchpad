@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { motion as Motion } from "framer-motion";
 import {
   User,
   Briefcase,
@@ -12,6 +13,7 @@ import {
   Plus,
   Trash2,
   Eye,
+  EyeOff,
   Edit3,
   Save,
   Check,
@@ -23,16 +25,21 @@ import {
   Mail,
   Phone,
   Loader2,
+  Layers,
+  Lock,
+  Unlock,
+  ExternalLink,
 } from "lucide-react";
 import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
 import { Avatar } from "../../components/ui/Avatar";
+import { ImageUpload } from "../../components/ui/ImageUpload";
 import { Card } from "../../components/ui/Card";
 import { Badge } from "../../components/ui/Badge";
 import { cn } from "../../utils/cn";
 import { apiClient } from "../../lib/axios";
 import { useAuth } from "../../context/AuthContext";
-import toast from "../react-toastify";
+import { toast } from "react-toastify";
 
 export function PublicProfile() {
   const { updateUser } = useAuth();
@@ -40,6 +47,7 @@ export function PublicProfile() {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [publicAvatarFile, setPublicAvatarFile] = useState(null);
 
   // Initial Form State
   const [formData, setFormData] = useState({
@@ -50,7 +58,9 @@ export function PublicProfile() {
     bio: "",
     location: "",
     website: "",
-    avatar_url: "",
+    avatar_url: "", // This will be the effective avatar to show (public or main)
+    main_avatar_url: "", // Store main avatar for fallback
+    isPublic: true,
     social_github: "",
     social_linkedin: "",
     social_website: "",
@@ -73,6 +83,12 @@ export function PublicProfile() {
         // Parse public_profile JSON if it exists
         const publicProfile = userData.public_profile || {};
 
+        // Determine effective avatar:
+        // 1. If public_profile has avatar_url, use it.
+        // 2. Otherwise use userData.avatar_url (main profile).
+        const effectiveAvatar =
+          publicProfile.avatar_url || userData.avatar_url || "";
+
         setFormData({
           firstName: userData.first_name || "",
           lastName: userData.last_name || "",
@@ -84,7 +100,12 @@ export function PublicProfile() {
           bio: userData.bio || "",
           location: userData.location || "",
           website: userData.social_website || "",
-          avatar_url: userData.avatar_url || "",
+          avatar_url: effectiveAvatar,
+          main_avatar_url: userData.avatar_url || "",
+          isPublic:
+            publicProfile.isPublic !== undefined
+              ? publicProfile.isPublic
+              : true,
 
           // Load dynamic sections from public_profile or default to empty arrays
           experiences: publicProfile.experiences || [],
@@ -159,6 +180,35 @@ export function PublicProfile() {
   const handleSave = async () => {
     setSaving(true);
     try {
+      let finalAvatarUrl = formData.avatar_url;
+
+      // Upload new avatar if selected
+      if (publicAvatarFile) {
+        const uploadFormData = new FormData();
+        uploadFormData.append("file", publicAvatarFile);
+        uploadFormData.append("visibility", "public");
+
+        const uploadRes = await apiClient.post(
+          "/files/upload",
+          uploadFormData,
+          {
+            headers: { "Content-Type": "multipart/form-data" },
+          },
+        );
+        finalAvatarUrl = uploadRes.data.file.url;
+      } else if (formData.avatar_url === formData.main_avatar_url) {
+        // If the current avatar matches the main one, we essentially "unset" the public override
+        // by sending an empty string or null for the public profile avatar.
+        // However, if we want to be explicit, we can just send null/empty if that's what the backend expects to fallback.
+        // For now, let's assume if it equals main, we can just save it as is (it's fine to duplicate) OR
+        // better yet, if we want "fallback" behavior in the future, we might want to save '' if it matches main.
+        // But the requirements say "default to... if not set".
+        // Let's keep it simple: we save whatever `finalAvatarUrl` is.
+        // If the user "removed" the custom avatar, `handleAvatarRemove` should have set `avatar_url` to `main_avatar_url`
+        // and `publicAvatarFile` to null.
+        // So `finalAvatarUrl` is already correct.
+      }
+
       // Construct the payload matching the backend expectation
       // We accept flat fields for the main user table AND a public_profile object for the dynamic stuff
       const payload = {
@@ -178,6 +228,9 @@ export function PublicProfile() {
           projects: formData.projects,
           achievements: formData.achievements,
           socialLinks: formData.socialLinks,
+          isPublic: formData.isPublic,
+          avatar_url:
+            finalAvatarUrl === formData.main_avatar_url ? "" : finalAvatarUrl, // Save empty if it matches main to treat as "not set"
         },
       };
 
@@ -187,6 +240,13 @@ export function PublicProfile() {
       if (updateUser) {
         updateUser(response.data.user);
       }
+
+      // Update state to reflect saved changes
+      setPublicAvatarFile(null); // Clear file after upload
+      setFormData((prev) => ({
+        ...prev,
+        avatar_url: finalAvatarUrl, // Ensure View reflects what was saved
+      }));
 
       toast.success("Profile updated successfully");
       setMode("preview");
@@ -209,87 +269,207 @@ export function PublicProfile() {
   // --- RENDER HELPERS ---
 
   const renderEditForm = () => (
-    <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 animate-in fade-in duration-300 w-full">
+    <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 animate-in fade-in duration-500 w-full relative z-10">
       {/* LEFT COLUMN: Basic Info (Sticky on Large Screens) */}
       <div className="xl:col-span-4 space-y-6">
-        <div className="sticky top-6 space-y-6">
-          <Card className="p-6 border-border-light dark:border-border-dark shadow-sm">
-            <h3 className="text-lg font-semibold text-text-primary dark:text-white mb-4 border-b border-gray-100 dark:border-gray-800 pb-2">
-              Identity
-            </h3>
-            <div className="space-y-4">
-              <div className="flex flex-col items-center mb-4">
-                <Avatar
-                  src={formData.avatar_url}
-                  fallback={formData.firstName?.[0]}
-                  size="xl"
-                  className="h-24 w-24 mb-2"
-                />
-                <Button variant="ghost" size="sm" className="text-xs">
-                  Change Photo
-                </Button>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <Input
-                  label="First Name"
-                  value={formData.firstName}
-                  onChange={(e) =>
-                    handleInputChange("firstName", e.target.value)
-                  }
-                />
-                <Input
-                  label="Last Name"
-                  value={formData.lastName}
-                  onChange={(e) =>
-                    handleInputChange("lastName", e.target.value)
-                  }
-                />
-              </div>
-              <Input
-                label="Headline"
-                placeholder="e.g. Product Designer"
-                value={formData.headline}
-                onChange={(e) => handleInputChange("headline", e.target.value)}
-              />
-              <Input
-                label="Current Role / Occupation"
-                placeholder="e.g. Senior Frontend Developer"
-                value={formData.occupation}
-                onChange={(e) =>
-                  handleInputChange("occupation", e.target.value)
+        <Motion.div
+          className="sticky top-24 space-y-6"
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.5, ease: "easeOut" }}
+        >
+          <Card className="p-8 border-primary/5 dark:border-border-dark shadow-2xl shadow-primary/5 rounded-4xl bg-white/80 dark:bg-surface-dark/80 backdrop-blur-xl group overflow-hidden relative">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 blur-3xl rounded-full -translate-y-1/2 translate-x-1/2 group-hover:bg-primary/10 transition-colors duration-500" />
+            <div className="flex justify-between items-center mb-6 border-b border-gray-100/50 dark:border-gray-800/50 pb-4">
+              <h3 className="text-xl font-bold text-text-primary dark:text-white tracking-tight flex items-center gap-2">
+                <div className="w-1.5 h-1.5 rounded-full bg-primary" /> Identity
+              </h3>
+
+              {/* Premium Visibility Toggle */}
+              <div
+                className={cn(
+                  "relative flex items-center justify-between p-1 rounded-full cursor-pointer transition-all duration-500 w-32",
+                  formData.isPublic
+                    ? "bg-green-50 dark:bg-green-900/20 border border-green-100/50 dark:border-green-800/50"
+                    : "bg-gray-50 dark:bg-gray-800/50 border border-gray-200/50 dark:border-gray-700/50",
+                )}
+                onClick={() =>
+                  handleInputChange("isPublic", !formData.isPublic)
                 }
-              />
-              <div>
-                <label className="text-sm font-medium text-text-secondary mb-1.5 block">
-                  Bio
+              >
+                <Motion.div
+                  className={cn(
+                    "absolute h-7 w-[48%] rounded-full shadow-lg z-10",
+                    formData.isPublic ? "bg-green-500" : "bg-gray-400",
+                  )}
+                  animate={{ x: formData.isPublic ? "100%" : "0%" }}
+                  transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                />
+                <span
+                  className={cn(
+                    "relative z-20 w-1/2 text-[10px] font-bold text-center uppercase tracking-wider flex items-center justify-center gap-1",
+                    !formData.isPublic ? "text-white" : "text-gray-400",
+                  )}
+                >
+                  <Lock className="h-2.5 w-2.5" /> Off
+                </span>
+                <span
+                  className={cn(
+                    "relative z-20 w-1/2 text-[10px] font-bold text-center uppercase tracking-wider flex items-center justify-center gap-1",
+                    formData.isPublic ? "text-white" : "text-gray-400",
+                  )}
+                >
+                  <Unlock className="h-2.5 w-2.5" /> Pub
+                </span>
+              </div>
+            </div>
+            <div className="space-y-6 relative z-10">
+              <div className="flex flex-col items-center mb-8">
+                <div className="relative group/avatar">
+                  <ImageUpload
+                    value={formData.avatar_url}
+                    onChange={(file) => {
+                      if (file) {
+                        // User selected a new file
+                        setPublicAvatarFile(file);
+                        // We rely on ImageUpload's internal preview or we could create a blob URL here if needed for other parts
+                        // But ImageUpload handles showing the file.
+                        // However, we also need to update formData.avatar_url so that if they pass `null` (clear), we revert.
+                        // Wait, ImageUpload component passes `null` on clear.
+                      } else {
+                        // User cleared the custom image
+                        setPublicAvatarFile(null);
+                        setFormData((prev) => ({
+                          ...prev,
+                          avatar_url: prev.main_avatar_url, // Revert to main avatar
+                        }));
+                      }
+                    }}
+                    className="mx-auto"
+                  />
+                  {/* Overlay for indication if it's the main avatar or custom? 
+                      Maybe not needed as the ImageUpload itself shows what's there. 
+                  */}
+                </div>
+                {formData.avatar_url &&
+                  formData.avatar_url === formData.main_avatar_url && (
+                    <p className="text-xs text-text-tertiary mt-2 text-center">
+                      Using main profile photo.
+                      <br />
+                      Upload to override.
+                    </p>
+                  )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-bold uppercase tracking-wider text-text-tertiary px-1">
+                    First Name
+                  </label>
+                  <Input
+                    value={formData.firstName}
+                    className="bg-gray-50/50 dark:bg-gray-900/30 border-gray-100/50 dark:border-gray-800/50 rounded-xl"
+                    onChange={(e) =>
+                      handleInputChange("firstName", e.target.value)
+                    }
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-bold uppercase tracking-wider text-text-tertiary px-1">
+                    Last Name
+                  </label>
+                  <Input
+                    value={formData.lastName}
+                    className="bg-gray-50/50 dark:bg-gray-900/30 border-gray-100/50 dark:border-gray-800/50 rounded-xl"
+                    onChange={(e) =>
+                      handleInputChange("lastName", e.target.value)
+                    }
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-bold uppercase tracking-wider text-text-tertiary px-1">
+                  Professional Headline
+                </label>
+                <Input
+                  placeholder="e.g. Chief Technology Officer"
+                  value={formData.headline}
+                  className="bg-gray-50/50 dark:bg-gray-900/30 border-gray-100/50 dark:border-gray-800/50 rounded-xl"
+                  onChange={(e) =>
+                    handleInputChange("headline", e.target.value)
+                  }
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-bold uppercase tracking-wider text-text-tertiary px-1">
+                  Current Occupation
+                </label>
+                <Input
+                  placeholder="e.g. Founder @ TechScale"
+                  value={formData.occupation}
+                  className="bg-gray-50/50 dark:bg-gray-900/30 border-gray-100/50 dark:border-gray-800/50 rounded-xl"
+                  onChange={(e) =>
+                    handleInputChange("occupation", e.target.value)
+                  }
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-bold uppercase tracking-wider text-text-tertiary px-1">
+                  Short Bio
                 </label>
                 <textarea
-                  className="w-full rounded-lg border border-border-light bg-background-light p-3 text-sm h-32 focus:ring-2 focus:ring-primary/20 dark:bg-background-dark dark:border-border-dark dark:text-white resize-none transition-all"
-                  placeholder="Briefly describe your journey..."
+                  className="w-full rounded-2xl border border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/30 p-4 text-sm h-36 focus:ring-4 focus:ring-primary/5 dark:text-white resize-none transition-all outline-none"
+                  placeholder="Tell your professional story..."
                   value={formData.bio}
                   onChange={(e) => handleInputChange("bio", e.target.value)}
                 />
               </div>
-              <Input
-                label="Location"
-                icon={MapPin}
-                placeholder="City, Country"
-                value={formData.location}
-                onChange={(e) => handleInputChange("location", e.target.value)}
-              />
-              <Input
-                label="Website"
-                icon={Globe}
-                type="url"
-                placeholder="https://"
-                value={formData.website}
-                onChange={(e) => handleInputChange("website", e.target.value)}
-              />
+
+              <div className="grid grid-cols-1 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-bold uppercase tracking-wider text-text-tertiary px-1">
+                    Location
+                  </label>
+                  <div className="relative">
+                    <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-text-tertiary" />
+                    <input
+                      className="w-full pl-10 pr-4 h-11 rounded-xl border border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/30 text-sm focus:ring-4 focus:ring-primary/5 outline-none transition-all"
+                      placeholder="City, Country"
+                      value={formData.location}
+                      onChange={(e) =>
+                        handleInputChange("location", e.target.value)
+                      }
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-bold uppercase tracking-wider text-text-tertiary px-1">
+                    Personal Website
+                  </label>
+                  <div className="relative">
+                    <Globe className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-text-tertiary" />
+                    <input
+                      className="w-full pl-10 pr-4 h-11 rounded-xl border border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/30 text-sm focus:ring-4 focus:ring-primary/5 outline-none transition-all"
+                      placeholder="https://yourpage.com"
+                      value={formData.website}
+                      onChange={(e) =>
+                        handleInputChange("website", e.target.value)
+                      }
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
           </Card>
 
-          <Card className="p-6 border-border-light dark:border-border-dark shadow-sm">
-            <h3 className="text-lg font-semibold text-text-primary dark:text-white mb-4 border-b border-gray-100 dark:border-gray-800 pb-2">
+          <Card className="p-8 border-primary/5 dark:border-border-dark shadow-2xl shadow-primary/5 rounded-4xl bg-white/80 dark:bg-surface-dark/80 backdrop-blur-xl relative overflow-hidden group">
+            <h3 className="text-xl font-bold text-text-primary dark:text-white mb-6 border-b border-gray-100/50 dark:border-gray-800/50 pb-4 flex items-center gap-2">
+              <div className="p-1.5 rounded-lg bg-primary/5">
+                <Award className="h-5 w-5 text-primary" />
+              </div>
               Skills & Expertise
             </h3>
             <div className="flex flex-wrap gap-2 mb-2 p-3 bg-gray-50 dark:bg-gray-800/50 border border-border-light dark:border-border-dark rounded-lg min-h-12">
@@ -317,10 +497,13 @@ export function PublicProfile() {
             </div>
           </Card>
 
-          <Card className="p-6 border-border-light dark:border-border-dark shadow-sm">
-            <div className="flex justify-between items-center mb-4 border-b border-gray-100 dark:border-gray-800 pb-2">
-              <h3 className="text-lg font-semibold text-text-primary dark:text-white">
-                Social Links
+          <Card className="p-8 border-primary/5 dark:border-border-dark shadow-2xl shadow-primary/5 rounded-4xl bg-white/80 dark:bg-surface-dark/80 backdrop-blur-xl group overflow-hidden relative">
+            <div className="flex justify-between items-center mb-6 border-b border-gray-100/50 dark:border-gray-800/50 pb-4">
+              <h3 className="text-xl font-bold text-text-primary dark:text-white flex items-center gap-2">
+                <div className="p-1.5 rounded-lg bg-primary/5">
+                  <Linkedin className="h-5 w-5 text-primary" />
+                </div>
+                Connect
               </h3>
               <Button
                 size="xs"
@@ -376,402 +559,462 @@ export function PublicProfile() {
               ))}
             </div>
           </Card>
-        </div>
+        </Motion.div>
       </div>
 
       {/* RIGHT COLUMN: Dynamic Sections */}
-      <div className="xl:col-span-8 space-y-6">
+      <div className="xl:col-span-8 space-y-8">
         {/* Work Experience */}
-        <Card className="p-6 border-border-light dark:border-border-dark shadow-sm">
-          <div className="flex justify-between items-center mb-6">
-            <h3 className="text-lg font-bold text-text-primary dark:text-white flex items-center gap-2">
-              <Briefcase className="h-5 w-5 text-primary" /> Work Experience
-            </h3>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() =>
-                addItem("experiences", {
-                  role: "",
-                  company: "",
-                  duration: "",
-                  description: "",
-                })
-              }
-            >
-              <Plus className="h-4 w-4 mr-1" /> Add Role
-            </Button>
-          </div>
-          <div className="space-y-6">
-            {formData.experiences.map((exp) => (
-              <div
-                key={exp.id}
-                className="p-5 rounded-xl bg-gray-50 dark:bg-gray-800/30 border border-gray-100 dark:border-gray-800 relative group transition-all hover:shadow-md"
-              >
-                <div className="grid grid-cols-1 md:grid-cols-12 gap-4 mb-4">
-                  <div className="md:col-span-5">
-                    <label className="text-xs font-medium text-gray-500 mb-1 block">
-                      Role
-                    </label>
-                    <Input
-                      placeholder="e.g. Senior Product Manager"
-                      value={exp.role}
-                      className="bg-white dark:bg-gray-800"
-                      onChange={(e) =>
-                        updateItem(
-                          "experiences",
-                          exp.id,
-                          "role",
-                          e.target.value,
-                        )
-                      }
-                    />
-                  </div>
-                  <div className="md:col-span-4">
-                    <label className="text-xs font-medium text-gray-500 mb-1 block">
-                      Company
-                    </label>
-                    <Input
-                      placeholder="e.g. Google"
-                      value={exp.company}
-                      className="bg-white dark:bg-gray-800"
-                      onChange={(e) =>
-                        updateItem(
-                          "experiences",
-                          exp.id,
-                          "company",
-                          e.target.value,
-                        )
-                      }
-                    />
-                  </div>
-                  <div className="md:col-span-3">
-                    <label className="text-xs font-medium text-gray-500 mb-1 block">
-                      Period
-                    </label>
-                    <Input
-                      placeholder="e.g. 2020 - Present"
-                      value={exp.duration}
-                      className="bg-white dark:bg-gray-800"
-                      onChange={(e) =>
-                        updateItem(
-                          "experiences",
-                          exp.id,
-                          "duration",
-                          e.target.value,
-                        )
-                      }
-                    />
-                  </div>
+        <Motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.2 }}
+        >
+          <Card className="p-10 border-primary/5 dark:border-border-dark shadow-2xl shadow-primary/5 rounded-4xl bg-white/80 dark:bg-surface-dark/80 backdrop-blur-xl group relative overflow-hidden">
+            <div className="absolute -top-20 -right-20 w-64 h-64 bg-primary/5 rounded-full blur-3xl opacity-50 transition-all duration-700 group-hover:scale-110" />
+            <div className="flex justify-between items-center mb-10 relative z-10">
+              <h3 className="text-2xl font-bold text-text-primary dark:text-white tracking-tight flex items-center gap-4">
+                <div className="p-3 rounded-2xl bg-primary/5 text-primary">
+                  <Briefcase className="h-7 w-7" />
                 </div>
-
-                <textarea
-                  className="w-full rounded-lg border border-border-light bg-white dark:bg-gray-800 p-3 text-sm h-24 focus:ring-2 focus:ring-primary/20 dark:border-gray-700 dark:text-white resize-none"
-                  placeholder="Describe your key responsibilities and achievements..."
-                  value={exp.description}
-                  onChange={(e) =>
-                    updateItem(
-                      "experiences",
-                      exp.id,
-                      "description",
-                      e.target.value,
-                    )
-                  }
-                />
-                <button
-                  onClick={() => removeItem("experiences", exp.id)}
-                  className="absolute top-3 right-3 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-1 bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-100"
-                  title="Remove"
+                Work Experience
+              </h3>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() =>
+                  addItem("experiences", {
+                    role: "",
+                    company: "",
+                    duration: "",
+                    description: "",
+                  })
+                }
+              >
+                <Plus className="h-4 w-4 mr-1" /> Add Role
+              </Button>
+            </div>
+            <div className="space-y-6">
+              {formData.experiences.map((exp) => (
+                <div
+                  key={exp.id}
+                  className="p-5 rounded-xl bg-gray-50 dark:bg-gray-800/30 border border-gray-100 dark:border-gray-800 relative group transition-all hover:shadow-md"
                 >
-                  <Trash2 className="h-4 w-4" />
-                </button>
-              </div>
-            ))}
-            {formData.experiences.length === 0 && (
-              <div className="text-center py-8 border-2 border-dashed border-gray-200 dark:border-gray-800 rounded-xl">
-                <Briefcase className="h-8 w-8 text-gray-300 mx-auto mb-2" />
-                <p className="text-text-tertiary text-sm">
-                  Add your professional experience to showcase your career path.
-                </p>
-              </div>
-            )}
-          </div>
-        </Card>
+                  <div className="grid grid-cols-1 md:grid-cols-12 gap-4 mb-4">
+                    <div className="md:col-span-5">
+                      <label className="text-xs font-medium text-gray-500 mb-1 block">
+                        Role
+                      </label>
+                      <Input
+                        placeholder="e.g. Senior Product Manager"
+                        value={exp.role}
+                        className="bg-white dark:bg-gray-800"
+                        onChange={(e) =>
+                          updateItem(
+                            "experiences",
+                            exp.id,
+                            "role",
+                            e.target.value,
+                          )
+                        }
+                      />
+                    </div>
+                    <div className="md:col-span-4">
+                      <label className="text-xs font-medium text-gray-500 mb-1 block">
+                        Company
+                      </label>
+                      <Input
+                        placeholder="e.g. Google"
+                        value={exp.company}
+                        className="bg-white dark:bg-gray-800"
+                        onChange={(e) =>
+                          updateItem(
+                            "experiences",
+                            exp.id,
+                            "company",
+                            e.target.value,
+                          )
+                        }
+                      />
+                    </div>
+                    <div className="md:col-span-3">
+                      <label className="text-xs font-medium text-gray-500 mb-1 block">
+                        Period
+                      </label>
+                      <Input
+                        placeholder="e.g. 2020 - Present"
+                        value={exp.duration}
+                        className="bg-white dark:bg-gray-800"
+                        onChange={(e) =>
+                          updateItem(
+                            "experiences",
+                            exp.id,
+                            "duration",
+                            e.target.value,
+                          )
+                        }
+                      />
+                    </div>
+                  </div>
+
+                  <textarea
+                    className="w-full rounded-lg border border-border-light bg-white dark:bg-gray-800 p-3 text-sm h-24 focus:ring-2 focus:ring-primary/20 dark:border-gray-700 dark:text-white resize-none"
+                    placeholder="Describe your key responsibilities and achievements..."
+                    value={exp.description}
+                    onChange={(e) =>
+                      updateItem(
+                        "experiences",
+                        exp.id,
+                        "description",
+                        e.target.value,
+                      )
+                    }
+                  />
+                  <button
+                    onClick={() => removeItem("experiences", exp.id)}
+                    className="absolute top-3 right-3 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-1 bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-100"
+                    title="Remove"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+              ))}
+              {formData.experiences.length === 0 && (
+                <div className="text-center py-8 border-2 border-dashed border-gray-200 dark:border-gray-800 rounded-xl">
+                  <Briefcase className="h-8 w-8 text-gray-300 mx-auto mb-2" />
+                  <p className="text-text-tertiary text-sm">
+                    Add your professional experience to showcase your career
+                    path.
+                  </p>
+                </div>
+              )}
+            </div>
+          </Card>
+        </Motion.div>
 
         {/* Projects */}
-        <Card className="p-6 border-border-light dark:border-border-dark shadow-sm">
-          <div className="flex justify-between items-center mb-6">
-            <h3 className="text-lg font-bold text-text-primary dark:text-white flex items-center gap-2">
-              <Share2 className="h-5 w-5 text-primary" /> Key Projects
-            </h3>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() =>
-                addItem("projects", { name: "", link: "", description: "" })
-              }
-            >
-              <Plus className="h-4 w-4 mr-1" /> Add Project
-            </Button>
-          </div>
-          <div className="space-y-6">
-            {formData.projects.map((proj) => (
-              <div
-                key={proj.id}
-                className="p-5 rounded-xl bg-gray-50 dark:bg-gray-800/30 border border-gray-100 dark:border-gray-800 relative group transition-all hover:shadow-md"
-              >
-                <div className="grid grid-cols-1 md:grid-cols-12 gap-4 mb-4">
-                  <div className="md:col-span-6">
-                    <label className="text-xs font-medium text-gray-500 mb-1 block">
-                      Project Name
-                    </label>
-                    <Input
-                      placeholder="e.g. Analytics Dashboard"
-                      value={proj.name}
-                      className="bg-white dark:bg-gray-800"
-                      onChange={(e) =>
-                        updateItem("projects", proj.id, "name", e.target.value)
-                      }
-                    />
-                  </div>
-                  <div className="md:col-span-6">
-                    <label className="text-xs font-medium text-gray-500 mb-1 block">
-                      Link
-                    </label>
-                    <Input
-                      placeholder="https://..."
-                      value={proj.link}
-                      className="bg-white dark:bg-gray-800"
-                      onChange={(e) =>
-                        updateItem("projects", proj.id, "link", e.target.value)
-                      }
-                    />
-                  </div>
+        <Motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.3 }}
+        >
+          <Card className="p-10 border-primary/5 dark:border-border-dark shadow-2xl shadow-primary/5 rounded-4xl bg-white/80 dark:bg-surface-dark/80 backdrop-blur-xl group relative overflow-hidden">
+            <div className="absolute -bottom-20 -left-20 w-64 h-64 bg-primary/5 rounded-full blur-3xl opacity-50 transition-all duration-700 group-hover:scale-110" />
+            <div className="flex justify-between items-center mb-10 relative z-10">
+              <h3 className="text-2xl font-bold text-text-primary dark:text-white tracking-tight flex items-center gap-4">
+                <div className="p-3 rounded-2xl bg-primary/5 text-primary">
+                  <Layers className="h-7 w-7" />
                 </div>
-
-                <textarea
-                  className="w-full rounded-lg border border-border-light bg-white dark:bg-gray-800 p-3 text-sm h-24 focus:ring-2 focus:ring-primary/20 dark:border-gray-700 dark:text-white resize-none"
-                  placeholder="Describe the project impact and technologies used..."
-                  value={proj.description}
-                  onChange={(e) =>
-                    updateItem(
-                      "projects",
-                      proj.id,
-                      "description",
-                      e.target.value,
-                    )
-                  }
-                />
-                <button
-                  onClick={() => removeItem("projects", proj.id)}
-                  className="absolute top-3 right-3 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-1 bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-100"
-                  title="Remove"
+                Featured Work
+              </h3>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() =>
+                  addItem("projects", { name: "", link: "", description: "" })
+                }
+              >
+                <Plus className="h-4 w-4 mr-1" /> Add Project
+              </Button>
+            </div>
+            <div className="space-y-6">
+              {formData.projects.map((proj) => (
+                <div
+                  key={proj.id}
+                  className="p-5 rounded-xl bg-gray-50 dark:bg-gray-800/30 border border-gray-100 dark:border-gray-800 relative group transition-all hover:shadow-md"
                 >
-                  <Trash2 className="h-4 w-4" />
-                </button>
-              </div>
-            ))}
-            {formData.projects.length === 0 && (
-              <div className="text-center py-8 border-2 border-dashed border-gray-200 dark:border-gray-800 rounded-xl">
-                <Share2 className="h-8 w-8 text-gray-300 mx-auto mb-2" />
-                <p className="text-text-tertiary text-sm">
-                  Add projects to demonstrate your practical skills.
-                </p>
-              </div>
-            )}
-          </div>
-        </Card>
+                  <div className="grid grid-cols-1 md:grid-cols-12 gap-4 mb-4">
+                    <div className="md:col-span-6">
+                      <label className="text-xs font-medium text-gray-500 mb-1 block">
+                        Project Name
+                      </label>
+                      <Input
+                        placeholder="e.g. Analytics Dashboard"
+                        value={proj.name}
+                        className="bg-white dark:bg-gray-800"
+                        onChange={(e) =>
+                          updateItem(
+                            "projects",
+                            proj.id,
+                            "name",
+                            e.target.value,
+                          )
+                        }
+                      />
+                    </div>
+                    <div className="md:col-span-6">
+                      <label className="text-xs font-medium text-gray-500 mb-1 block">
+                        Link
+                      </label>
+                      <Input
+                        placeholder="https://..."
+                        value={proj.link}
+                        className="bg-white dark:bg-gray-800"
+                        onChange={(e) =>
+                          updateItem(
+                            "projects",
+                            proj.id,
+                            "link",
+                            e.target.value,
+                          )
+                        }
+                      />
+                    </div>
+                  </div>
+
+                  <textarea
+                    className="w-full rounded-lg border border-border-light bg-white dark:bg-gray-800 p-3 text-sm h-24 focus:ring-2 focus:ring-primary/20 dark:border-gray-700 dark:text-white resize-none"
+                    placeholder="Describe the project impact and technologies used..."
+                    value={proj.description}
+                    onChange={(e) =>
+                      updateItem(
+                        "projects",
+                        proj.id,
+                        "description",
+                        e.target.value,
+                      )
+                    }
+                  />
+                  <button
+                    onClick={() => removeItem("projects", proj.id)}
+                    className="absolute top-3 right-3 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-1 bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-100"
+                    title="Remove"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+              ))}
+              {formData.projects.length === 0 && (
+                <div className="text-center py-8 border-2 border-dashed border-gray-200 dark:border-gray-800 rounded-xl">
+                  <Layers className="h-8 w-8 text-gray-300 mx-auto mb-2" />
+                  <p className="text-text-tertiary text-sm">
+                    Add items to showcase your featured work and achievements.
+                  </p>
+                </div>
+              )}
+            </div>
+          </Card>
+        </Motion.div>
 
         {/* Education */}
-        <Card className="p-6 border-border-light dark:border-border-dark shadow-sm">
-          <div className="flex justify-between items-center mb-6">
-            <h3 className="text-lg font-bold text-text-primary dark:text-white flex items-center gap-2">
-              <GraduationCap className="h-5 w-5 text-primary" /> Education
-            </h3>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() =>
-                addItem("education", {
-                  school: "",
-                  degree: "",
-                  year: "",
-                  description: "",
-                })
-              }
-            >
-              <Plus className="h-4 w-4 mr-1" /> Add Education
-            </Button>
-          </div>
-          <div className="space-y-4">
-            {formData.education.map((edu) => (
-              <div
-                key={edu.id}
-                className="p-5 rounded-xl bg-gray-50 dark:bg-gray-800/30 border border-gray-100 dark:border-gray-800 relative group transition-all hover:shadow-md"
-              >
-                <div className="grid grid-cols-1 md:grid-cols-12 gap-4 mb-4">
-                  <div className="md:col-span-5">
-                    <label className="text-xs font-medium text-gray-500 mb-1 block">
-                      Institution
-                    </label>
-                    <Input
-                      placeholder="e.g. Stanford University"
-                      value={edu.school}
-                      className="bg-white dark:bg-gray-800"
-                      onChange={(e) =>
-                        updateItem(
-                          "education",
-                          edu.id,
-                          "school",
-                          e.target.value,
-                        )
-                      }
-                    />
-                  </div>
-                  <div className="md:col-span-5">
-                    <label className="text-xs font-medium text-gray-500 mb-1 block">
-                      Degree
-                    </label>
-                    <Input
-                      placeholder="e.g. BS Computer Science"
-                      value={edu.degree}
-                      className="bg-white dark:bg-gray-800"
-                      onChange={(e) =>
-                        updateItem(
-                          "education",
-                          edu.id,
-                          "degree",
-                          e.target.value,
-                        )
-                      }
-                    />
-                  </div>
-                  <div className="md:col-span-2">
-                    <label className="text-xs font-medium text-gray-500 mb-1 block">
-                      Year
-                    </label>
-                    <Input
-                      placeholder="2020"
-                      value={edu.year}
-                      className="bg-white dark:bg-gray-800"
-                      onChange={(e) =>
-                        updateItem("education", edu.id, "year", e.target.value)
-                      }
-                    />
-                  </div>
+        <Motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.4 }}
+        >
+          <Card className="p-10 border-primary/5 dark:border-border-dark shadow-2xl shadow-primary/5 rounded-4xl bg-white/80 dark:bg-surface-dark/80 backdrop-blur-xl group relative overflow-hidden">
+            <div className="absolute top-[-10%] right-[-10%] w-48 h-48 bg-blue-500/5 rounded-full blur-3xl opacity-50 transition-all duration-700 group-hover:scale-110" />
+            <div className="flex justify-between items-center mb-10 relative z-10">
+              <h3 className="text-2xl font-bold text-text-primary dark:text-white tracking-tight flex items-center gap-4">
+                <div className="p-3 rounded-2xl bg-primary/5 text-primary">
+                  <GraduationCap className="h-7 w-7" />
                 </div>
-                <button
-                  onClick={() => removeItem("education", edu.id)}
-                  className="absolute top-3 right-3 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-1 bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-100"
-                  title="Remove"
+                Education
+              </h3>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() =>
+                  addItem("education", {
+                    school: "",
+                    degree: "",
+                    year: "",
+                    description: "",
+                  })
+                }
+              >
+                <Plus className="h-4 w-4 mr-1" /> Add Education
+              </Button>
+            </div>
+            <div className="space-y-4">
+              {formData.education.map((edu) => (
+                <div
+                  key={edu.id}
+                  className="p-5 rounded-xl bg-gray-50 dark:bg-gray-800/30 border border-gray-100 dark:border-gray-800 relative group transition-all hover:shadow-md"
                 >
-                  <Trash2 className="h-4 w-4" />
-                </button>
-              </div>
-            ))}
-            {formData.education.length === 0 && (
-              <div className="text-center py-8 border-2 border-dashed border-gray-200 dark:border-gray-800 rounded-xl">
-                <GraduationCap className="h-8 w-8 text-gray-300 mx-auto mb-2" />
-                <p className="text-text-tertiary text-sm">
-                  Add your educational background.
-                </p>
-              </div>
-            )}
-          </div>
-        </Card>
+                  <div className="grid grid-cols-1 md:grid-cols-12 gap-4 mb-4">
+                    <div className="md:col-span-5">
+                      <label className="text-xs font-medium text-gray-500 mb-1 block">
+                        Institution
+                      </label>
+                      <Input
+                        placeholder="e.g. Stanford University"
+                        value={edu.school}
+                        className="bg-white dark:bg-gray-800"
+                        onChange={(e) =>
+                          updateItem(
+                            "education",
+                            edu.id,
+                            "school",
+                            e.target.value,
+                          )
+                        }
+                      />
+                    </div>
+                    <div className="md:col-span-5">
+                      <label className="text-xs font-medium text-gray-500 mb-1 block">
+                        Degree
+                      </label>
+                      <Input
+                        placeholder="e.g. BS Computer Science"
+                        value={edu.degree}
+                        className="bg-white dark:bg-gray-800"
+                        onChange={(e) =>
+                          updateItem(
+                            "education",
+                            edu.id,
+                            "degree",
+                            e.target.value,
+                          )
+                        }
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="text-xs font-medium text-gray-500 mb-1 block">
+                        Year
+                      </label>
+                      <Input
+                        placeholder="2020"
+                        value={edu.year}
+                        className="bg-white dark:bg-gray-800"
+                        onChange={(e) =>
+                          updateItem(
+                            "education",
+                            edu.id,
+                            "year",
+                            e.target.value,
+                          )
+                        }
+                      />
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => removeItem("education", edu.id)}
+                    className="absolute top-3 right-3 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-1 bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-100"
+                    title="Remove"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+              ))}
+              {formData.education.length === 0 && (
+                <div className="text-center py-8 border-2 border-dashed border-gray-200 dark:border-gray-800 rounded-xl">
+                  <GraduationCap className="h-8 w-8 text-gray-300 mx-auto mb-2" />
+                  <p className="text-text-tertiary text-sm">
+                    Add your educational background.
+                  </p>
+                </div>
+              )}
+            </div>
+          </Card>
+        </Motion.div>
 
         {/* Achievements */}
-        <Card className="p-6 border-border-light dark:border-border-dark shadow-sm">
-          <div className="flex justify-between items-center mb-6">
-            <h3 className="text-lg font-bold text-text-primary dark:text-white flex items-center gap-2">
-              <Award className="h-5 w-5 text-primary" /> Achievements
-            </h3>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() =>
-                addItem("achievements", {
-                  title: "",
-                  date: "",
-                  description: "",
-                })
-              }
-            >
-              <Plus className="h-4 w-4 mr-1" /> Add
-            </Button>
-          </div>
-          <div className="space-y-4">
-            {formData.achievements.map((ach) => (
-              <div
-                key={ach.id}
-                className="p-5 rounded-xl bg-gray-50 dark:bg-gray-800/30 border border-gray-100 dark:border-gray-800 relative group transition-all hover:shadow-md"
-              >
-                <div className="grid grid-cols-1 md:grid-cols-12 gap-4 mb-2">
-                  <div className="md:col-span-9">
-                    <label className="text-xs font-medium text-gray-500 mb-1 block">
-                      Achievement Title
-                    </label>
-                    <Input
-                      placeholder="e.g. Hackathon Winner"
-                      value={ach.title}
-                      className="bg-white dark:bg-gray-800"
-                      onChange={(e) =>
-                        updateItem(
-                          "achievements",
-                          ach.id,
-                          "title",
-                          e.target.value,
-                        )
-                      }
-                    />
-                  </div>
-                  <div className="md:col-span-3">
-                    <label className="text-xs font-medium text-gray-500 mb-1 block">
-                      Date
-                    </label>
-                    <Input
-                      placeholder="2023"
-                      value={ach.date}
-                      className="bg-white dark:bg-gray-800"
-                      onChange={(e) =>
-                        updateItem(
-                          "achievements",
-                          ach.id,
-                          "date",
-                          e.target.value,
-                        )
-                      }
-                    />
-                  </div>
+        <Motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.5 }}
+        >
+          <Card className="p-10 border-primary/5 dark:border-border-dark shadow-2xl shadow-primary/5 rounded-4xl bg-white/80 dark:bg-surface-dark/80 backdrop-blur-xl group relative overflow-hidden">
+            <div className="absolute bottom-[-10%] right-[-10%] w-48 h-48 bg-yellow-500/5 rounded-full blur-3xl opacity-50 transition-all duration-700 group-hover:scale-110" />
+            <div className="flex justify-between items-center mb-10 relative z-10">
+              <h3 className="text-2xl font-bold text-text-primary dark:text-white tracking-tight flex items-center gap-4">
+                <div className="p-3 rounded-2xl bg-primary/5 text-primary">
+                  <Award className="h-7 w-7" />
                 </div>
-                <button
-                  onClick={() => removeItem("achievements", ach.id)}
-                  className="absolute top-3 right-3 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-1 bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-100"
-                  title="Remove"
+                Achievements
+              </h3>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() =>
+                  addItem("achievements", {
+                    title: "",
+                    date: "",
+                    description: "",
+                  })
+                }
+              >
+                <Plus className="h-4 w-4 mr-1" /> Add
+              </Button>
+            </div>
+            <div className="space-y-4">
+              {formData.achievements.map((ach) => (
+                <div
+                  key={ach.id}
+                  className="p-5 rounded-xl bg-gray-50 dark:bg-gray-800/30 border border-gray-100 dark:border-gray-800 relative group transition-all hover:shadow-md"
                 >
-                  <Trash2 className="h-4 w-4" />
-                </button>
-              </div>
-            ))}
-            {formData.achievements.length === 0 && (
-              <div className="text-center py-8 border-2 border-dashed border-gray-200 dark:border-gray-800 rounded-xl">
-                <Award className="h-8 w-8 text-gray-300 mx-auto mb-2" />
-                <p className="text-text-tertiary text-sm">
-                  List your awards and certifications.
-                </p>
-              </div>
-            )}
-          </div>
-        </Card>
+                  <div className="grid grid-cols-1 md:grid-cols-12 gap-4 mb-2">
+                    <div className="md:col-span-9">
+                      <label className="text-xs font-medium text-gray-500 mb-1 block">
+                        Achievement Title
+                      </label>
+                      <Input
+                        placeholder="e.g. Hackathon Winner"
+                        value={ach.title}
+                        className="bg-white dark:bg-gray-800"
+                        onChange={(e) =>
+                          updateItem(
+                            "achievements",
+                            ach.id,
+                            "title",
+                            e.target.value,
+                          )
+                        }
+                      />
+                    </div>
+                    <div className="md:col-span-3">
+                      <label className="text-xs font-medium text-gray-500 mb-1 block">
+                        Date
+                      </label>
+                      <Input
+                        placeholder="2023"
+                        value={ach.date}
+                        className="bg-white dark:bg-gray-800"
+                        onChange={(e) =>
+                          updateItem(
+                            "achievements",
+                            ach.id,
+                            "date",
+                            e.target.value,
+                          )
+                        }
+                      />
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => removeItem("achievements", ach.id)}
+                    className="absolute top-3 right-3 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-1 bg-white dark:bg-gray-800 rounded-md shadow-sm border border-gray-100"
+                    title="Remove"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+              ))}
+              {formData.achievements.length === 0 && (
+                <div className="text-center py-8 border-2 border-dashed border-gray-200 dark:border-gray-800 rounded-xl">
+                  <Award className="h-8 w-8 text-gray-300 mx-auto mb-2" />
+                  <p className="text-text-tertiary text-sm">
+                    List your awards and certifications.
+                  </p>
+                </div>
+              )}
+            </div>
+          </Card>
+        </Motion.div>
       </div>
     </div>
   );
 
   const renderPreview = () => (
     <div className="w-full animate-in fade-in duration-500">
-      {/* Header / Identity Section - Minimalist */}
-      <div className="bg-white dark:bg-surface-dark border-b border-border-light dark:border-border-dark mb-12">
-        <div className="max-w-[1920px] mx-auto px-6 lg:px-12 py-16">
+      {/* Header / Identity Section - Premium */}
+      <div className="relative overflow-hidden bg-white dark:bg-surface-dark border-b border-border-light dark:border-border-dark mb-12">
+        {/* Subtle background pattern/gradient */}
+        <div className="absolute inset-0 bg-linear-to-br from-primary/5 via-transparent to-transparent opacity-50" />
+        <div className="absolute top-0 right-0 w-96 h-96 bg-primary/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl" />
+
+        <div className="max-w-[1920px] mx-auto px-6 lg:px-12 py-16 relative z-10">
           <div className="flex flex-col md:flex-row gap-10 items-start md:items-center justify-between">
             <div className="flex flex-col md:flex-row gap-8 items-start md:items-center">
               <Avatar
@@ -781,15 +1024,23 @@ export function PublicProfile() {
                 className="h-32 w-32 ring-4 ring-gray-50 dark:ring-gray-800"
               />
               <div>
-                <h1 className="text-4xl md:text-5xl font-bold text-text-primary dark:text-white tracking-tight leading-tight">
+                <h1 className="text-4xl md:text-5xl font-bold text-text-primary dark:text-white tracking-tight leading-tight flex items-center gap-4">
                   {formData.firstName} {formData.lastName}
+                  {!formData.isPublic && (
+                    <Badge
+                      variant="outline"
+                      className="text-xs font-normal border-gray-200 text-gray-400 gap-1 px-2 py-0"
+                    >
+                      <Lock className="h-3 w-3" /> Private
+                    </Badge>
+                  )}
                 </h1>
                 <p className="text-xl md:text-2xl text-text-secondary mt-2 font-light">
                   {formData.headline}
                 </p>
-                <div className="flex items-center gap-4 mt-4 text-sm text-text-tertiary">
+                <div className="flex items-center gap-6 mt-4 text-sm text-text-tertiary">
                   {formData.location && (
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-1.5 hover:text-primary transition-colors cursor-default">
                       <MapPin className="h-4 w-4" />
                       {formData.location}
                     </div>
@@ -859,21 +1110,33 @@ export function PublicProfile() {
                 <h3 className="text-sm font-bold uppercase tracking-widest text-text-tertiary mb-6">
                   Connect
                 </h3>
-                <div className="flex flex-col gap-3">
-                  {formData.socialLinks.map((link) => (
-                    <a
-                      key={link.id}
-                      href={link.url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="flex items-center gap-3 text-text-secondary hover:text-primary transition-colors group"
-                    >
-                      <div className="w-8 h-8 rounded-full bg-gray-50 dark:bg-gray-800 flex items-center justify-center group-hover:bg-primary/10">
-                        <LinkIcon className="h-4 w-4" />
-                      </div>
-                      <span className="font-medium">{link.platform}</span>
-                    </a>
-                  ))}
+                <div className="grid grid-cols-1 gap-3">
+                  {formData.socialLinks.map((link) => {
+                    const platform = link.platform.toLowerCase();
+                    let Icon = LinkIcon;
+                    if (platform.includes("github")) Icon = Github;
+                    if (platform.includes("linkedin")) Icon = Linkedin;
+                    if (platform.includes("twitter") || platform.includes("x"))
+                      Icon = Twitter;
+
+                    return (
+                      <a
+                        key={link.id}
+                        href={link.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex items-center gap-3 p-3 rounded-xl border border-gray-50 dark:border-gray-800/50 hover:border-primary/20 hover:bg-primary/2 transition-all group"
+                      >
+                        <div className="w-10 h-10 rounded-lg bg-gray-50 dark:bg-gray-800 flex items-center justify-center group-hover:bg-primary/10 transition-colors">
+                          <Icon className="h-4 w-4 text-text-secondary group-hover:text-primary transition-colors" />
+                        </div>
+                        <span className="font-medium text-text-secondary group-hover:text-text-primary transition-colors">
+                          {link.platform}
+                        </span>
+                        <ExternalLink className="h-3 w-3 ml-auto opacity-0 group-hover:opacity-100 transition-opacity text-text-tertiary" />
+                      </a>
+                    );
+                  })}
                 </div>
               </section>
             )}
@@ -912,9 +1175,12 @@ export function PublicProfile() {
 
             {formData.projects.length > 0 && (
               <section>
-                <h3 className="text-2xl font-bold text-text-primary dark:text-white mb-8">
-                  Selected Projects
-                </h3>
+                <div className="flex items-center justify-between mb-8">
+                  <h3 className="text-2xl font-bold text-text-primary dark:text-white">
+                    Featured Work
+                  </h3>
+                  <div className="h-px flex-1 bg-gray-100 dark:bg-gray-800 mx-6 opacity-50" />
+                </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {formData.projects.map((proj) => (
                     <a
@@ -922,11 +1188,11 @@ export function PublicProfile() {
                       href={proj.link || "#"}
                       target="_blank"
                       rel="noreferrer"
-                      className="block group p-6 rounded-2xl bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors border border-transparent hover:border-gray-200 dark:hover:border-gray-700"
+                      className="block group p-8 rounded-3xl bg-gray-50/50 dark:bg-gray-800/30 hover:bg-white dark:hover:bg-gray-800 transition-all border border-gray-100/50 dark:border-gray-800/50 hover:border-primary/20 hover:shadow-xl hover:shadow-primary/5"
                     >
-                      <div className="flex justify-between items-start mb-4">
-                        <div className="p-3 bg-white dark:bg-surface-dark rounded-xl shadow-sm">
-                          <Briefcase className="h-6 w-6 text-primary" />
+                      <div className="flex justify-between items-start mb-6">
+                        <div className="p-4 bg-white dark:bg-surface-dark rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 group-hover:border-primary/20 group-hover:text-primary transition-all">
+                          <Layers className="h-6 w-6" />
                         </div>
                         {proj.link && (
                           <ArrowUpRight className="h-5 w-5 text-gray-400 group-hover:text-primary transition-colors" />
@@ -1002,8 +1268,14 @@ export function PublicProfile() {
   );
 
   return (
-    <div className="min-h-screen bg-background dark:bg-surface-dark transition-colors duration-300">
-      <div className="sticky top-0 z-20 bg-background/80 dark:bg-surface-dark/80 backdrop-blur-md border-b border-border-light dark:border-border-dark mb-8">
+    <div className="min-h-screen bg-gray-50/30 dark:bg-surface-dark transition-colors duration-700 relative overflow-x-hidden">
+      {/* Dynamic Background Elements */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden">
+        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/5 rounded-full blur-[120px] animate-pulse" />
+        <div className="absolute bottom-[10%] right-[-5%] w-[30%] h-[30%] bg-blue-500/5 rounded-full blur-[100px]" />
+      </div>
+
+      <div className="sticky top-0 z-50 bg-white/80 dark:bg-surface-dark/80 backdrop-blur-2xl border-b border-gray-100/50 dark:border-gray-800/50 transition-all duration-300 mb-12">
         <div className="max-w-[1920px] mx-auto px-6 h-16 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-text-primary dark:text-white flex items-center gap-2">
             <Globe className="h-5 w-5 text-primary" />

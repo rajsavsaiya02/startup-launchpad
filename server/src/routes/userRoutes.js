@@ -9,5 +9,7 @@ router.use(protect);
 router.get("/me", userController.getMe);
 router.put("/profile", userController.updateProfile); // Or /me
 router.put("/password", userController.updatePassword);
+router.get("/preferences", userController.getPreferences);
+router.put("/preferences", userController.updatePreferences);
 
 module.exports = router;

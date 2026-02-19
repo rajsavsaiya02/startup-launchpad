@@ -139,3 +139,55 @@ exports.updateProfile = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+
+// Get User Preferences
+exports.getPreferences = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const result = await pool.query(
+      "SELECT preferences FROM users WHERE id = $1",
+      [userId],
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.json(result.rows[0].preferences || {});
+  } catch (err) {
+    logger.error(`Error fetching preferences: ${err.message}`);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// Update User Preferences
+exports.updatePreferences = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const newPreferences = req.body; // Expecting a JSON object
+
+    // 1. Get current preferences
+    const currentResult = await pool.query(
+      "SELECT preferences FROM users WHERE id = $1",
+      [userId],
+    );
+    if (currentResult.rows.length === 0) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    const currentPreferences = currentResult.rows[0].preferences || {};
+
+    // 2. Merge preferences
+    const updatedPreferences = { ...currentPreferences, ...newPreferences };
+
+    // 3. Update DB
+    await pool.query("UPDATE users SET preferences = $1 WHERE id = $2", [
+      updatedPreferences,
+      userId,
+    ]);
+
+    res.json(updatedPreferences);
+  } catch (err) {
+    logger.error(`Error updating preferences: ${err.message}`);
+    res.status(500).json({ message: "Server error" });
+  }
+};

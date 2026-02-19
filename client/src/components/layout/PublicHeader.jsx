@@ -134,12 +134,13 @@ export function PublicHeader() {
   const location = useLocation();
 
   // Determine which menu to use: Dynamic from DB or Static Default
-  const activeMenu =
+  const activeMenu = (
     settings?.navigation_menu &&
     Array.isArray(settings.navigation_menu) &&
     settings.navigation_menu.length > 0
       ? settings.navigation_menu
-      : MENU_STRUCTURE;
+      : MENU_STRUCTURE
+  ).filter((item) => item.label !== "Pricing");
 
   // Scroll to hash if present (for Features page deep linking)
   useEffect(() => {
