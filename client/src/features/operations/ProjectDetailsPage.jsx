@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useState, useEffect, useCallback } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 
 import {
   Share2,
@@ -25,164 +25,296 @@ import {
   Briefcase,
   DollarSign,
   X,
+  ExternalLink,
+  Edit2,
+  Trash2,
+  Save,
+  Cloud,
+  FileSpreadsheet,
+  Archive,
+  Image as ImageIcon,
+  AlertCircle,
+  Flag,
+  Play,
+  Pause,
+  Folder,
 } from "lucide-react";
 import { Button } from "../../components/ui/Button";
 import { Avatar } from "../../components/ui/Avatar";
 import { Badge } from "../../components/ui/Badge";
 import { Card } from "../../components/ui/Card";
 import { cn } from "../../utils/cn";
+import taskService from "../../services/taskService";
+import fileAssetService from "../../services/fileAssetService";
+import { isBefore, isToday, isTomorrow, startOfDay, format } from "date-fns";
 import { TaskDrawer } from "./components/TaskDrawer";
+import { ProjectFileDrawer } from "./components/ProjectFileDrawer";
+import { ExpenseDrawer } from "./components/ExpenseDrawer";
+import { ProjectActivityLog } from "./components/ProjectActivityLog";
+import { ProjectFinancials } from "./components/ProjectFinancials";
+import projectService from "../../services/projectService";
+import { toast } from "react-toastify";
+import { motion, AnimatePresence } from "framer-motion";
 
-// --- Mock Data for Board ---
-const BOARD_DATA = {
-  todo: [
-    {
-      id: 1,
-      title: "Design Landing Page Mockups",
-      desc: "Create high-fidelity mockups for the new homepage.",
-      priority: "High",
-      assignees: [1, 2],
-      comments: 3,
-      files: 2,
-    },
-    {
-      id: 2,
-      title: "Develop User Authentication Flow",
-      desc: "Implement sign-up, login, and password reset.",
-      priority: "Medium",
-      assignees: [3],
-      comments: 1,
-      files: 0,
-    },
-    {
-      id: 3,
-      title: "Setup Staging Environment",
-      desc: "Configure the server and deployment pipeline.",
-      priority: "High",
-      assignees: [1],
-      comments: 5,
-      files: 1,
-    },
-  ],
-  progress: [
-    {
-      id: 4,
-      title: "Write Homepage Copy",
-      desc: "Draft compelling copy for the main sections of the new landing page.",
-      priority: "Low",
-      assignees: [2],
-      active: true,
-      comments: 0,
-      files: 0,
-    },
-  ],
-  done: [
-    {
-      id: 5,
-      title: "Finalize Brand Style Guide",
-      desc: "Complete the documentation for colors and typography.",
-      priority: "Medium",
-      assignees: [],
-      comments: 12,
-      files: 4,
-    },
-    {
-      id: 6,
-      title: "Project Kick-off Meeting",
-      desc: "Initial meeting with all stakeholders.",
-      priority: "Low",
-      assignees: [],
-      comments: 2,
-      files: 1,
-    },
-  ],
-};
+const MotionCard = motion.create(Card);
 
-// --- Mock Data for Financials ---
-const PROJECT_EXPENSES = [
-  {
-    id: 1,
-    operation: "Design Phase 1",
-    type: "Labor (Freelance)",
-    vendor: "Elena Rodriguez",
-    date: "Oct 15, 2023",
-    amount: "$2,400.00",
-    status: "Paid",
-  },
-  {
-    id: 2,
-    operation: "Server Infrastructure",
-    type: "Software",
-    vendor: "AWS",
-    date: "Oct 20, 2023",
-    amount: "$450.00",
-    status: "Recurring",
-  },
-  {
-    id: 3,
-    operation: "User Testing",
-    type: "Marketing",
-    vendor: "UserTesting.com",
-    date: "Nov 02, 2023",
-    amount: "$800.00",
-    status: "Pending",
-  },
-  {
-    id: 4,
-    operation: "Frontend Dev Sprint 1",
-    type: "Labor",
-    vendor: "Internal Alloc.",
-    date: "Nov 10, 2023",
-    amount: "$4,500.00",
-    status: "Allocated",
-  },
-];
+// Removed Mock Data for Work
+
+// Removed Mock Data for Financials
 
 export function ProjectDetailsPage() {
+  const { id } = useParams();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("Overview");
+  // --- Task Management Logic ---
+  const [tasks, setTasks] = useState([]);
   const [selectedTask, setSelectedTask] = useState(null);
-  const [isDescExpanded, setIsDescExpanded] = useState(false);
+  const [isTaskDrawerOpen, setIsTaskDrawerOpen] = useState(false);
+  const [taskSearchQuery, setTaskSearchQuery] = useState("");
+  const [taskPriorityFilter, setTaskPriorityFilter] = useState("All");
 
-  const projectDescription = `This project focuses on developing a new mobile application for our fintech division, aimed at simplifying personal finance management for millennials. The initial phase involves market research, UI/UX design, and backend architecture planning. We are currently in the high-fidelity prototyping stage and preparing for the first round of stakeholder reviews. The goal is to deliver a seamless user experience that addresses the unique financial needs of our target demographic.`;
+  const fetchTasks = useCallback(async () => {
+    if (!id) return;
+    try {
+      const data = await taskService.getTasksByProject(id);
+      setTasks(data);
+    } catch (err) {
+      console.error("Error fetching tasks:", err);
+    }
+  }, [id]);
+
+  useEffect(() => {
+    if (activeTab === "Work") {
+      fetchTasks();
+    }
+  }, [activeTab, fetchTasks]);
+
+  const filteredTasks = tasks.filter((task) => {
+    const mainMatch = task.title
+      .toLowerCase()
+      .includes(taskSearchQuery.toLowerCase());
+    const priorityMatch =
+      taskPriorityFilter === "All" ||
+      task.priority === "All" ||
+      task.priority === taskPriorityFilter;
+    return mainMatch && priorityMatch;
+  });
+
+  // Group tasks by timeline
+  const groupedTasks = () => {
+    const groups = {
+      OVERDUE: [],
+      TODAY: [],
+      TOMORROW: [],
+    };
+
+    // Dynamic future dates
+    const futureGroups = {};
+
+    const todayStart = startOfDay(new Date());
+
+    filteredTasks.forEach((task) => {
+      // If no due date, map to 'TODAY' as a fallback, or we can make an 'UNSCHEDULED' group.
+      // The design seems to assume dates exist. Let's put no-date in TODAY for now.
+      if (!task.due_date) {
+        groups.TODAY.push(task);
+        return;
+      }
+
+      const dueDate = new Date(task.due_date);
+
+      if (
+        isBefore(startOfDay(dueDate), todayStart) &&
+        task.kanban_status !== "done"
+      ) {
+        groups.OVERDUE.push(task);
+      } else if (isToday(dueDate)) {
+        groups.TODAY.push(task);
+      } else if (isTomorrow(dueDate)) {
+        groups.TOMORROW.push(task);
+      } else if (task.kanban_status !== "done") {
+        // Future date grouping
+        const dateKey = format(dueDate, "EEE, MMM dd").toUpperCase();
+        if (!futureGroups[dateKey]) {
+          futureGroups[dateKey] = [];
+        }
+        futureGroups[dateKey].push(task);
+      }
+    });
+
+    return { ...groups, ...futureGroups };
+  };
+
+  const timelineGroups = groupedTasks();
+  const [isFileDrawerOpen, setIsFileDrawerOpen] = useState(false);
+  const [isDescExpanded, setIsDescExpanded] = useState(false);
+  const [project, setProject] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  // File Assets State
+  const [fileAssets, setFileAssets] = useState([]);
+  const [fileSearchQuery, setFileSearchQuery] = useState("");
+  const [fileSortBy, setFileSortBy] = useState("newest");
+
+  // UI States for File Actions
+  const [deleteConfirmModalAsset, setDeleteConfirmModalAsset] = useState(null);
+  const [editingFileAsset, setEditingFileAsset] = useState(null);
+  const [editFileNameValue, setEditFileNameValue] = useState("");
+
+  const formatBytes = (bytes, decimals = 2) => {
+    if (!+bytes) return "0 Bytes";
+    const k = 1024;
+    const dm = decimals < 0 ? 0 : decimals;
+    const sizes = ["Bytes", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
+  };
+
+  const getFileIcon = (asset) => {
+    if (asset.isExternal) {
+      const url = asset.storageUrl?.toLowerCase() || "";
+      if (url.includes("drive.google.com"))
+        return <Cloud className="h-5 w-5 text-blue-500" />;
+      if (url.includes("dropbox.com"))
+        return <Layers className="h-5 w-5 text-blue-600" />;
+      return <ExternalLink className="h-5 w-5 text-text-tertiary" />;
+    }
+    const mime = asset.mimeType?.toLowerCase() || "";
+    if (mime.includes("image"))
+      return <ImageIcon className="h-5 w-5 text-purple-500" />;
+    if (mime.includes("pdf"))
+      return <FileText className="h-5 w-5 text-red-500" />;
+    if (
+      mime.includes("spreadsheet") ||
+      mime.includes("excel") ||
+      mime.includes("csv")
+    ) {
+      return <FileSpreadsheet className="h-5 w-5 text-green-500" />;
+    }
+    if (mime.includes("zip") || mime.includes("compressed")) {
+      return <Archive className="h-5 w-5 text-yellow-500" />;
+    }
+    return <FileText className="h-5 w-5 text-text-tertiary" />;
+  };
+
+  const fetchFileAssets = async (projectId) => {
+    try {
+      const data = await fileAssetService.getFileAssets(
+        "project",
+        parseInt(projectId),
+      );
+      setFileAssets(data);
+    } catch (err) {
+      toast.error(err?.response?.data?.error || "Failed to load project files");
+    }
+  };
+
+  useEffect(() => {
+    const fetchProjectDetails = async () => {
+      try {
+        setLoading(true);
+        const data = await projectService.getProjectById(id);
+        setProject(data);
+      } catch (error) {
+        console.error("Failed to fetch project details:", error);
+        toast.error("Failed to load project details");
+      } finally {
+        setLoading(false);
+      }
+    };
+    if (id) {
+      fetchProjectDetails();
+      fetchFileAssets(id);
+    }
+  }, [id]);
+
+  const handleDeleteFile = (e, asset) => {
+    e.stopPropagation();
+    setDeleteConfirmModalAsset(asset);
+  };
+
+  const confirmDeleteFile = async () => {
+    if (!deleteConfirmModalAsset) return;
+    try {
+      await fileAssetService.deleteFileAsset(deleteConfirmModalAsset.id);
+      toast.success("Attachment deleted");
+      fetchFileAssets(id);
+      setDeleteConfirmModalAsset(null);
+    } catch (err) {
+      toast.error(err?.response?.data?.error || "Failed to delete attachment");
+    }
+  };
+
+  const handleUpdateFileName = async (assetId) => {
+    try {
+      if (!editFileNameValue.trim()) {
+        toast.error("File name cannot be empty");
+        return;
+      }
+      await fileAssetService.updateFileAsset(assetId, editFileNameValue);
+      toast.success("Attachment updated");
+      setEditingFileAsset(null);
+      fetchFileAssets(id);
+    } catch (err) {
+      toast.error(err?.response?.data?.error || "Failed to update attachment");
+    }
+  };
+
+  const handleDownloadFile = async (e, asset) => {
+    e.stopPropagation();
+    if (asset.isExternal) {
+      window.open(asset.storageUrl, "_blank");
+    } else {
+      window.location.href = fileAssetService.getDownloadUrl(asset.id);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex flex-col min-h-[calc(100vh-4rem)] bg-gray-50/50 dark:bg-background-dark overflow-y-auto p-6 items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  if (!project) {
+    return (
+      <div className="flex flex-col min-h-[calc(100vh-4rem)] bg-gray-50/50 dark:bg-background-dark overflow-y-auto p-6 items-center justify-center">
+        <p className="text-text-secondary">Project not found.</p>
+        <Button
+          onClick={() => navigate("/productivity/projects")}
+          className="mt-4"
+        >
+          Back to Projects
+        </Button>
+      </div>
+    );
+  }
+
+  const projectDescription = project.description || "No description provided.";
   return (
     <div className="flex flex-col min-h-[calc(100vh-4rem)] bg-gray-50/50 dark:bg-background-dark overflow-y-auto p-6">
       {/* 1. Consolidated Project Header Area */}
       <div className="w-full bg-white/80 dark:bg-surface-dark/80 backdrop-blur-md border border-border-light dark:border-border-dark shadow-sm rounded-xl mb-6 shrink-0 sticky top-0 z-10 transition-all duration-300">
         <div className="px-6 pt-4">
-          {/* Top Bar: Navigation & Main Action (Same Row for Compactness) */}
-          <div className="flex justify-between items-center mb-4">
-            <button
-              onClick={() => navigate("/productivity/projects")}
-              className="flex items-center gap-2 text-text-tertiary hover:text-text-primary transition-colors text-xs font-bold group"
-            >
-              <ArrowLeft className="h-3.5 w-3.5 group-hover:-translate-x-1 transition-transform" />
-              BACK TO PROJECTS
-            </button>
-            <button className="group relative flex items-center gap-2 h-9 px-5 text-xs font-black tracking-widest text-white transition-all duration-300 active:scale-95 overflow-hidden rounded-lg">
-              {/* Modern Gradient Background */}
-              <div className="absolute inset-0 bg-linear-to-r from-primary to-[#4F86ED] transition-transform duration-300 group-hover:scale-105" />
-              {/* Glow Effect */}
-              <div className="absolute inset-0 opacity-0 group-hover:opacity-20 bg-white transition-opacity duration-300" />
-              <div className="relative flex items-center gap-2">
-                <Plus className="h-3.5 w-3.5 stroke-[3px]" />
-                <span>NEW TASK</span>
-              </div>
-            </button>
-          </div>
-
           <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-10 pb-4 border-b border-border-light dark:border-border-dark">
             <div className="flex-1 min-w-0">
               {/* Project Title & Status */}
               <div className="flex items-center gap-3 mb-2">
                 <h1 className="text-2xl font-black text-text-primary dark:text-white tracking-tight">
-                  Website Redesign
+                  {project.title || "Untitled Project"}
                 </h1>
                 <Badge
-                  variant="success"
-                  className="text-[10px] px-2 py-0.5 rounded-full font-bold uppercase"
+                  variant={
+                    project.status === "Active"
+                      ? "success"
+                      : project.status === "Planning"
+                        ? "warning"
+                        : "default"
+                  }
+                  className="text-[10px] px-2 py-0.5 rounded-full font-bold uppercase transition-colors"
                 >
-                  Active
+                  {project.status || "Active"}
                 </Badge>
               </div>
 
@@ -232,8 +364,13 @@ export function ProjectDetailsPage() {
                     Start Date
                   </span>
                   <span className="text-sm font-bold text-text-primary dark:text-white flex items-center gap-2 whitespace-nowrap">
-                    <Calendar className="h-3.5 w-3.5 text-primary" /> Jan 15,
-                    2024
+                    <Calendar className="h-3.5 w-3.5 text-primary" />{" "}
+                    {project.start_date
+                      ? new Date(project.start_date).toLocaleDateString(
+                          undefined,
+                          { month: "short", day: "numeric", year: "numeric" },
+                        )
+                      : "--"}
                   </span>
                 </div>
                 <div className="h-8 w-px bg-border-light/50 dark:bg-border-dark/50" />
@@ -242,7 +379,13 @@ export function ProjectDetailsPage() {
                     Due Date
                   </span>
                   <span className="text-sm font-bold text-text-primary dark:text-white flex items-center gap-2 whitespace-nowrap">
-                    <Clock className="h-3.5 w-3.5 text-warning" /> Dec 31, 2024
+                    <Clock className="h-3.5 w-3.5 text-warning" />{" "}
+                    {project.due_date
+                      ? new Date(project.due_date).toLocaleDateString(
+                          undefined,
+                          { month: "short", day: "numeric", year: "numeric" },
+                        )
+                      : "--"}
                   </span>
                 </div>
               </div>
@@ -253,375 +396,373 @@ export function ProjectDetailsPage() {
                   <span className="text-[10px] uppercase tracking-tight font-black text-text-tertiary">
                     Current Progress
                   </span>
-                  <span className="text-xs font-black text-primary">45%</span>
+                  <span className="text-xs font-black text-primary">
+                    {project.progress || 0}%
+                  </span>
                 </div>
                 <div className="w-full bg-gray-200/50 dark:bg-gray-700/50 rounded-full h-2.5 overflow-hidden">
                   <div
                     className="bg-linear-to-r from-primary to-[#60A5FA] h-2.5 rounded-full transition-all duration-1000 shadow-[0_0_10px_rgba(46,107,229,0.2)]"
-                    style={{ width: "45%" }}
+                    style={{ width: `${project.progress || 0}%` }}
                   ></div>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Tab Switcher at Bottom (Ultra Smooth) */}
-          <div className="flex justify-center py-3">
+          {/* Control Bar: Navigation, Tabs, and Main Action */}
+          <div className="flex items-center justify-between py-3">
+            <button
+              onClick={() => navigate("/productivity/projects")}
+              className="flex items-center gap-2 text-text-tertiary hover:text-text-primary transition-colors text-xs font-bold group"
+            >
+              <ArrowLeft className="h-3.5 w-3.5 group-hover:-translate-x-1 transition-transform" />
+              BACK TO PROJECTS
+            </button>
+
             <nav className="inline-flex p-1 bg-gray-100/30 dark:bg-gray-800/20 rounded-full border border-border-light dark:border-border-dark overflow-x-auto no-scrollbar">
-              {[
-                "Overview",
-                "Board",
-                "Financials",
-                "Activity",
-                "Files",
-                "Members",
-              ].map((tab) => (
-                <button
-                  key={tab}
-                  onClick={() => setActiveTab(tab)}
-                  className={cn(
-                    "relative flex items-center justify-center py-1.5 px-5 text-xs font-bold transition-all duration-200 rounded-full outline-none focus:outline-none whitespace-nowrap tracking-wide",
-                    activeTab === tab
-                      ? "bg-white dark:bg-surface-dark text-primary shadow-sm"
-                      : "text-text-secondary hover:text-text-primary",
-                  )}
-                >
-                  {tab}
-                </button>
-              ))}
+              {["Overview", "Work", "Financials", "Activity", "Files"].map(
+                (tab) => (
+                  <button
+                    key={tab}
+                    onClick={() => setActiveTab(tab)}
+                    className={cn(
+                      "relative flex items-center justify-center py-1.5 px-5 text-xs font-bold transition-all duration-200 rounded-full outline-none focus:outline-none whitespace-nowrap tracking-wide",
+                      activeTab === tab
+                        ? "bg-white dark:bg-surface-dark text-primary shadow-sm"
+                        : "text-text-secondary hover:text-text-primary",
+                    )}
+                  >
+                    {tab}
+                  </button>
+                ),
+              )}
             </nav>
+
+            <button
+              onClick={() => {
+                setSelectedTask(null);
+                setIsTaskDrawerOpen(true);
+              }}
+              className="group relative flex items-center gap-2 h-9 px-5 text-xs font-black tracking-widest text-white transition-all duration-300 active:scale-95 overflow-hidden rounded-lg shadow-sm shadow-primary/20"
+            >
+              {/* Modern Gradient Background */}
+              <div className="absolute inset-0 bg-linear-to-r from-primary to-[#4F86ED] transition-transform duration-300 group-hover:scale-105" />
+              {/* Glow Effect */}
+              <div className="absolute inset-0 opacity-0 group-hover:opacity-20 bg-white transition-opacity duration-300" />
+              <div className="relative flex items-center gap-2">
+                <Plus className="h-3.5 w-3.5 stroke-[3px]" />
+                <span>NEW TASK</span>
+              </div>
+            </button>
           </div>
         </div>
       </div>
 
       {/* 2. Content Area - Separate Container */}
       <div className="w-full mx-auto">
-        {/* --- BOARD VIEW --- */}
-        {activeTab === "Board" && (
-          <div className="flex h-full gap-6 min-w-max">
-            <BoardColumn title="To Do" count={3} color="border-yellow-400">
-              {BOARD_DATA.todo.map((task) => (
-                <TaskCard
-                  key={task.id}
-                  task={task}
-                  onClick={() => setSelectedTask(task)}
+        {/* --- WORK VIEW --- */}
+        {activeTab === "Work" && (
+          <div className="flex flex-col gap-6">
+            {/* Board Filters */}
+            <div className="flex flex-col sm:flex-row gap-4 mb-2 items-center justify-between px-2">
+              <div className="relative flex-1 w-full max-w-md">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-tertiary" />
+                <input
+                  type="text"
+                  placeholder="Search tasks..."
+                  value={taskSearchQuery}
+                  onChange={(e) => setTaskSearchQuery(e.target.value)}
+                  className="w-full pl-9 pr-4 py-2 text-sm bg-white dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-lg focus:ring-2 focus:ring-primary/20 transition-all outline-none"
                 />
-              ))}
-            </BoardColumn>
-            <BoardColumn title="In Progress" count={1} color="border-primary">
-              {BOARD_DATA.progress.map((task) => (
-                <TaskCard
-                  key={task.id}
-                  task={task}
-                  onClick={() => setSelectedTask(task)}
-                />
-              ))}
-            </BoardColumn>
-            <BoardColumn title="Done" count={2} color="border-success">
-              {BOARD_DATA.done.map((task) => (
-                <TaskCard
-                  key={task.id}
-                  task={task}
-                  onClick={() => setSelectedTask(task)}
-                />
-              ))}
-            </BoardColumn>
+              </div>
+              <div className="flex items-center gap-3 w-full sm:w-auto">
+                <div className="relative w-full sm:w-40 shrink-0">
+                  <Filter className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-tertiary" />
+                  <select
+                    value={taskPriorityFilter}
+                    onChange={(e) => setTaskPriorityFilter(e.target.value)}
+                    className="w-full pl-9 pr-8 py-2 text-sm bg-white dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-lg focus:ring-2 focus:ring-primary/20 transition-all outline-none appearance-none cursor-pointer"
+                  >
+                    <option value="All">All Priorities</option>
+                    <option value="High">High Priority</option>
+                    <option value="Medium">Medium Priority</option>
+                    <option value="Low">Low Priority</option>
+                  </select>
+                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-tertiary pointer-events-none" />
+                </div>
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 pb-8 space-y-8 mt-4">
+              {Object.entries(timelineGroups).map(([groupName, groupTasks]) => {
+                if (groupTasks.length === 0) return null;
+
+                const isOverdue = groupName === "OVERDUE";
+                const isToday = groupName === "TODAY";
+                const isTomorrow = groupName === "TOMORROW";
+
+                return (
+                  <div key={groupName} className="space-y-4">
+                    <div className="flex items-center gap-3">
+                      {isOverdue && (
+                        <AlertCircle className="h-5 w-5 text-error" />
+                      )}
+                      {isToday && <Calendar className="h-5 w-5 text-primary" />}
+                      {isTomorrow && (
+                        <Calendar className="h-5 w-5 text-indigo-400" />
+                      )}
+                      {!isOverdue && !isToday && !isTomorrow && (
+                        <Calendar className="h-5 w-5 text-text-tertiary" />
+                      )}
+                      <h3
+                        className={cn(
+                          "text-sm font-bold tracking-wider",
+                          isOverdue
+                            ? "text-error"
+                            : isToday
+                              ? "text-text-primary dark:text-white"
+                              : "text-text-secondary dark:text-gray-400",
+                        )}
+                      >
+                        {groupName}{" "}
+                        <span className="ml-2 bg-gray-100 dark:bg-gray-800 text-text-tertiary px-2 py-0.5 rounded-full text-xs">
+                          {groupTasks.length}
+                        </span>
+                      </h3>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-4">
+                      {groupTasks.map((task) => (
+                        <ProjectTaskListItem
+                          key={task.id}
+                          task={task}
+                          onEdit={() => {
+                            setSelectedTask(task);
+                            setIsTaskDrawerOpen(true);
+                          }}
+                          onDelete={async () => {
+                            if (window.confirm("Delete this task?")) {
+                              await taskService.deleteTask(id, task.id);
+                              fetchTasks();
+                            }
+                          }}
+                          onToggleComplete={async () => {
+                            const newStatus =
+                              task.kanban_status === "done" ? "todo" : "done";
+                            await taskService.updateTask(id, task.id, {
+                              kanban_status: newStatus,
+                            });
+                            fetchTasks();
+                          }}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
 
         {/* --- FINANCIALS VIEW --- */}
-        {activeTab === "Financials" && (
-          <div className="space-y-8 w-full">
-            {/* Budget Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <Card className="p-6 border-l-4 border-primary">
-                <p className="text-sm text-text-secondary font-medium">
-                  Total Project Budget
-                </p>
-                <div className="flex items-baseline gap-2 mt-2">
-                  <h3 className="text-3xl font-bold text-text-primary dark:text-white">
-                    $50,000
-                  </h3>
-                  <span className="text-xs text-text-tertiary">USD</span>
-                </div>
-              </Card>
-              <Card className="p-6 border-l-4 border-warning">
-                <p className="text-sm text-text-secondary font-medium">
-                  Actual Spent
-                </p>
-                <div className="flex items-baseline gap-2 mt-2">
-                  <h3 className="text-3xl font-bold text-text-primary dark:text-white">
-                    $8,150
-                  </h3>
-                  <span className="text-xs text-text-tertiary">16.3%</span>
-                </div>
-              </Card>
-              <Card className="p-6 border-l-4 border-success">
-                <p className="text-sm text-text-secondary font-medium">
-                  Remaining
-                </p>
-                <div className="flex items-baseline gap-2 mt-2">
-                  <h3 className="text-3xl font-bold text-text-primary dark:text-white">
-                    $41,850
-                  </h3>
-                  <span className="text-xs text-success flex items-center gap-1">
-                    <TrendingUp className="h-3 w-3" /> On Track
-                  </span>
-                </div>
-              </Card>
-            </div>
-
-            {/* Cost Table */}
-            <Card className="overflow-hidden bg-white dark:bg-surface-dark">
-              <div className="p-6 border-b border-border-light dark:border-border-dark flex justify-between items-center">
-                <div>
-                  <h3 className="text-lg font-bold text-text-primary dark:text-white">
-                    Operational Expenses
-                  </h3>
-                  <p className="text-sm text-text-secondary">
-                    Costs linked directly to project tasks and milestones.
-                  </p>
-                </div>
-                <Button variant="outline" size="sm" className="gap-2">
-                  <Download className="h-4 w-4" /> Export Report
-                </Button>
-              </div>
-              <table className="w-full text-sm text-left">
-                <thead className="bg-gray-50 dark:bg-gray-800/50 text-text-secondary border-b border-border-light dark:border-border-dark">
-                  <tr>
-                    <th className="px-6 py-4 font-medium">Operation / Task</th>
-                    <th className="px-6 py-4 font-medium">Type</th>
-                    <th className="px-6 py-4 font-medium">Vendor/Member</th>
-                    <th className="px-6 py-4 font-medium">Date</th>
-                    <th className="px-6 py-4 font-medium text-right">Amount</th>
-                    <th className="px-6 py-4 font-medium text-center">
-                      Status
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border-light dark:divide-border-dark">
-                  {PROJECT_EXPENSES.map((ex, i) => (
-                    <tr
-                      key={i}
-                      className="hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors"
-                    >
-                      <td className="px-6 py-4 font-medium text-text-primary dark:text-white flex items-center gap-2">
-                        <Layers className="h-4 w-4 text-text-tertiary" />{" "}
-                        {ex.operation}
-                      </td>
-                      <td className="px-6 py-4 text-text-secondary">
-                        <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-gray-100 dark:bg-gray-800 text-xs">
-                          {ex.type === "Software" ? (
-                            <CreditCard className="h-3 w-3" />
-                          ) : (
-                            <Users className="h-3 w-3" />
-                          )}
-                          {ex.type}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-text-secondary">
-                        {ex.vendor}
-                      </td>
-                      <td className="px-6 py-4 text-text-tertiary">
-                        {ex.date}
-                      </td>
-                      <td className="px-6 py-4 text-right font-mono font-medium text-text-primary dark:text-white">
-                        {ex.amount}
-                      </td>
-                      <td className="px-6 py-4 text-center">
-                        <Badge
-                          variant={
-                            ex.status === "Paid"
-                              ? "success"
-                              : ex.status === "Pending"
-                                ? "warning"
-                                : "neutral"
-                          }
-                        >
-                          {ex.status}
-                        </Badge>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </Card>
-          </div>
-        )}
+        {activeTab === "Financials" && <ProjectFinancials projectId={id} />}
 
         {/* --- ACTIVITY VIEW --- */}
-        {activeTab === "Activity" && (
-          <div className="w-full pt-4">
-            <h3 className="text-xl font-bold mb-6 text-text-primary dark:text-white px-2">
-              Project Audit Log
-            </h3>
-            <div className="space-y-8 relative pl-4 border-l-2 border-border-light dark:border-border-dark ml-4">
-              {[
-                {
-                  user: "Alex Johnson",
-                  action: "moved",
-                  target: "Homepage Copy",
-                  from: "To Do",
-                  to: "In Progress",
-                  time: "2 hours ago",
-                },
-                {
-                  user: "Sarah Lee",
-                  action: "added a comment to",
-                  target: "Design System Audit",
-                  time: "5 hours ago",
-                },
-                {
-                  user: "Daniel Kim",
-                  action: "attached file",
-                  target: "specs_v2.pdf",
-                  time: "Yesterday",
-                },
-                {
-                  user: "System",
-                  action: "updated budget",
-                  target: "+$5,000 allocation",
-                  time: "2 days ago",
-                },
-              ].map((log, i) => (
-                <div key={i} className="relative pl-8">
-                  <div className="absolute -left-[23px] top-1.5 h-3.5 w-3.5 rounded-full border-[3px] border-white dark:border-background-dark bg-gray-300 dark:bg-gray-600"></div>
-                  <div className="bg-white dark:bg-surface-dark p-4 rounded-xl border border-border-light dark:border-border-dark shadow-sm">
-                    <p className="text-sm text-text-primary dark:text-white">
-                      <span className="font-semibold">{log.user}</span>{" "}
-                      {log.action}{" "}
-                      <span className="font-semibold text-primary">
-                        {log.target}
-                      </span>{" "}
-                      {log.from && (
-                        <span className="text-text-tertiary">
-                          from {log.from} to {log.to}
-                        </span>
-                      )}
-                    </p>
-                    <p className="text-xs text-text-tertiary mt-1">
-                      {log.time}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+        {activeTab === "Activity" && <ProjectActivityLog projectId={id} />}
 
         {/* --- FILES VIEW --- */}
         {activeTab === "Files" && (
-          <div className="w-full grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6">
-            {[
-              "Project_Brief.pdf",
-              "UI_Kit_v2.fig",
-              "Q4_Budget.xlsx",
-              "Assets.zip",
-              "Meeting_Notes.docx",
-            ].map((file, i) => (
-              <Card
-                key={i}
-                className="p-4 flex flex-col items-center text-center gap-3 hover:shadow-md transition-shadow cursor-pointer group"
-              >
-                <div className="h-16 w-16 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-text-tertiary group-hover:bg-primary/10 group-hover:text-primary transition-colors">
-                  <FileText className="h-8 w-8" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-text-primary dark:text-white truncate w-32">
-                    {file}
-                  </p>
-                  <p className="text-xs text-text-tertiary">
-                    2.4 MB • Uploaded by Alex
-                  </p>
-                </div>
-                <Button variant="ghost" size="sm" className="w-full mt-2">
-                  Download
-                </Button>
-              </Card>
-            ))}
-
-            <button className="border-2 border-dashed border-border-light dark:border-border-dark rounded-xl flex flex-col items-center justify-center text-text-tertiary hover:border-primary hover:text-primary hover:bg-primary/5 transition-all h-48">
-              <Plus className="h-8 w-8 mb-2" />
-              <span className="text-sm font-medium">Upload File</span>
-            </button>
-          </div>
-        )}
-
-        {/* --- MEMBERS VIEW --- */}
-        {activeTab === "Members" && (
           <div className="w-full">
-            <Card className="overflow-hidden bg-white dark:bg-surface-dark">
-              <div className="p-6 border-b border-border-light dark:border-border-dark flex justify-between items-center">
-                <h3 className="text-lg font-bold text-text-primary dark:text-white">
-                  Project Team
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 px-2">
+              <div className="flex items-center gap-4">
+                <h3 className="text-xl font-bold text-text-primary dark:text-white shrink-0">
+                  Project Files
                 </h3>
-                <Button variant="outline" className="gap-2">
-                  <Users className="h-4 w-4" /> Manage Access
+                <div className="relative w-full sm:w-64">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-tertiary" />
+                  <input
+                    type="text"
+                    placeholder="Search files..."
+                    value={fileSearchQuery}
+                    onChange={(e) => setFileSearchQuery(e.target.value)}
+                    className="w-full pl-9 pr-4 py-2 text-sm bg-white dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-lg focus:ring-2 focus:ring-primary/20 transition-all outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <div className="relative w-full sm:w-40 shrink-0">
+                  <Filter className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-tertiary" />
+                  <select
+                    value={fileSortBy}
+                    onChange={(e) => setFileSortBy(e.target.value)}
+                    className="w-full pl-9 pr-8 py-2 text-sm bg-white dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-lg focus:ring-2 focus:ring-primary/20 transition-all outline-none appearance-none cursor-pointer"
+                  >
+                    <option value="newest">Newest First</option>
+                    <option value="oldest">Oldest First</option>
+                    <option value="a-z">A-Z Name</option>
+                  </select>
+                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-tertiary pointer-events-none" />
+                </div>
+                <Button
+                  onClick={() => setIsFileDrawerOpen(true)}
+                  className="gap-2 shadow-md shadow-primary/20 shrink-0"
+                >
+                  <Plus className="h-4 w-4" /> Add Attachment
                 </Button>
               </div>
-              <div className="divide-y divide-border-light dark:divide-border-dark">
-                {[
-                  {
-                    name: "Alex Johnson",
-                    role: "Product Owner",
-                    tasks: 12,
-                    status: "Online",
-                  },
-                  {
-                    name: "Sarah Lee",
-                    role: "Lead Developer",
-                    tasks: 8,
-                    status: "In Meeting",
-                  },
-                  {
-                    name: "Elena Rodriguez",
-                    role: "Product Designer",
-                    tasks: 5,
-                    status: "Offline",
-                  },
-                ].map((member, i) => (
-                  <div
-                    key={i}
-                    className="p-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
-                  >
-                    <div className="flex items-center gap-4">
-                      <Avatar
-                        src={`https://i.pravatar.cc/150?u=${member.name}`}
-                        size="md"
-                      />
-                      <div>
-                        <p className="font-bold text-text-primary dark:text-white">
-                          {member.name}
-                        </p>
-                        <p className="text-xs text-text-secondary">
-                          {member.role}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-8">
-                      <div className="text-right">
-                        <p className="text-sm font-bold text-text-primary dark:text-white">
-                          {member.tasks}
-                        </p>
-                        <p className="text-xs text-text-tertiary">
-                          Active Tasks
-                        </p>
-                      </div>
-                      <Badge
-                        variant={
-                          member.status === "Online" ? "success" : "neutral"
-                        }
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {(() => {
+                const filteredAndSortedFiles = fileAssets
+                  .filter((f) =>
+                    f.fileName
+                      .toLowerCase()
+                      .includes(fileSearchQuery.toLowerCase()),
+                  )
+                  .sort((a, b) => {
+                    if (fileSortBy === "newest")
+                      return new Date(b.createdAt) - new Date(a.createdAt);
+                    if (fileSortBy === "oldest")
+                      return new Date(a.createdAt) - new Date(b.createdAt);
+                    if (fileSortBy === "a-z")
+                      return a.fileName.localeCompare(b.fileName);
+                    return 0;
+                  });
+
+                return (
+                  <AnimatePresence mode="popLayout">
+                    <motion.div
+                      layout
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.9 }}
+                      transition={{ duration: 0.2 }}
+                      key="upload-btn"
+                    >
+                      <button
+                        onClick={() => setIsFileDrawerOpen(true)}
+                        className="w-full h-full p-3 flex items-center gap-3 rounded-xl border border-dashed border-border-light dark:border-border-dark text-text-tertiary hover:border-primary/50 hover:text-primary hover:bg-primary/5 transition-all group min-h-[64px]"
                       >
-                        {member.status}
-                      </Badge>
-                      <button className="text-text-tertiary hover:text-text-primary">
-                        <MoreHorizontal className="h-5 w-5" />
+                        <div className="h-10 w-10 shrink-0 rounded-lg bg-gray-50 dark:bg-gray-800 flex items-center justify-center group-hover:bg-white dark:group-hover:bg-surface-dark group-hover:shadow-sm transition-all ring-1 ring-border-light dark:ring-border-dark">
+                          <Plus className="h-5 w-5" />
+                        </div>
+                        <div className="flex-1 min-w-0 text-left">
+                          <p className="text-sm font-bold text-text-primary dark:text-white group-hover:text-primary transition-colors">
+                            Upload File
+                          </p>
+                          <p className="text-[10px] text-text-tertiary">
+                            or attach a link
+                          </p>
+                        </div>
                       </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </Card>
+                    </motion.div>
+
+                    {filteredAndSortedFiles.map((asset) => (
+                      <MotionCard
+                        layout
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.9 }}
+                        transition={{ duration: 0.2 }}
+                        key={asset.id}
+                        className="p-3 flex items-center gap-3 hover:shadow-md transition-shadow cursor-default group border-border-light dark:border-border-dark bg-white dark:bg-surface-dark relative min-w-[200px]"
+                      >
+                        <div className="h-10 w-10 shrink-0 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-text-tertiary group-hover:bg-primary/10 transition-colors">
+                          {getFileIcon(asset)}
+                        </div>
+                        <div className="flex-1 min-w-0 pr-28 text-left">
+                          {editingFileAsset?.id === asset.id ? (
+                            <input
+                              type="text"
+                              autoFocus
+                              className="w-full text-sm font-bold text-text-primary dark:text-white bg-transparent outline-none border-b border-primary/50 focus:border-primary px-0 py-0.5"
+                              value={editFileNameValue}
+                              onChange={(e) =>
+                                setEditFileNameValue(e.target.value)
+                              }
+                              onClick={(e) => e.stopPropagation()}
+                              onKeyDown={async (e) => {
+                                if (e.key === "Enter") {
+                                  e.stopPropagation();
+                                  await handleUpdateFileName(asset.id);
+                                }
+                                if (e.key === "Escape") {
+                                  e.stopPropagation();
+                                  setEditingFileAsset(null);
+                                }
+                              }}
+                            />
+                          ) : (
+                            <p
+                              className="text-sm font-bold text-text-primary dark:text-white truncate"
+                              title={asset.fileName}
+                            >
+                              {asset.fileName}
+                            </p>
+                          )}
+                          <p className="text-[10px] text-text-tertiary truncate mt-0.5">
+                            {new Date(asset.createdAt).toLocaleDateString()} •{" "}
+                            {asset.isExternal
+                              ? "External Link"
+                              : formatBytes(asset.sizeBytes)}
+                          </p>
+                        </div>
+
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-100">
+                          {editingFileAsset?.id === asset.id ? (
+                            <button
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                await handleUpdateFileName(asset.id);
+                              }}
+                              className="p-1.5 text-success hover:bg-success/10 rounded-md transition-all shrink-0 bg-white dark:bg-surface-dark shadow-xs border border-border-light dark:border-border-dark"
+                              title="Save Name"
+                            >
+                              <Save className="h-4 w-4" />
+                            </button>
+                          ) : (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setEditingFileAsset(asset);
+                                setEditFileNameValue(asset.fileName);
+                              }}
+                              className="p-1.5 text-text-tertiary hover:text-primary hover:bg-primary/10 rounded-md transition-all shrink-0 bg-white dark:bg-surface-dark shadow-xs border border-border-light dark:border-border-dark"
+                              title="Edit File Name"
+                            >
+                              <Edit2 className="h-4 w-4" />
+                            </button>
+                          )}
+                          <button
+                            onClick={(e) => handleDownloadFile(e, asset)}
+                            className="p-1.5 text-text-tertiary hover:text-primary hover:bg-primary/10 rounded-md transition-all shrink-0 bg-white dark:bg-surface-dark shadow-xs border border-border-light dark:border-border-dark"
+                            title={
+                              asset.isExternal ? "Open Link" : "Download File"
+                            }
+                          >
+                            {asset.isExternal ? (
+                              <ExternalLink className="h-4 w-4" />
+                            ) : (
+                              <Download className="h-4 w-4" />
+                            )}
+                          </button>
+                          <button
+                            onClick={(e) => handleDeleteFile(e, asset)}
+                            className="p-1.5 text-text-tertiary hover:text-error hover:bg-error/10 rounded-md transition-all shrink-0 bg-white dark:bg-surface-dark shadow-xs border border-border-light dark:border-border-dark"
+                            title="Delete File"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </MotionCard>
+                    ))}
+                  </AnimatePresence>
+                );
+              })()}
+            </div>
           </div>
         )}
 
@@ -801,85 +942,272 @@ export function ProjectDetailsPage() {
 
       {/* Task Drawer Integration */}
       <TaskDrawer
+        isOpen={isTaskDrawerOpen}
         task={selectedTask}
-        isOpen={!!selectedTask}
-        onClose={() => setSelectedTask(null)}
+        onClose={() => setIsTaskDrawerOpen(false)}
+        onRefresh={fetchTasks}
       />
+
+      <ProjectFileDrawer
+        isOpen={isFileDrawerOpen}
+        onClose={() => setIsFileDrawerOpen(false)}
+        contextType="project"
+        contextId={id}
+        onUploadSuccess={() => fetchFileAssets(id)}
+      />
+
+      {/* Custom Delete Confirmation Modal */}
+      {deleteConfirmModalAsset && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-surface-dark p-6 rounded-xl max-w-sm w-full shadow-xl">
+            <h3 className="text-lg font-bold text-text-primary dark:text-white mb-2">
+              Delete Attachment
+            </h3>
+            <p className="text-sm text-text-secondary dark:text-gray-300 mb-6 flex-wrap break-all">
+              Are you sure you want to permanently delete{" "}
+              <strong>{deleteConfirmModalAsset.fileName}</strong>?
+            </p>
+            <div className="flex justify-end gap-3">
+              <Button
+                variant="outline"
+                onClick={() => setDeleteConfirmModalAsset(null)}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={confirmDeleteFile}
+                className="bg-error hover:bg-error/90 text-white border-0 shadow-md"
+              >
+                Delete
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-// --- Sub Components for Board ---
+// --- Sub Components for Work ---
 
-function BoardColumn({ title, count, color, children }) {
-  return (
-    <div className="flex w-[320px] shrink-0 flex-col h-full">
-      <div
-        className={`relative border-b-2 ${color} pb-3 mb-4 flex justify-between items-center`}
-      >
-        <h2 className="text-lg font-semibold text-text-primary dark:text-white">
-          {title}
-        </h2>
-        <span className="text-sm font-medium text-text-tertiary bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-full tabular-nums">
-          {count}
-        </span>
-      </div>
-      <div className="flex flex-col gap-4 overflow-y-auto pr-2 pb-4 custom-scrollbar h-full">
-        {children}
-      </div>
-    </div>
-  );
-}
+function ProjectTaskListItem({
+  task,
+  onEdit,
+  onDelete,
+  onToggleComplete,
+  onRefresh,
+}) {
+  const isDone = task.kanban_status === "done";
 
-function TaskCard({ task, onClick }) {
   const priorityColors = {
+    Critical:
+      "text-red-600 bg-red-600/10 border-red-600/20 shadow-sm shadow-red-500/20",
     High: "text-error bg-error/10 border-error/20",
     Medium: "text-warning bg-warning/10 border-warning/20",
     Low: "text-success bg-success/10 border-success/20",
   };
 
+  const projectTitle = task.project_title || "Project";
+
+  // Time Tracking Logic
+  const [liveTimeSpent, setLiveTimeSpent] = useState(task.time_spent || 0);
+  const [isTimerRunning, setIsTimerRunning] = useState(!!task.timer_started_at);
+  const [prevTaskState, setPrevTaskState] = useState({
+    timeSpent: task.time_spent,
+    timerStartedAt: task.timer_started_at,
+  });
+
+  if (
+    task.time_spent !== prevTaskState.timeSpent ||
+    task.timer_started_at !== prevTaskState.timerStartedAt
+  ) {
+    setPrevTaskState({
+      timeSpent: task.time_spent,
+      timerStartedAt: task.timer_started_at,
+    });
+    setLiveTimeSpent(task.time_spent || 0);
+    setIsTimerRunning(!!task.timer_started_at);
+  }
+
+  useEffect(() => {
+    let interval = null;
+    if (isTimerRunning && task.timer_started_at) {
+      const start = new Date(task.timer_started_at).getTime();
+      interval = setInterval(() => {
+        const now = new Date().getTime();
+        const elapsedSeconds = Math.floor((now - start) / 1000);
+        setLiveTimeSpent((task.time_spent || 0) + elapsedSeconds);
+      }, 1000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [isTimerRunning, task.timer_started_at, task.time_spent]);
+
+  const handleToggleTimer = async () => {
+    const now = new Date().toISOString();
+    let newTimeSpent = task.time_spent || 0;
+    let newTimerStartedAt = null;
+
+    if (isTimerRunning) {
+      // Stopping timer
+      const elapsed = Math.floor(
+        (new Date().getTime() - new Date(task.timer_started_at).getTime()) /
+          1000,
+      );
+      newTimeSpent += elapsed;
+    } else {
+      // Starting timer
+      newTimerStartedAt = now;
+    }
+
+    // Optimistic update
+    setIsTimerRunning(!isTimerRunning);
+    setLiveTimeSpent(newTimeSpent);
+
+    try {
+      await taskService.updateTask(task.project_id, task.id, {
+        time_spent: newTimeSpent,
+        timer_started_at: newTimerStartedAt,
+      });
+      if (onRefresh) onRefresh();
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to update timer");
+      setIsTimerRunning(!!task.timer_started_at);
+      setLiveTimeSpent(task.time_spent || 0);
+    }
+  };
+
+  const formatTime = (totalSeconds) => {
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
+  };
+
+  const timeLogged = formatTime(liveTimeSpent);
+
+  const dueTime = task.due_date
+    ? format(new Date(task.due_date), "hh:mm a")
+    : "No Time";
+
   return (
     <div
-      onClick={onClick}
-      className="bg-white dark:bg-surface-dark p-4 rounded-xl border border-border-light dark:border-border-dark shadow-sm hover:shadow-md transition-all cursor-pointer group hover:border-primary/50"
+      className={cn(
+        "group relative flex flex-col justify-between p-4 bg-white dark:bg-surface-dark rounded-xl border-2 transition-all min-h-[140px]",
+        isDone
+          ? "border-border-light dark:border-border-dark opacity-60"
+          : "border-border-light dark:border-border-dark hover:border-primary/40 focus-within:border-primary/60",
+        "hover:shadow-md",
+      )}
     >
-      <div className="flex justify-between items-start mb-3">
-        <span
-          className={`text-[10px] font-bold px-2 py-0.5 rounded border ${priorityColors[task.priority]}`}
-        >
-          {task.priority}
-        </span>
-        <button className="opacity-0 group-hover:opacity-100 text-text-tertiary hover:text-primary transition-opacity">
-          <MoreHorizontal className="h-4 w-4" />
-        </button>
+      {/* Active Left Border Accent */}
+      {!isDone && (
+        <div className="absolute left-0 top-3 bottom-3 w-1.5 rounded-r-full bg-primary opacity-0 group-hover:opacity-100 transition-opacity" />
+      )}
+
+      {/* Top Row: Checkbox, Title, Priority Flag */}
+      <div className="flex items-start gap-3">
+        <label className="cursor-pointer shrink-0 mt-0.5 relative z-10">
+          <input
+            type="checkbox"
+            checked={isDone}
+            onChange={onToggleComplete}
+            className="peer sr-only"
+          />
+          <div className="h-5 w-5 rounded border-2 border-border-light dark:border-border-dark peer-checked:bg-primary peer-checked:border-primary flex items-center justify-center transition-all bg-white dark:bg-surface-dark">
+            <CheckSquare className="h-3.5 w-3.5 text-white opacity-0 peer-checked:opacity-100 transition-opacity" />
+          </div>
+        </label>
+
+        <div className="flex-1 min-w-0 pr-8">
+          <h4
+            className={cn(
+              "text-[15px] font-bold text-text-primary dark:text-white leading-tight truncate mb-1",
+              isDone && "line-through text-text-tertiary",
+            )}
+            title={task.title}
+          >
+            {task.title}
+          </h4>
+          <p className="text-xs text-text-secondary dark:text-gray-400 line-clamp-2 leading-relaxed">
+            {task.description || "No description provided."}
+          </p>
+        </div>
+
+        <div className="absolute right-4 top-4">
+          <Flag
+            className={cn(
+              "h-4 w-4",
+              priorityColors[task.priority]?.split(" ")[0] ||
+                "text-text-tertiary",
+            )}
+          />
+        </div>
       </div>
 
-      <h4 className="text-sm font-semibold text-text-primary dark:text-white mb-2 leading-snug">
-        {task.title}
-      </h4>
+      {/* Bottom Row: Tags & Actions */}
+      <div className="flex items-center justify-between mt-4 pt-3 border-t border-border-light dark:border-border-dark/50 border-dashed">
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Time Logged Pill */}
+          <div className="flex items-center gap-1.5 px-2 py-1 bg-gray-50 dark:bg-gray-800/50 rounded-md border border-border-light dark:border-border-dark text-[11px] font-semibold text-text-secondary">
+            <Clock className="h-3 w-3 text-text-tertiary" /> {timeLogged}
+          </div>
 
-      <div className="flex justify-between items-center pt-3 border-t border-border-light dark:border-border-dark border-dashed mt-3">
-        <div className="flex items-center gap-3">
-          {task.comments > 0 && (
-            <div className="flex items-center gap-1 text-xs text-text-tertiary">
-              <MessageSquare className="h-3 w-3" /> {task.comments}
+          {/* Due Time Pill */}
+          {task.due_date && (
+            <div className="flex items-center gap-1.5 px-2 py-1 bg-gray-50 dark:bg-gray-800/50 rounded-md border border-border-light dark:border-border-dark text-[11px] font-semibold text-text-secondary">
+              <Calendar className="h-3 w-3 text-text-tertiary" /> {dueTime}
             </div>
           )}
-          {task.files > 0 && (
-            <div className="flex items-center gap-1 text-xs text-text-tertiary">
-              <Paperclip className="h-3 w-3" /> {task.files}
-            </div>
-          )}
+
+          {/* Project Folder Pill */}
+          <div className="flex items-center gap-1.5 px-2.5 py-1 bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-100 dark:border-indigo-500/20 rounded-md text-[11px] font-bold text-indigo-600 dark:text-indigo-400 max-w-[140px]">
+            <Folder className="h-3 w-3 shrink-0" />{" "}
+            <span className="truncate">{projectTitle}</span>
+          </div>
         </div>
-        <div className="flex -space-x-2">
-          {task.assignees.map((id, i) => (
-            <Avatar
-              key={i}
-              src={`https://i.pravatar.cc/30?u=${id}`}
-              size="xs"
-              className="border-2 border-white dark:border-surface-dark ring-0"
-            />
-          ))}
+
+        {/* Hover Actions */}
+        <div
+          className={cn(
+            "flex items-center gap-1 transition-opacity pl-2",
+            isTimerRunning
+              ? "opacity-100 bg-white dark:bg-surface-dark"
+              : "opacity-0 group-hover:opacity-100 bg-white dark:bg-surface-dark",
+          )}
+        >
+          <button
+            onClick={handleToggleTimer}
+            className={cn(
+              "p-1.5 rounded-md transition-colors",
+              isTimerRunning
+                ? "text-warning hover:bg-warning/10"
+                : "text-success hover:bg-success/10",
+            )}
+            title={isTimerRunning ? "Pause Timer" : "Start Timer"}
+          >
+            {isTimerRunning ? (
+              <Pause className="h-4 w-4 fill-warning animate-pulse" />
+            ) : (
+              <Play className="h-4 w-4 fill-success" />
+            )}
+          </button>
+          <button
+            onClick={onEdit}
+            className="p-1.5 text-text-tertiary hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md transition-colors"
+            title="Edit Task"
+          >
+            <Edit2 className="h-4 w-4" />
+          </button>
+          <button
+            onClick={onDelete}
+            className="p-1.5 text-text-tertiary hover:bg-error/10 hover:text-error rounded-md transition-colors"
+            title="Delete Task"
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
         </div>
       </div>
     </div>

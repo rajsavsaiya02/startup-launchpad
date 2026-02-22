@@ -1,0 +1,469 @@
+<mxfile host="65bd71144e">
+    <diagram name="1. User Auth and Org Creation" id="diag_0">
+        <mxGraphModel dx="874" dy="715" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="diag_0_start" value="" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#d5e8d4;strokeColor=#82b366;" parent="1" vertex="1">
+                    <mxGeometry x="380" y="50" width="40" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_0_enter" value="Enter Credentials" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Helvetica;fontSize=12;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="340" y="150" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_0_auth" value="Validate Credentials" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Helvetica;fontSize=12;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="340" y="250" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_0_dec1" value="Valid?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontFamily=Helvetica;fontSize=12;" parent="1" vertex="1">
+                    <mxGeometry x="350" y="350" width="100" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_0_err" value="Show Error" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Helvetica;fontSize=12;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="180" y="360" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_0_org" value="Create/Select Org" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Helvetica;fontSize=12;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="340" y="500" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_0_dash" value="Load Dashboard" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Helvetica;fontSize=12;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="340" y="600" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_0_end" value="" style="ellipse;shape=doubleEllipse;margin=3;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#f8cecc;strokeColor=#b85450;" parent="1" vertex="1">
+                    <mxGeometry x="380" y="700" width="40" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_0_edge_0" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#ffffff;fontFamily=Helvetica;fontSize=12;" parent="1" source="diag_0_start" target="diag_0_enter" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_0_edge_1" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#ffffff;fontFamily=Helvetica;fontSize=12;" parent="1" source="diag_0_enter" target="diag_0_auth" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_0_edge_2" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#ffffff;fontFamily=Helvetica;fontSize=12;" parent="1" source="diag_0_auth" target="diag_0_dec1" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_0_edge_3" value="Yes" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#ffffff;fontFamily=Helvetica;fontSize=12;" parent="1" source="diag_0_dec1" target="diag_0_org" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_0_edge_4" value="No" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#ffffff;fontFamily=Helvetica;fontSize=12;" parent="1" source="diag_0_dec1" target="diag_0_err" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_0_edge_5" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#ffffff;fontFamily=Helvetica;fontSize=12;" parent="1" source="diag_0_err" target="diag_0_enter" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="240" y="180"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="diag_0_edge_6" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#ffffff;fontFamily=Helvetica;fontSize=12;" parent="1" source="diag_0_org" target="diag_0_dash" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_0_edge_7" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#ffffff;fontFamily=Helvetica;fontSize=12;" parent="1" source="diag_0_dash" target="diag_0_end" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+    <diagram name="2. Task Management (Kanban)" id="diag_1">
+        <mxGraphModel dx="874" dy="715" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="diag_1_start" value="" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#d5e8d4;strokeColor=#82b366;" parent="1" vertex="1">
+                    <mxGeometry x="380" y="50" width="40" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_1_open" value="Open Project Board" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Helvetica;fontSize=12;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="340" y="150" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_1_add" value="Add Task (To Do)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Helvetica;fontSize=12;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="340" y="250" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_1_edit" value="Assign and Set Due Date" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Helvetica;fontSize=12;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="340" y="350" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_1_progress" value="Drag to In Progress" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Helvetica;fontSize=12;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="340" y="450" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_1_work" value="Update Task Details" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Helvetica;fontSize=12;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="340" y="550" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_1_done" value="Drag to Done" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Helvetica;fontSize=12;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="340" y="650" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_1_end" value="" style="ellipse;shape=doubleEllipse;margin=3;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#f8cecc;strokeColor=#b85450;" parent="1" vertex="1">
+                    <mxGeometry x="380" y="750" width="40" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_1_edge_0" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#ffffff;fontFamily=Helvetica;fontSize=12;" parent="1" source="diag_1_start" target="diag_1_open" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_1_edge_1" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#ffffff;fontFamily=Helvetica;fontSize=12;" parent="1" source="diag_1_open" target="diag_1_add" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_1_edge_2" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#ffffff;fontFamily=Helvetica;fontSize=12;" parent="1" source="diag_1_add" target="diag_1_edit" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_1_edge_3" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#ffffff;fontFamily=Helvetica;fontSize=12;" parent="1" source="diag_1_edit" target="diag_1_progress" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_1_edge_4" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#ffffff;fontFamily=Helvetica;fontSize=12;" parent="1" source="diag_1_progress" target="diag_1_work" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_1_edge_5" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#ffffff;fontFamily=Helvetica;fontSize=12;" parent="1" source="diag_1_work" target="diag_1_done" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_1_edge_6" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#ffffff;fontFamily=Helvetica;fontSize=12;" parent="1" source="diag_1_done" target="diag_1_end" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+    <diagram name="3. Expense Logging (Finance)" id="diag_2">
+        <mxGraphModel dx="874" dy="715" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="diag_2_start" value="" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#d5e8d4;strokeColor=#82b366;" parent="1" vertex="1">
+                    <mxGeometry x="380" y="50" width="40" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_2_dash" value="Open Finance Hub" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Helvetica;fontSize=12;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="340" y="150" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_2_add" value="Click Add Expense" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Helvetica;fontSize=12;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="340" y="250" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_2_details" value="Enter Details and Category" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Helvetica;fontSize=12;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="340" y="350" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_2_dec_rec" value="Has Receipt?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontFamily=Helvetica;fontSize=12;" parent="1" vertex="1">
+                    <mxGeometry x="350" y="450" width="100" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_2_upload" value="Upload Receipt" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Helvetica;fontSize=12;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="500" y="460" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_2_save" value="Save Expense" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Helvetica;fontSize=12;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="340" y="580" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_2_update" value="Update Burn Rate" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Helvetica;fontSize=12;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="340" y="680" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_2_end" value="" style="ellipse;shape=doubleEllipse;margin=3;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#f8cecc;strokeColor=#b85450;" parent="1" vertex="1">
+                    <mxGeometry x="380" y="780" width="40" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_2_edge_0" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#ffffff;fontFamily=Helvetica;fontSize=12;" parent="1" source="diag_2_start" target="diag_2_dash" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_2_edge_1" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#ffffff;fontFamily=Helvetica;fontSize=12;" parent="1" source="diag_2_dash" target="diag_2_add" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_2_edge_2" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#ffffff;fontFamily=Helvetica;fontSize=12;" parent="1" source="diag_2_add" target="diag_2_details" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_2_edge_3" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#ffffff;fontFamily=Helvetica;fontSize=12;" parent="1" source="diag_2_details" target="diag_2_dec_rec" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_2_edge_4" value="Yes" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#ffffff;fontFamily=Helvetica;fontSize=12;" parent="1" source="diag_2_dec_rec" target="diag_2_upload" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_2_edge_5" value="No" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#ffffff;fontFamily=Helvetica;fontSize=12;" parent="1" source="diag_2_dec_rec" target="diag_2_save" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_2_edge_6" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#ffffff;fontFamily=Helvetica;fontSize=12;" parent="1" source="diag_2_upload" target="diag_2_save" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="560" y="610"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="diag_2_edge_7" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#ffffff;fontFamily=Helvetica;fontSize=12;" parent="1" source="diag_2_save" target="diag_2_update" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_2_edge_8" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#ffffff;fontFamily=Helvetica;fontSize=12;" parent="1" source="diag_2_update" target="diag_2_end" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+    <diagram name="4. Post Gig (Talent Hub)" id="diag_3">
+        <mxGraphModel dx="874" dy="715" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="diag_3_start" value="" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#d5e8d4;strokeColor=#82b366;" parent="1" vertex="1">
+                    <mxGeometry x="380" y="50" width="40" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_3_nav" value="Open Talent Hub" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Helvetica;fontSize=12;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="340" y="150" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_3_create" value="Click Post a Gig" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Helvetica;fontSize=12;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="340" y="250" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_3_details" value="Enter Requirements" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Helvetica;fontSize=12;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="340" y="350" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_3_budget" value="Set Budget" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Helvetica;fontSize=12;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="340" y="450" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_3_dec_pub" value="Review OK?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontFamily=Helvetica;fontSize=12;" parent="1" vertex="1">
+                    <mxGeometry x="350" y="550" width="100" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_3_draft" value="Save as Draft" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Helvetica;fontSize=12;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="190" y="410" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_3_publish" value="Publish Gig" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Helvetica;fontSize=12;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="340" y="680" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_3_list" value="Gig Visible on Platform" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Helvetica;fontSize=12;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="340" y="780" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_3_end" value="" style="ellipse;shape=doubleEllipse;margin=3;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#f8cecc;strokeColor=#b85450;" parent="1" vertex="1">
+                    <mxGeometry x="380" y="880" width="40" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_3_edge_0" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#ffffff;fontFamily=Helvetica;fontSize=12;" parent="1" source="diag_3_start" target="diag_3_nav" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_3_edge_1" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#ffffff;fontFamily=Helvetica;fontSize=12;" parent="1" source="diag_3_nav" target="diag_3_create" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_3_edge_2" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#ffffff;fontFamily=Helvetica;fontSize=12;" parent="1" source="diag_3_create" target="diag_3_details" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_3_edge_3" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#ffffff;fontFamily=Helvetica;fontSize=12;" parent="1" source="diag_3_details" target="diag_3_budget" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_3_edge_4" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#ffffff;fontFamily=Helvetica;fontSize=12;" parent="1" source="diag_3_budget" target="diag_3_dec_pub" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_3_edge_5" value="Yes" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#ffffff;fontFamily=Helvetica;fontSize=12;" parent="1" source="diag_3_dec_pub" target="diag_3_publish" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_3_edge_6" value="No" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#ffffff;fontFamily=Helvetica;fontSize=12;" parent="1" source="diag_3_dec_pub" target="diag_3_draft" edge="1">
+                    <mxGeometry x="0.2727" relative="1" as="geometry">
+                        <mxPoint as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="diag_3_edge_7" value="Edit Later" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#ffffff;fontFamily=Helvetica;fontSize=12;" parent="1" source="diag_3_draft" target="diag_3_create" edge="1">
+                    <mxGeometry x="-0.2727" relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="250" y="280"/>
+                        </Array>
+                        <mxPoint as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="diag_3_edge_8" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#ffffff;fontFamily=Helvetica;fontSize=12;" parent="1" source="diag_3_publish" target="diag_3_list" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_3_edge_9" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#ffffff;fontFamily=Helvetica;fontSize=12;" parent="1" source="diag_3_list" target="diag_3_end" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+    <diagram name="5. Apply for Gig (Talent)" id="diag_4">
+        <mxGraphModel dx="874" dy="715" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="diag_4_start" value="" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#d5e8d4;strokeColor=#82b366;" parent="1" vertex="1">
+                    <mxGeometry x="380" y="50" width="40" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_4_browse" value="Browse Gigs" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Helvetica;fontSize=12;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="340" y="150" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_4_view" value="View Details" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Helvetica;fontSize=12;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="340" y="250" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_4_apply" value="Click Apply" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Helvetica;fontSize=12;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="340" y="350" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_4_proposal" value="Submit Proposal and CV" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Helvetica;fontSize=12;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="340" y="450" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_4_wait" value="Await Review" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Helvetica;fontSize=12;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="340" y="550" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_4_dec_acc" value="Accepted?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontFamily=Helvetica;fontSize=12;" parent="1" vertex="1">
+                    <mxGeometry x="350" y="650" width="100" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_4_reject" value="Application Rejected" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Helvetica;fontSize=12;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="140" y="660" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_4_hire" value="Hired and Open Chat" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Helvetica;fontSize=12;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="340" y="780" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_4_end2" value="" style="ellipse;shape=doubleEllipse;margin=3;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#f8cecc;strokeColor=#b85450;" parent="1" vertex="1">
+                    <mxGeometry x="380" y="870" width="40" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_4_edge_0" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#ffffff;fontFamily=Helvetica;fontSize=12;" parent="1" source="diag_4_start" target="diag_4_browse" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_4_edge_1" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#ffffff;fontFamily=Helvetica;fontSize=12;" parent="1" source="diag_4_browse" target="diag_4_view" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_4_edge_2" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#ffffff;fontFamily=Helvetica;fontSize=12;" parent="1" source="diag_4_view" target="diag_4_apply" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_4_edge_3" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#ffffff;fontFamily=Helvetica;fontSize=12;" parent="1" source="diag_4_apply" target="diag_4_proposal" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_4_edge_4" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#ffffff;fontFamily=Helvetica;fontSize=12;" parent="1" source="diag_4_proposal" target="diag_4_wait" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_4_edge_5" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#ffffff;fontFamily=Helvetica;fontSize=12;" parent="1" source="diag_4_wait" target="diag_4_dec_acc" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_4_edge_6" value="Yes" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#ffffff;fontFamily=Helvetica;fontSize=12;" parent="1" source="diag_4_dec_acc" target="diag_4_hire" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_4_edge_7" value="No" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#ffffff;fontFamily=Helvetica;fontSize=12;" parent="1" source="diag_4_dec_acc" target="diag_4_reject" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_4_edge_8" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#ffffff;fontFamily=Helvetica;fontSize=12;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" parent="1" source="diag_4_reject" target="diag_4_end2" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="200" y="870" as="targetPoint"/>
+                        <Array as="points">
+                            <mxPoint x="200" y="890"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="diag_4_edge_9" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#ffffff;fontFamily=Helvetica;fontSize=12;" parent="1" source="diag_4_hire" target="diag_4_end2" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+    <diagram name="6. Project Management" id="diag_5">
+        <mxGraphModel dx="874" dy="715" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="diag_5_start" value="" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#d5e8d4;strokeColor=#82b366;" parent="1" vertex="1">
+                    <mxGeometry x="380" y="50" width="40" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_5_create" value="Click Create Project" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Helvetica;fontSize=12;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="340" y="150" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_5_details" value="Set Title and Scope" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Helvetica;fontSize=12;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="340" y="250" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_5_members" value="Invite Members" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Helvetica;fontSize=12;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="340" y="350" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_5_dec_role" value="Assign Roles?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontFamily=Helvetica;fontSize=12;" parent="1" vertex="1">
+                    <mxGeometry x="350" y="450" width="100" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_5_roles" value="Select Roles" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Helvetica;fontSize=12;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="550" y="460" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_5_save" value="Save Project" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Helvetica;fontSize=12;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="340" y="580" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_5_active" value="Project Available" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Helvetica;fontSize=12;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="340" y="680" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_5_end" value="" style="ellipse;shape=doubleEllipse;margin=3;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#f8cecc;strokeColor=#b85450;" parent="1" vertex="1">
+                    <mxGeometry x="380" y="780" width="40" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_5_edge_0" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#ffffff;fontFamily=Helvetica;fontSize=12;" parent="1" source="diag_5_start" target="diag_5_create" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_5_edge_1" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#ffffff;fontFamily=Helvetica;fontSize=12;" parent="1" source="diag_5_create" target="diag_5_details" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_5_edge_2" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#ffffff;fontFamily=Helvetica;fontSize=12;" parent="1" source="diag_5_details" target="diag_5_members" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_5_edge_3" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#ffffff;fontFamily=Helvetica;fontSize=12;" parent="1" source="diag_5_members" target="diag_5_dec_role" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_5_edge_4" value="Yes" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#ffffff;fontFamily=Helvetica;fontSize=12;" parent="1" source="diag_5_dec_role" target="diag_5_roles" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_5_edge_5" value="No" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#ffffff;fontFamily=Helvetica;fontSize=12;" parent="1" source="diag_5_dec_role" target="diag_5_save" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_5_edge_6" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#ffffff;fontFamily=Helvetica;fontSize=12;" parent="1" source="diag_5_roles" target="diag_5_save" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="610" y="610"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="diag_5_edge_7" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#ffffff;fontFamily=Helvetica;fontSize=12;" parent="1" source="diag_5_save" target="diag_5_active" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_5_edge_8" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#ffffff;fontFamily=Helvetica;fontSize=12;" parent="1" source="diag_5_active" target="diag_5_end" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+    <diagram name="7. RBAC Security Check" id="diag_6">
+        <mxGraphModel dx="874" dy="715" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="diag_6_start" value="" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#d5e8d4;strokeColor=#82b366;" parent="1" vertex="1">
+                    <mxGeometry x="380" y="50" width="40" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_6_req" value="Access Resource/API" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Helvetica;fontSize=12;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="340" y="150" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_6_check" value="Verify Session" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Helvetica;fontSize=12;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="340" y="250" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_6_dec_auth" value="Logged In?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontFamily=Helvetica;fontSize=12;" parent="1" vertex="1">
+                    <mxGeometry x="350" y="350" width="100" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_6_login" value="Redirect to Login" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Helvetica;fontSize=12;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="140" y="360" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_6_dec_role" value="Has Role Access?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontFamily=Helvetica;fontSize=12;" parent="1" vertex="1">
+                    <mxGeometry x="335" y="480" width="130" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_6_denied" value="Access Denied" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Helvetica;fontSize=12;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="140" y="490" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_6_grant" value="Grant Access" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Helvetica;fontSize=12;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="340" y="610" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_6_end" value="" style="ellipse;shape=doubleEllipse;margin=3;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#f8cecc;strokeColor=#b85450;" parent="1" vertex="1">
+                    <mxGeometry x="380" y="710" width="40" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_6_edge_0" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#ffffff;fontFamily=Helvetica;fontSize=12;" parent="1" source="diag_6_start" target="diag_6_req" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_6_edge_1" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#ffffff;fontFamily=Helvetica;fontSize=12;" parent="1" source="diag_6_req" target="diag_6_check" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_6_edge_2" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#ffffff;fontFamily=Helvetica;fontSize=12;" parent="1" source="diag_6_check" target="diag_6_dec_auth" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_6_edge_3" value="Yes" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#ffffff;fontFamily=Helvetica;fontSize=12;" parent="1" source="diag_6_dec_auth" target="diag_6_dec_role" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_6_edge_4" value="No" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#ffffff;fontFamily=Helvetica;fontSize=12;" parent="1" source="diag_6_dec_auth" target="diag_6_login" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_6_edge_5" value="Yes" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#ffffff;fontFamily=Helvetica;fontSize=12;" parent="1" source="diag_6_dec_role" target="diag_6_grant" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_6_edge_6" value="No" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#ffffff;fontFamily=Helvetica;fontSize=12;" parent="1" source="diag_6_dec_role" target="diag_6_denied" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="diag_6_edge_7" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#ffffff;fontFamily=Helvetica;fontSize=12;" parent="1" source="diag_6_login" target="diag_6_end" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="110" y="390"/>
+                            <mxPoint x="110" y="740"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="diag_6_edge_8" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#ffffff;fontFamily=Helvetica;fontSize=12;" parent="1" source="diag_6_denied" target="diag_6_end" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="200" y="720"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="diag_6_edge_9" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#ffffff;fontFamily=Helvetica;fontSize=12;" parent="1" source="diag_6_grant" target="diag_6_end" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+</mxfile>

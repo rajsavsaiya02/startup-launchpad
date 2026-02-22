@@ -48,6 +48,16 @@ exports.createProject = async (req, res) => {
       [newProject.id, userId],
     );
 
+    // Seed initial activity log
+    await pool.query(
+      `INSERT INTO project_activities (project_id, user_id, content) VALUES ($1, $2, $3)`,
+      [
+        newProject.id,
+        userId,
+        `<p><strong>Project Initialize</strong><br/>Project "${title}" was created and initialized successfully.</p>`,
+      ],
+    );
+
     res.status(201).json(newProject);
   } catch (error) {
     console.error("Error creating project:", error);

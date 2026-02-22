@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 
 import {
   Share2,
@@ -32,6 +32,9 @@ import { Badge } from "../../../components/ui/Badge";
 import { Card } from "../../../components/ui/Card";
 import { cn } from "../../../utils/cn";
 import { OrgTaskDrawer as TaskDrawer } from "./components/OrgTaskDrawer";
+import { ProjectFileDrawer } from "../../operations/components/ProjectFileDrawer";
+import projectService from "../../../services/projectService";
+import { toast } from "react-toastify";
 
 // --- Mock Data for Board ---
 const BOARD_DATA = {
@@ -139,12 +142,56 @@ const PROJECT_EXPENSES = [
 ];
 
 export function OrgProjectDetailsPage() {
+  const { id } = useParams();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("Overview");
   const [selectedTask, setSelectedTask] = useState(null);
+  const [isFileDrawerOpen, setIsFileDrawerOpen] = useState(false);
   const [isDescExpanded, setIsDescExpanded] = useState(false);
+  const [project, setProject] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  const projectDescription = `This project focuses on developing a new mobile application for our fintech division, aimed at simplifying personal finance management for millennials. The initial phase involves market research, UI/UX design, and backend architecture planning. We are currently in the high-fidelity prototyping stage and preparing for the first round of stakeholder reviews. The goal is to deliver a seamless user experience that addresses the unique financial needs of our target demographic.`;
+  useEffect(() => {
+    const fetchProjectDetails = async () => {
+      try {
+        setLoading(true);
+        const data = await projectService.getProjectById(id);
+        setProject(data);
+      } catch (error) {
+        console.error("Failed to fetch project details:", error);
+        toast.error("Failed to load project details");
+      } finally {
+        setLoading(false);
+      }
+    };
+    if (id) {
+      fetchProjectDetails();
+    }
+  }, [id]);
+
+  if (loading) {
+    return (
+      <div className="flex flex-col min-h-[calc(100vh-4rem)] bg-gray-50/50 dark:bg-background-dark overflow-y-auto p-6 items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  if (!project) {
+    return (
+      <div className="flex flex-col min-h-[calc(100vh-4rem)] bg-gray-50/50 dark:bg-background-dark overflow-y-auto p-6 items-center justify-center">
+        <p className="text-text-secondary">Project not found.</p>
+        <Button
+          onClick={() => navigate("/organization/projects")}
+          className="mt-4"
+        >
+          Back to Projects
+        </Button>
+      </div>
+    );
+  }
+
+  const projectDescription = project.description || "No description provided.";
   return (
     <div className="flex flex-col min-h-[calc(100vh-4rem)] bg-gray-50/50 dark:bg-background-dark overflow-y-auto p-6">
       {/* 1. Consolidated Project Header Area */}
@@ -176,13 +223,19 @@ export function OrgProjectDetailsPage() {
               {/* Project Title & Status */}
               <div className="flex items-center gap-3 mb-2">
                 <h1 className="text-2xl font-black text-text-primary dark:text-white tracking-tight">
-                  Organization Website Redesign
+                  {project.title || "Untitled Project"}
                 </h1>
                 <Badge
-                  variant="success"
-                  className="text-[10px] px-2 py-0.5 rounded-full font-bold uppercase"
+                  variant={
+                    project.status === "Active"
+                      ? "success"
+                      : project.status === "Planning"
+                        ? "warning"
+                        : "default"
+                  }
+                  className="text-[10px] px-2 py-0.5 rounded-full font-bold uppercase transition-colors"
                 >
-                  Active
+                  {project.status || "Active"}
                 </Badge>
               </div>
 
@@ -232,8 +285,13 @@ export function OrgProjectDetailsPage() {
                     Start Date
                   </span>
                   <span className="text-sm font-bold text-text-primary dark:text-white flex items-center gap-2 whitespace-nowrap">
-                    <Calendar className="h-3.5 w-3.5 text-primary" /> Jan 15,
-                    2024
+                    <Calendar className="h-3.5 w-3.5 text-primary" />{" "}
+                    {project.start_date
+                      ? new Date(project.start_date).toLocaleDateString(
+                          undefined,
+                          { month: "short", day: "numeric", year: "numeric" },
+                        )
+                      : "--"}
                   </span>
                 </div>
                 <div className="h-8 w-px bg-border-light/50 dark:bg-border-dark/50" />
@@ -242,7 +300,13 @@ export function OrgProjectDetailsPage() {
                     Due Date
                   </span>
                   <span className="text-sm font-bold text-text-primary dark:text-white flex items-center gap-2 whitespace-nowrap">
-                    <Clock className="h-3.5 w-3.5 text-warning" /> Dec 31, 2024
+                    <Clock className="h-3.5 w-3.5 text-warning" />{" "}
+                    {project.due_date
+                      ? new Date(project.due_date).toLocaleDateString(
+                          undefined,
+                          { month: "short", day: "numeric", year: "numeric" },
+                        )
+                      : "--"}
                   </span>
                 </div>
               </div>
@@ -253,12 +317,14 @@ export function OrgProjectDetailsPage() {
                   <span className="text-[10px] uppercase tracking-tight font-black text-text-tertiary">
                     Current Progress
                   </span>
-                  <span className="text-xs font-black text-primary">45%</span>
+                  <span className="text-xs font-black text-primary">
+                    {project.progress || 0}%
+                  </span>
                 </div>
                 <div className="w-full bg-gray-200/50 dark:bg-gray-700/50 rounded-full h-2.5 overflow-hidden">
                   <div
                     className="bg-linear-to-r from-primary to-[#60A5FA] h-2.5 rounded-full transition-all duration-1000 shadow-[0_0_10px_rgba(46,107,229,0.2)]"
-                    style={{ width: "45%" }}
+                    style={{ width: `${project.progress || 0}%` }}
                   ></div>
                 </div>
               </div>
@@ -511,39 +577,68 @@ export function OrgProjectDetailsPage() {
 
         {/* --- FILES VIEW --- */}
         {activeTab === "Files" && (
-          <div className="w-full grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6">
-            {[
-              "Project_Brief.pdf",
-              "UI_Kit_v2.fig",
-              "Q4_Budget.xlsx",
-              "Assets.zip",
-              "Meeting_Notes.docx",
-            ].map((file, i) => (
-              <Card
-                key={i}
-                className="p-4 flex flex-col items-center text-center gap-3 hover:shadow-md transition-shadow cursor-pointer group"
+          <div className="w-full">
+            <div className="flex justify-between items-center mb-6 px-2">
+              <h3 className="text-xl font-bold text-text-primary dark:text-white">
+                Project Files
+              </h3>
+              <Button
+                onClick={() => setIsFileDrawerOpen(true)}
+                className="gap-2 shadow-md shadow-primary/20"
               >
-                <div className="h-16 w-16 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-text-tertiary group-hover:bg-primary/10 group-hover:text-primary transition-colors">
-                  <FileText className="h-8 w-8" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-text-primary dark:text-white truncate w-32">
-                    {file}
-                  </p>
-                  <p className="text-xs text-text-tertiary">
-                    2.4 MB • Uploaded by Alex
-                  </p>
-                </div>
-                <Button variant="ghost" size="sm" className="w-full mt-2">
-                  Download
-                </Button>
-              </Card>
-            ))}
+                <Plus className="h-4 w-4" /> Add Attachment
+              </Button>
+            </div>
 
-            <button className="border-2 border-dashed border-border-light dark:border-border-dark rounded-xl flex flex-col items-center justify-center text-text-tertiary hover:border-primary hover:text-primary hover:bg-primary/5 transition-all h-48">
-              <Plus className="h-8 w-8 mb-2" />
-              <span className="text-sm font-medium">Upload File</span>
-            </button>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+              {[
+                "Project_Brief.pdf",
+                "UI_Kit_v2.fig",
+                "Q4_Budget.xlsx",
+                "Assets.zip",
+                "Meeting_Notes.docx",
+              ].map((file, i) => (
+                <Card
+                  key={i}
+                  className="p-3 flex items-center gap-3 hover:shadow-md transition-shadow cursor-pointer group border-border-light dark:border-border-dark bg-white dark:bg-surface-dark"
+                >
+                  <div className="h-10 w-10 shrink-0 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-text-tertiary group-hover:bg-primary/10 group-hover:text-primary transition-colors">
+                    <FileText className="h-5 w-5" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p
+                      className="text-sm font-bold text-text-primary dark:text-white truncate"
+                      title={file}
+                    >
+                      {file}
+                    </p>
+                    <p className="text-[10px] text-text-tertiary truncate">
+                      2.4 MB • Uploaded by Alex
+                    </p>
+                  </div>
+                  <button className="opacity-0 group-hover:opacity-100 p-1.5 text-text-tertiary hover:text-primary hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md transition-all shrink-0">
+                    <Download className="h-4 w-4" />
+                  </button>
+                </Card>
+              ))}
+
+              <button
+                onClick={() => setIsFileDrawerOpen(true)}
+                className="p-3 flex items-center gap-3 rounded-xl border border-dashed border-border-light dark:border-border-dark text-text-tertiary hover:border-primary/50 hover:text-primary hover:bg-primary/5 transition-all group"
+              >
+                <div className="h-10 w-10 shrink-0 rounded-lg bg-gray-50 dark:bg-gray-800 flex items-center justify-center group-hover:bg-white dark:group-hover:bg-surface-dark group-hover:shadow-sm transition-all ring-1 ring-border-light dark:ring-border-dark">
+                  <Plus className="h-5 w-5" />
+                </div>
+                <div className="flex-1 min-w-0 text-left">
+                  <p className="text-sm font-bold text-text-primary dark:text-white group-hover:text-primary transition-colors">
+                    Upload File
+                  </p>
+                  <p className="text-[10px] text-text-tertiary">
+                    or attach a link
+                  </p>
+                </div>
+              </button>
+            </div>
           </div>
         )}
 
@@ -804,6 +899,11 @@ export function OrgProjectDetailsPage() {
         task={selectedTask}
         isOpen={!!selectedTask}
         onClose={() => setSelectedTask(null)}
+      />
+
+      <ProjectFileDrawer
+        isOpen={isFileDrawerOpen}
+        onClose={() => setIsFileDrawerOpen(false)}
       />
     </div>
   );

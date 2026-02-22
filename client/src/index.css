@@ -1,33 +1,33 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200');
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200");
 
 @import "tailwindcss";
 
 @theme {
   /* --- Stitch Design System Tokens --- */
-  
+
   /* Colors */
-  --color-primary: #2E6BE5;
-  --color-primary-hover: #2457C9;
-  --color-primary-light: #E8F0FF;
-  
-  --color-background-light: #F6F6F8;
+  --color-primary: #2e6be5;
+  --color-primary-hover: #2457c9;
+  --color-primary-light: #e8f0ff;
+
+  --color-background-light: #f6f6f8;
   --color-background-dark: #111621;
-  
-  --color-surface-light: #FFFFFF;
-  --color-surface-dark: #1A2233;
-  
+
+  --color-surface-light: #ffffff;
+  --color-surface-dark: #1a2233;
+
   --color-text-primary: #111827;
   --color-text-secondary: #374151;
-  --color-text-tertiary: #6B7280;
-  --color-text-dark: #F9FAFB;
-  
-  --color-border-light: #E5E7EB;
+  --color-text-tertiary: #6b7280;
+  --color-text-dark: #f9fafb;
+
+  --color-border-light: #e5e7eb;
   --color-border-dark: #374151;
-  
-  --color-success: #10B981;
-  --color-warning: #F59E0B;
-  --color-error: #EF4444;
+
+  --color-success: #10b981;
+  --color-warning: #f59e0b;
+  --color-error: #ef4444;
 
   /* Typography */
   --font-sans: "Inter", sans-serif;
@@ -35,29 +35,32 @@
 
   /* Radius Override (Default scale extension) */
   --radius-md: 0.625rem; /* 10px */
-  --radius-lg: 1rem;     /* 16px */
-  --radius-xl: 1.5rem;   /* 24px */
+  --radius-lg: 1rem; /* 16px */
+  --radius-xl: 1.5rem; /* 24px */
 
   /* Shadows */
   --shadow-xs: 0 0 0 1px rgba(0, 0, 0, 0.05);
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   --shadow-subtle: 0 6px 20px rgba(16, 24, 40, 0.06);
-  --shadow-card: 0px 2px 4px -2px rgba(16, 24, 40, 0.06), 0px 4px 8px -2px rgba(16, 24, 40, 0.1);
+  --shadow-card:
+    0px 2px 4px -2px rgba(16, 24, 40, 0.06),
+    0px 4px 8px -2px rgba(16, 24, 40, 0.1);
 }
 
 /* --- Base Styles --- */
 @layer base {
   html {
-    font-family: 'Inter', sans-serif;
+    font-family: "Inter", sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
-  
+
   body {
     /* Using CSS variables directly avoids @apply ordering issues in v4 */
     background-color: var(--color-background-light);
     color: var(--color-text-primary);
-    transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
+    transition-property:
+      color, background-color, border-color, text-decoration-color, fill, stroke;
     transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
     transition-duration: 200ms;
   }
@@ -70,8 +73,12 @@
 
   /* Material Symbols Utilities */
   .material-symbols-outlined {
-    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
-    font-size: 20px; 
+    font-variation-settings:
+      "FILL" 0,
+      "wght" 400,
+      "GRAD" 0,
+      "opsz" 24;
+    font-size: 20px;
     display: inline-block;
     vertical-align: middle;
     line-height: 1;
@@ -79,6 +86,69 @@
   }
 
   .material-symbols-outlined.fill {
-    font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    font-variation-settings:
+      "FILL" 1,
+      "wght" 400,
+      "GRAD" 0,
+      "opsz" 24;
   }
+}
+
+/* --- Project Activity Editor Overrides --- */
+.quill-activity-container .ql-toolbar {
+  border: none !important;
+  border-bottom: 1px solid var(--color-border-light) !important;
+  border-top-left-radius: 0.75rem;
+  border-top-right-radius: 0.75rem;
+  background-color: #f9fafb;
+}
+.quill-activity-container .ql-container {
+  border: none !important;
+  border-bottom-left-radius: 0.75rem;
+  border-bottom-right-radius: 0.75rem;
+  min-height: 50px;
+  font-family: inherit;
+}
+.quill-activity-container-edit .ql-toolbar {
+  border: 1px solid var(--color-border-light) !important;
+  border-bottom: none !important;
+  border-top-left-radius: 0.5rem;
+  border-top-right-radius: 0.5rem;
+  background-color: #f9fafb;
+}
+.quill-activity-container-edit .ql-container {
+  border: 1px solid var(--color-border-light) !important;
+  border-bottom-left-radius: 0.5rem;
+  border-bottom-right-radius: 0.5rem;
+  font-family: inherit;
+}
+
+/* --- Drawer Quill Specific Styles --- */
+.editor-drawer-container .quill-activity-container {
+  display: flex !important;
+  flex-direction: column !important;
+  height: 100%;
+}
+.editor-drawer-container .quill-activity-container .ql-toolbar {
+  border-radius: 0 !important;
+  border-bottom: 1px solid var(--color-border-light) !important;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+.editor-drawer-container .quill-activity-container .ql-container {
+  border-radius: 0 !important;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: var(--color-border-light);
+  border-radius: 10px;
 }

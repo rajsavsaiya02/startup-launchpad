@@ -1,0 +1,369 @@
+<mxfile host="65bd71144e">
+    <diagram name="1. User Registration &amp; Org Creation" id="seq_0">
+        <mxGraphModel dx="874" dy="715" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="seq_0_ll_User" value="User (Client)" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;recursiveResize=0;outlineConnect=0;portConstraint=eastwest;newEdgeStyle={&amp;quot;edgeStyle&amp;quot;:&amp;quot;elbowEdgeStyle&amp;quot;,&amp;quot;elbow&amp;quot;:&amp;quot;vertical&amp;quot;,&amp;quot;curved&amp;quot;:0,&amp;quot;rounded&amp;quot;:0};" parent="1" vertex="1">
+                    <mxGeometry x="100" y="40" width="100" height="660" as="geometry"/>
+                </mxCell>
+                <mxCell id="seq_0_ll_API" value="Auth Service" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;recursiveResize=0;outlineConnect=0;portConstraint=eastwest;newEdgeStyle={&amp;quot;edgeStyle&amp;quot;:&amp;quot;elbowEdgeStyle&amp;quot;,&amp;quot;elbow&amp;quot;:&amp;quot;vertical&amp;quot;,&amp;quot;curved&amp;quot;:0,&amp;quot;rounded&amp;quot;:0};" parent="1" vertex="1">
+                    <mxGeometry x="340" y="40" width="100" height="660" as="geometry"/>
+                </mxCell>
+                <mxCell id="seq_0_ll_DB" value="Database" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;recursiveResize=0;outlineConnect=0;portConstraint=eastwest;newEdgeStyle={&amp;quot;edgeStyle&amp;quot;:&amp;quot;elbowEdgeStyle&amp;quot;,&amp;quot;elbow&amp;quot;:&amp;quot;vertical&amp;quot;,&amp;quot;curved&amp;quot;:0,&amp;quot;rounded&amp;quot;:0};" parent="1" vertex="1">
+                    <mxGeometry x="580" y="40" width="100" height="660" as="geometry"/>
+                </mxCell>
+                <mxCell id="seq_0_msg_0" value="1. POST /api/auth/register" style="html=1;verticalAlign=bottom;endArrow=block;edgeStyle=elbowEdgeStyle;elbow=vertical;curved=0;rounded=0;" parent="1" edge="1">
+                    <mxGeometry width="80" relative="1" as="geometry">
+                        <mxPoint x="150" y="120" as="sourcePoint"/>
+                        <mxPoint x="390" y="120" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="seq_0_msg_1" value="2. Check if user exists" style="html=1;verticalAlign=bottom;endArrow=block;edgeStyle=elbowEdgeStyle;elbow=vertical;curved=0;rounded=0;" parent="1" edge="1">
+                    <mxGeometry width="80" relative="1" as="geometry">
+                        <mxPoint x="390" y="180" as="sourcePoint"/>
+                        <mxPoint x="630" y="180" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="seq_0_msg_2" value="3. User not found" style="html=1;verticalAlign=bottom;endArrow=open;dashed=1;endSize=8;edgeStyle=elbowEdgeStyle;elbow=vertical;curved=0;rounded=0;" parent="1" edge="1">
+                    <mxGeometry width="80" relative="1" as="geometry">
+                        <mxPoint x="630" y="240" as="sourcePoint"/>
+                        <mxPoint x="390" y="240" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="seq_0_msg_3" value="4. Create User Record" style="html=1;verticalAlign=bottom;endArrow=block;edgeStyle=elbowEdgeStyle;elbow=vertical;curved=0;rounded=0;" parent="1" edge="1">
+                    <mxGeometry width="80" relative="1" as="geometry">
+                        <mxPoint x="390" y="300" as="sourcePoint"/>
+                        <mxPoint x="630" y="300" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="seq_0_msg_4" value="5. Return User ID" style="html=1;verticalAlign=bottom;endArrow=open;dashed=1;endSize=8;edgeStyle=elbowEdgeStyle;elbow=vertical;curved=0;rounded=0;" parent="1" edge="1">
+                    <mxGeometry width="80" relative="1" as="geometry">
+                        <mxPoint x="630" y="360" as="sourcePoint"/>
+                        <mxPoint x="390" y="360" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="seq_0_msg_5" value="6. POST /api/organizations" style="html=1;verticalAlign=bottom;endArrow=block;edgeStyle=elbowEdgeStyle;elbow=vertical;curved=0;rounded=0;" parent="1" edge="1">
+                    <mxGeometry width="80" relative="1" as="geometry">
+                        <mxPoint x="150" y="420" as="sourcePoint"/>
+                        <mxPoint x="390" y="420" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="seq_0_msg_6" value="7. Insert Org &amp; Link Admin" style="html=1;verticalAlign=bottom;endArrow=block;edgeStyle=elbowEdgeStyle;elbow=vertical;curved=0;rounded=0;" parent="1" edge="1">
+                    <mxGeometry width="80" relative="1" as="geometry">
+                        <mxPoint x="390" y="480" as="sourcePoint"/>
+                        <mxPoint x="630" y="480" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="seq_0_msg_7" value="8. Success" style="html=1;verticalAlign=bottom;endArrow=open;dashed=1;endSize=8;edgeStyle=elbowEdgeStyle;elbow=vertical;curved=0;rounded=0;" parent="1" edge="1">
+                    <mxGeometry width="80" relative="1" as="geometry">
+                        <mxPoint x="630" y="540" as="sourcePoint"/>
+                        <mxPoint x="390" y="540" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="seq_0_msg_8" value="9. 201 Created &amp; JWT Token" style="html=1;verticalAlign=bottom;endArrow=open;dashed=1;endSize=8;edgeStyle=elbowEdgeStyle;elbow=vertical;curved=0;rounded=0;" parent="1" edge="1">
+                    <mxGeometry width="80" relative="1" as="geometry">
+                        <mxPoint x="390" y="600" as="sourcePoint"/>
+                        <mxPoint x="150" y="600" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+    <diagram name="2. JWT Auth &amp; Role-Based Access" id="seq_1">
+        <mxGraphModel dx="874" dy="715" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="seq_1_ll_Client" value="React Client" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;recursiveResize=0;outlineConnect=0;portConstraint=eastwest;newEdgeStyle={&amp;quot;edgeStyle&amp;quot;:&amp;quot;elbowEdgeStyle&amp;quot;,&amp;quot;elbow&amp;quot;:&amp;quot;vertical&amp;quot;,&amp;quot;curved&amp;quot;:0,&amp;quot;rounded&amp;quot;:0};" parent="1" vertex="1">
+                    <mxGeometry x="100" y="40" width="100" height="540" as="geometry"/>
+                </mxCell>
+                <mxCell id="seq_1_ll_API" value="API Gateway" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;recursiveResize=0;outlineConnect=0;portConstraint=eastwest;newEdgeStyle={&amp;quot;edgeStyle&amp;quot;:&amp;quot;elbowEdgeStyle&amp;quot;,&amp;quot;elbow&amp;quot;:&amp;quot;vertical&amp;quot;,&amp;quot;curved&amp;quot;:0,&amp;quot;rounded&amp;quot;:0};" parent="1" vertex="1">
+                    <mxGeometry x="340" y="40" width="100" height="540" as="geometry"/>
+                </mxCell>
+                <mxCell id="seq_1_ll_RBAC" value="RBAC Middleware" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;recursiveResize=0;outlineConnect=0;portConstraint=eastwest;newEdgeStyle={&amp;quot;edgeStyle&amp;quot;:&amp;quot;elbowEdgeStyle&amp;quot;,&amp;quot;elbow&amp;quot;:&amp;quot;vertical&amp;quot;,&amp;quot;curved&amp;quot;:0,&amp;quot;rounded&amp;quot;:0};" parent="1" vertex="1">
+                    <mxGeometry x="580" y="40" width="100" height="540" as="geometry"/>
+                </mxCell>
+                <mxCell id="seq_1_ll_Service" value="Core Service" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;recursiveResize=0;outlineConnect=0;portConstraint=eastwest;newEdgeStyle={&amp;quot;edgeStyle&amp;quot;:&amp;quot;elbowEdgeStyle&amp;quot;,&amp;quot;elbow&amp;quot;:&amp;quot;vertical&amp;quot;,&amp;quot;curved&amp;quot;:0,&amp;quot;rounded&amp;quot;:0};" parent="1" vertex="1">
+                    <mxGeometry x="820" y="40" width="100" height="540" as="geometry"/>
+                </mxCell>
+                <mxCell id="seq_1_msg_0" value="1. Request with Bearer Token" style="html=1;verticalAlign=bottom;endArrow=block;edgeStyle=elbowEdgeStyle;elbow=vertical;curved=0;rounded=0;" parent="1" edge="1">
+                    <mxGeometry width="80" relative="1" as="geometry">
+                        <mxPoint x="150" y="120" as="sourcePoint"/>
+                        <mxPoint x="390" y="120" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="seq_1_msg_1" value="2. Verify JWT &amp; Extract Role" style="html=1;verticalAlign=bottom;endArrow=block;edgeStyle=elbowEdgeStyle;elbow=vertical;curved=0;rounded=0;" parent="1" edge="1">
+                    <mxGeometry width="80" relative="1" as="geometry">
+                        <mxPoint x="390" y="180" as="sourcePoint"/>
+                        <mxPoint x="630" y="180" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="seq_1_msg_2" value="3. Check Role Permissions" style="html=1;align=left;spacingLeft=2;endArrow=block;rounded=0;edgeStyle=orthogonalEdgeStyle;" parent="1" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="630" y="240" as="sourcePoint"/>
+                        <Array as="points">
+                            <mxPoint x="660" y="240"/>
+                            <mxPoint x="660" y="270"/>
+                            <mxPoint x="630" y="270"/>
+                        </Array>
+                        <mxPoint x="630" y="270" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="seq_1_msg_3" value="4. Authorized" style="html=1;verticalAlign=bottom;endArrow=open;dashed=1;endSize=8;edgeStyle=elbowEdgeStyle;elbow=vertical;curved=0;rounded=0;" parent="1" edge="1">
+                    <mxGeometry width="80" relative="1" as="geometry">
+                        <mxPoint x="630" y="290" as="sourcePoint"/>
+                        <mxPoint x="390" y="290" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="seq_1_msg_4" value="5. Forward Request" style="html=1;verticalAlign=bottom;endArrow=block;edgeStyle=elbowEdgeStyle;elbow=vertical;curved=0;rounded=0;" parent="1" edge="1">
+                    <mxGeometry width="80" relative="1" as="geometry">
+                        <mxPoint x="390" y="350" as="sourcePoint"/>
+                        <mxPoint x="870" y="350" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="seq_1_msg_5" value="6. Return Data" style="html=1;verticalAlign=bottom;endArrow=open;dashed=1;endSize=8;edgeStyle=elbowEdgeStyle;elbow=vertical;curved=0;rounded=0;" parent="1" edge="1">
+                    <mxGeometry width="80" relative="1" as="geometry">
+                        <mxPoint x="870" y="410" as="sourcePoint"/>
+                        <mxPoint x="390" y="410" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="seq_1_msg_6" value="7. 200 OK Response" style="html=1;verticalAlign=bottom;endArrow=open;dashed=1;endSize=8;edgeStyle=elbowEdgeStyle;elbow=vertical;curved=0;rounded=0;" parent="1" edge="1">
+                    <mxGeometry width="80" relative="1" as="geometry">
+                        <mxPoint x="390" y="470" as="sourcePoint"/>
+                        <mxPoint x="150" y="470" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+    <diagram name="3. Kanban Task Management" id="seq_2">
+        <mxGraphModel dx="874" dy="715" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="seq_2_ll_User" value="Project Member" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;recursiveResize=0;outlineConnect=0;portConstraint=eastwest;newEdgeStyle={&amp;quot;edgeStyle&amp;quot;:&amp;quot;elbowEdgeStyle&amp;quot;,&amp;quot;elbow&amp;quot;:&amp;quot;vertical&amp;quot;,&amp;quot;curved&amp;quot;:0,&amp;quot;rounded&amp;quot;:0};" parent="1" vertex="1">
+                    <mxGeometry x="100" y="40" width="100" height="480" as="geometry"/>
+                </mxCell>
+                <mxCell id="seq_2_ll_UI" value="Kanban UI" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;recursiveResize=0;outlineConnect=0;portConstraint=eastwest;newEdgeStyle={&amp;quot;edgeStyle&amp;quot;:&amp;quot;elbowEdgeStyle&amp;quot;,&amp;quot;elbow&amp;quot;:&amp;quot;vertical&amp;quot;,&amp;quot;curved&amp;quot;:0,&amp;quot;rounded&amp;quot;:0};" parent="1" vertex="1">
+                    <mxGeometry x="340" y="40" width="100" height="480" as="geometry"/>
+                </mxCell>
+                <mxCell id="seq_2_ll_API" value="Task API" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;recursiveResize=0;outlineConnect=0;portConstraint=eastwest;newEdgeStyle={&amp;quot;edgeStyle&amp;quot;:&amp;quot;elbowEdgeStyle&amp;quot;,&amp;quot;elbow&amp;quot;:&amp;quot;vertical&amp;quot;,&amp;quot;curved&amp;quot;:0,&amp;quot;rounded&amp;quot;:0};" parent="1" vertex="1">
+                    <mxGeometry x="580" y="40" width="100" height="480" as="geometry"/>
+                </mxCell>
+                <mxCell id="seq_2_ll_DB" value="Database" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;recursiveResize=0;outlineConnect=0;portConstraint=eastwest;newEdgeStyle={&amp;quot;edgeStyle&amp;quot;:&amp;quot;elbowEdgeStyle&amp;quot;,&amp;quot;elbow&amp;quot;:&amp;quot;vertical&amp;quot;,&amp;quot;curved&amp;quot;:0,&amp;quot;rounded&amp;quot;:0};" parent="1" vertex="1">
+                    <mxGeometry x="820" y="40" width="100" height="480" as="geometry"/>
+                </mxCell>
+                <mxCell id="seq_2_msg_0" value="1. Drag Task to 'In Progress'" style="html=1;verticalAlign=bottom;endArrow=block;edgeStyle=elbowEdgeStyle;elbow=vertical;curved=0;rounded=0;" parent="1" edge="1">
+                    <mxGeometry width="80" relative="1" as="geometry">
+                        <mxPoint x="150" y="120" as="sourcePoint"/>
+                        <mxPoint x="390" y="120" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="seq_2_msg_1" value="2. PUT /api/tasks/:id/status" style="html=1;verticalAlign=bottom;endArrow=block;edgeStyle=elbowEdgeStyle;elbow=vertical;curved=0;rounded=0;" parent="1" edge="1">
+                    <mxGeometry width="80" relative="1" as="geometry">
+                        <mxPoint x="390" y="180" as="sourcePoint"/>
+                        <mxPoint x="630" y="180" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="seq_2_msg_2" value="3. Update Task Status" style="html=1;verticalAlign=bottom;endArrow=block;edgeStyle=elbowEdgeStyle;elbow=vertical;curved=0;rounded=0;" parent="1" edge="1">
+                    <mxGeometry width="80" relative="1" as="geometry">
+                        <mxPoint x="630" y="240" as="sourcePoint"/>
+                        <mxPoint x="870" y="240" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="seq_2_msg_3" value="4. Acknowledge" style="html=1;verticalAlign=bottom;endArrow=open;dashed=1;endSize=8;edgeStyle=elbowEdgeStyle;elbow=vertical;curved=0;rounded=0;" parent="1" edge="1">
+                    <mxGeometry width="80" relative="1" as="geometry">
+                        <mxPoint x="870" y="300" as="sourcePoint"/>
+                        <mxPoint x="630" y="300" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="seq_2_msg_4" value="5. 200 OK updated task" style="html=1;verticalAlign=bottom;endArrow=open;dashed=1;endSize=8;edgeStyle=elbowEdgeStyle;elbow=vertical;curved=0;rounded=0;" parent="1" edge="1">
+                    <mxGeometry width="80" relative="1" as="geometry">
+                        <mxPoint x="630" y="360" as="sourcePoint"/>
+                        <mxPoint x="390" y="360" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="seq_2_msg_5" value="6. Render New Column Position" style="html=1;verticalAlign=bottom;endArrow=open;dashed=1;endSize=8;edgeStyle=elbowEdgeStyle;elbow=vertical;curved=0;rounded=0;" parent="1" edge="1">
+                    <mxGeometry width="80" relative="1" as="geometry">
+                        <mxPoint x="390" y="420" as="sourcePoint"/>
+                        <mxPoint x="150" y="420" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+    <diagram name="4. Expense Logging &amp; Receipt Upload" id="seq_3">
+        <mxGraphModel dx="874" dy="715" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="seq_3_ll_User" value="Founder" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;recursiveResize=0;outlineConnect=0;portConstraint=eastwest;newEdgeStyle={&amp;quot;edgeStyle&amp;quot;:&amp;quot;elbowEdgeStyle&amp;quot;,&amp;quot;elbow&amp;quot;:&amp;quot;vertical&amp;quot;,&amp;quot;curved&amp;quot;:0,&amp;quot;rounded&amp;quot;:0};" parent="1" vertex="1">
+                    <mxGeometry x="100" y="40" width="100" height="600" as="geometry"/>
+                </mxCell>
+                <mxCell id="seq_3_ll_Client" value="Frontend" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;recursiveResize=0;outlineConnect=0;portConstraint=eastwest;newEdgeStyle={&amp;quot;edgeStyle&amp;quot;:&amp;quot;elbowEdgeStyle&amp;quot;,&amp;quot;elbow&amp;quot;:&amp;quot;vertical&amp;quot;,&amp;quot;curved&amp;quot;:0,&amp;quot;rounded&amp;quot;:0};" parent="1" vertex="1">
+                    <mxGeometry x="300" y="40" width="100" height="600" as="geometry"/>
+                </mxCell>
+                <mxCell id="seq_3_ll_API" value="Finance API" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;recursiveResize=0;outlineConnect=0;portConstraint=eastwest;newEdgeStyle={&amp;quot;edgeStyle&amp;quot;:&amp;quot;elbowEdgeStyle&amp;quot;,&amp;quot;elbow&amp;quot;:&amp;quot;vertical&amp;quot;,&amp;quot;curved&amp;quot;:0,&amp;quot;rounded&amp;quot;:0};" parent="1" vertex="1">
+                    <mxGeometry x="500" y="40" width="100" height="600" as="geometry"/>
+                </mxCell>
+                <mxCell id="seq_3_ll_Storage" value="Cloud Storage" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;recursiveResize=0;outlineConnect=0;portConstraint=eastwest;newEdgeStyle={&amp;quot;edgeStyle&amp;quot;:&amp;quot;elbowEdgeStyle&amp;quot;,&amp;quot;elbow&amp;quot;:&amp;quot;vertical&amp;quot;,&amp;quot;curved&amp;quot;:0,&amp;quot;rounded&amp;quot;:0};" parent="1" vertex="1">
+                    <mxGeometry x="700" y="40" width="100" height="600" as="geometry"/>
+                </mxCell>
+                <mxCell id="seq_3_ll_DB" value="Database" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;recursiveResize=0;outlineConnect=0;portConstraint=eastwest;newEdgeStyle={&amp;quot;edgeStyle&amp;quot;:&amp;quot;elbowEdgeStyle&amp;quot;,&amp;quot;elbow&amp;quot;:&amp;quot;vertical&amp;quot;,&amp;quot;curved&amp;quot;:0,&amp;quot;rounded&amp;quot;:0};" parent="1" vertex="1">
+                    <mxGeometry x="900" y="40" width="100" height="600" as="geometry"/>
+                </mxCell>
+                <mxCell id="seq_3_msg_0" value="1. Upload Receipt &amp; Details" style="html=1;verticalAlign=bottom;endArrow=block;edgeStyle=elbowEdgeStyle;elbow=vertical;curved=0;rounded=0;" parent="1" edge="1">
+                    <mxGeometry width="80" relative="1" as="geometry">
+                        <mxPoint x="150" y="120" as="sourcePoint"/>
+                        <mxPoint x="350" y="120" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="seq_3_msg_1" value="2. POST /api/expenses/upload" style="html=1;verticalAlign=bottom;endArrow=block;edgeStyle=elbowEdgeStyle;elbow=vertical;curved=0;rounded=0;" parent="1" edge="1">
+                    <mxGeometry width="80" relative="1" as="geometry">
+                        <mxPoint x="350" y="180" as="sourcePoint"/>
+                        <mxPoint x="550" y="180" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="seq_3_msg_2" value="3. Upload File Object" style="html=1;verticalAlign=bottom;endArrow=block;edgeStyle=elbowEdgeStyle;elbow=vertical;curved=0;rounded=0;" parent="1" edge="1">
+                    <mxGeometry width="80" relative="1" as="geometry">
+                        <mxPoint x="550" y="240" as="sourcePoint"/>
+                        <mxPoint x="750" y="240" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="seq_3_msg_3" value="4. Return File URL" style="html=1;verticalAlign=bottom;endArrow=open;dashed=1;endSize=8;edgeStyle=elbowEdgeStyle;elbow=vertical;curved=0;rounded=0;" parent="1" edge="1">
+                    <mxGeometry width="80" relative="1" as="geometry">
+                        <mxPoint x="750" y="300" as="sourcePoint"/>
+                        <mxPoint x="550" y="300" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="seq_3_msg_4" value="5. Save Expense Record + URL" style="html=1;verticalAlign=bottom;endArrow=block;edgeStyle=elbowEdgeStyle;elbow=vertical;curved=0;rounded=0;" parent="1" edge="1">
+                    <mxGeometry width="80" relative="1" as="geometry">
+                        <mxPoint x="550" y="360" as="sourcePoint"/>
+                        <mxPoint x="950" y="360" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="seq_3_msg_5" value="6. Inserted" style="html=1;verticalAlign=bottom;endArrow=open;dashed=1;endSize=8;edgeStyle=elbowEdgeStyle;elbow=vertical;curved=0;rounded=0;" parent="1" edge="1">
+                    <mxGeometry width="80" relative="1" as="geometry">
+                        <mxPoint x="950" y="420" as="sourcePoint"/>
+                        <mxPoint x="550" y="420" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="seq_3_msg_6" value="7. 201 Created Expense" style="html=1;verticalAlign=bottom;endArrow=open;dashed=1;endSize=8;edgeStyle=elbowEdgeStyle;elbow=vertical;curved=0;rounded=0;" parent="1" edge="1">
+                    <mxGeometry width="80" relative="1" as="geometry">
+                        <mxPoint x="550" y="480" as="sourcePoint"/>
+                        <mxPoint x="350" y="480" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="seq_3_msg_7" value="8. Update Burn Rate Dashboard" style="html=1;verticalAlign=bottom;endArrow=open;dashed=1;endSize=8;edgeStyle=elbowEdgeStyle;elbow=vertical;curved=0;rounded=0;" parent="1" edge="1">
+                    <mxGeometry width="80" relative="1" as="geometry">
+                        <mxPoint x="350" y="540" as="sourcePoint"/>
+                        <mxPoint x="150" y="540" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+    <diagram name="5. Gig Posting (Talent Marketplace)" id="seq_4">
+        <mxGraphModel dx="874" dy="715" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="seq_4_ll_Founder" value="Founder" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;recursiveResize=0;outlineConnect=0;portConstraint=eastwest;newEdgeStyle={&amp;quot;edgeStyle&amp;quot;:&amp;quot;elbowEdgeStyle&amp;quot;,&amp;quot;elbow&amp;quot;:&amp;quot;vertical&amp;quot;,&amp;quot;curved&amp;quot;:0,&amp;quot;rounded&amp;quot;:0};" parent="1" vertex="1">
+                    <mxGeometry x="100" y="40" width="100" height="420" as="geometry"/>
+                </mxCell>
+                <mxCell id="seq_4_ll_API" value="Gig API" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;recursiveResize=0;outlineConnect=0;portConstraint=eastwest;newEdgeStyle={&amp;quot;edgeStyle&amp;quot;:&amp;quot;elbowEdgeStyle&amp;quot;,&amp;quot;elbow&amp;quot;:&amp;quot;vertical&amp;quot;,&amp;quot;curved&amp;quot;:0,&amp;quot;rounded&amp;quot;:0};" parent="1" vertex="1">
+                    <mxGeometry x="340" y="40" width="100" height="420" as="geometry"/>
+                </mxCell>
+                <mxCell id="seq_4_ll_DB" value="Database" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;recursiveResize=0;outlineConnect=0;portConstraint=eastwest;newEdgeStyle={&amp;quot;edgeStyle&amp;quot;:&amp;quot;elbowEdgeStyle&amp;quot;,&amp;quot;elbow&amp;quot;:&amp;quot;vertical&amp;quot;,&amp;quot;curved&amp;quot;:0,&amp;quot;rounded&amp;quot;:0};" parent="1" vertex="1">
+                    <mxGeometry x="580" y="40" width="100" height="420" as="geometry"/>
+                </mxCell>
+                <mxCell id="seq_4_msg_0" value="1. POST /api/gigs (Details &amp; Budget)" style="html=1;verticalAlign=bottom;endArrow=block;edgeStyle=elbowEdgeStyle;elbow=vertical;curved=0;rounded=0;" parent="1" edge="1">
+                    <mxGeometry width="80" relative="1" as="geometry">
+                        <mxPoint x="150" y="120" as="sourcePoint"/>
+                        <mxPoint x="390" y="120" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="seq_4_msg_1" value="2. Validate Input &amp; Budget" style="html=1;align=left;spacingLeft=2;endArrow=block;rounded=0;edgeStyle=orthogonalEdgeStyle;" parent="1" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="390" y="180" as="sourcePoint"/>
+                        <Array as="points">
+                            <mxPoint x="420" y="180"/>
+                            <mxPoint x="420" y="210"/>
+                            <mxPoint x="390" y="210"/>
+                        </Array>
+                        <mxPoint x="390" y="210" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="seq_4_msg_2" value="3. Insert Gig Record" style="html=1;verticalAlign=bottom;endArrow=block;edgeStyle=elbowEdgeStyle;elbow=vertical;curved=0;rounded=0;" parent="1" edge="1">
+                    <mxGeometry width="80" relative="1" as="geometry">
+                        <mxPoint x="390" y="230" as="sourcePoint"/>
+                        <mxPoint x="630" y="230" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="seq_4_msg_3" value="4. Record Created" style="html=1;verticalAlign=bottom;endArrow=open;dashed=1;endSize=8;edgeStyle=elbowEdgeStyle;elbow=vertical;curved=0;rounded=0;" parent="1" edge="1">
+                    <mxGeometry width="80" relative="1" as="geometry">
+                        <mxPoint x="630" y="290" as="sourcePoint"/>
+                        <mxPoint x="390" y="290" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="seq_4_msg_4" value="5. 201 Gig Published" style="html=1;verticalAlign=bottom;endArrow=open;dashed=1;endSize=8;edgeStyle=elbowEdgeStyle;elbow=vertical;curved=0;rounded=0;" parent="1" edge="1">
+                    <mxGeometry width="80" relative="1" as="geometry">
+                        <mxPoint x="390" y="350" as="sourcePoint"/>
+                        <mxPoint x="150" y="350" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+    <diagram name="6. Gig Application Flow" id="seq_5">
+        <mxGraphModel dx="874" dy="715" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="seq_5_ll_Talent" value="Freelancer" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;recursiveResize=0;outlineConnect=0;portConstraint=eastwest;newEdgeStyle={&amp;quot;edgeStyle&amp;quot;:&amp;quot;elbowEdgeStyle&amp;quot;,&amp;quot;elbow&amp;quot;:&amp;quot;vertical&amp;quot;,&amp;quot;curved&amp;quot;:0,&amp;quot;rounded&amp;quot;:0};" parent="1" vertex="1">
+                    <mxGeometry x="100" y="40" width="100" height="420" as="geometry"/>
+                </mxCell>
+                <mxCell id="seq_5_ll_API" value="App API" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;recursiveResize=0;outlineConnect=0;portConstraint=eastwest;newEdgeStyle={&amp;quot;edgeStyle&amp;quot;:&amp;quot;elbowEdgeStyle&amp;quot;,&amp;quot;elbow&amp;quot;:&amp;quot;vertical&amp;quot;,&amp;quot;curved&amp;quot;:0,&amp;quot;rounded&amp;quot;:0};" parent="1" vertex="1">
+                    <mxGeometry x="340" y="40" width="100" height="420" as="geometry"/>
+                </mxCell>
+                <mxCell id="seq_5_ll_DB" value="Database" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;recursiveResize=0;outlineConnect=0;portConstraint=eastwest;newEdgeStyle={&amp;quot;edgeStyle&amp;quot;:&amp;quot;elbowEdgeStyle&amp;quot;,&amp;quot;elbow&amp;quot;:&amp;quot;vertical&amp;quot;,&amp;quot;curved&amp;quot;:0,&amp;quot;rounded&amp;quot;:0};" parent="1" vertex="1">
+                    <mxGeometry x="580" y="40" width="100" height="420" as="geometry"/>
+                </mxCell>
+                <mxCell id="seq_5_ll_Founder" value="Founder" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;recursiveResize=0;outlineConnect=0;portConstraint=eastwest;newEdgeStyle={&amp;quot;edgeStyle&amp;quot;:&amp;quot;elbowEdgeStyle&amp;quot;,&amp;quot;elbow&amp;quot;:&amp;quot;vertical&amp;quot;,&amp;quot;curved&amp;quot;:0,&amp;quot;rounded&amp;quot;:0};" parent="1" vertex="1">
+                    <mxGeometry x="820" y="40" width="100" height="420" as="geometry"/>
+                </mxCell>
+                <mxCell id="seq_5_msg_0" value="1. POST /api/gigs/:id/apply" style="html=1;verticalAlign=bottom;endArrow=block;edgeStyle=elbowEdgeStyle;elbow=vertical;curved=0;rounded=0;" parent="1" edge="1">
+                    <mxGeometry width="80" relative="1" as="geometry">
+                        <mxPoint x="150" y="120" as="sourcePoint"/>
+                        <mxPoint x="390" y="120" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="seq_5_msg_1" value="2. Save Application &amp; Proposal" style="html=1;verticalAlign=bottom;endArrow=block;edgeStyle=elbowEdgeStyle;elbow=vertical;curved=0;rounded=0;" parent="1" edge="1">
+                    <mxGeometry width="80" relative="1" as="geometry">
+                        <mxPoint x="390" y="180" as="sourcePoint"/>
+                        <mxPoint x="630" y="180" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="seq_5_msg_2" value="3. Success" style="html=1;verticalAlign=bottom;endArrow=open;dashed=1;endSize=8;edgeStyle=elbowEdgeStyle;elbow=vertical;curved=0;rounded=0;" parent="1" edge="1">
+                    <mxGeometry width="80" relative="1" as="geometry">
+                        <mxPoint x="630" y="240" as="sourcePoint"/>
+                        <mxPoint x="390" y="240" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="seq_5_msg_3" value="4. 200 Applied" style="html=1;verticalAlign=bottom;endArrow=open;dashed=1;endSize=8;edgeStyle=elbowEdgeStyle;elbow=vertical;curved=0;rounded=0;" parent="1" edge="1">
+                    <mxGeometry width="80" relative="1" as="geometry">
+                        <mxPoint x="390" y="300" as="sourcePoint"/>
+                        <mxPoint x="150" y="300" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="seq_5_msg_4" value="5. Notify New Applicant" style="html=1;verticalAlign=bottom;endArrow=open;edgeStyle=elbowEdgeStyle;elbow=vertical;curved=0;rounded=0;" parent="1" edge="1">
+                    <mxGeometry width="80" relative="1" as="geometry">
+                        <mxPoint x="390" y="360" as="sourcePoint"/>
+                        <mxPoint x="870" y="360" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+</mxfile>

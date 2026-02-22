@@ -46,8 +46,12 @@ app.get("/sitemap.xml", cmsController.generateSitemap);
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/files", fileRoutes);
+app.use("/api/file-assets", require("./routes/fileAssetRoutes"));
 app.use("/api/sessions", require("./routes/sessionRoutes"));
 app.use("/api/settings", require("./routes/settingsRoutes"));
+app.use("/api/projects", require("./routes/projectActivityRoutes")); // Must be before projectRoutes to catch /:projectId/activities
+app.use("/api/projects", require("./routes/projectFinancialsRoutes")); // Mount financials routes
+app.use("/api/projects", require("./routes/projectTaskRoutes")); // Mount task routes
 app.use("/api/projects", require("./routes/projectRoutes"));
 app.use("/api", routes);
 

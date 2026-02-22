@@ -13,6 +13,7 @@ export function CreatableSelect({
   label,
   className,
   name,
+  disabled,
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [inputValue, setInputValue] = useState("");
@@ -74,21 +75,27 @@ export function CreatableSelect({
       <div className="relative group">
         <button
           type="button"
-          onClick={() => setIsOpen(!isOpen)}
+          onClick={() => !disabled && setIsOpen(!isOpen)}
+          disabled={disabled}
           className={cn(
-            "w-full h-11 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800/50 text-left text-sm px-3 flex items-center justify-between focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all hover:border-gray-400 dark:hover:border-gray-600",
+            "w-full h-11 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800/50 text-left text-sm px-3 flex items-center justify-between focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all",
+            disabled
+              ? "opacity-70 cursor-not-allowed"
+              : "hover:border-gray-400 dark:hover:border-gray-600",
             !value && "text-text-tertiary",
           )}
         >
           <span className="truncate text-text-primary dark:text-white">
             {value || placeholder}
           </span>
-          <ChevronDown
-            className={cn(
-              "h-4 w-4 text-text-tertiary transition-transform duration-200",
-              isOpen && "rotate-180",
-            )}
-          />
+          {!disabled && (
+            <ChevronDown
+              className={cn(
+                "h-4 w-4 text-text-tertiary transition-transform duration-200",
+                isOpen && "rotate-180",
+              )}
+            />
+          )}
         </button>
 
         <AnimatePresence>
