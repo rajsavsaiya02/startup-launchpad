@@ -70,7 +70,13 @@ const CapsuleProgress = ({ completed, total }) => {
   );
 };
 
-export function TaskDrawer({ task, onClose, isOpen, onRefresh }) {
+export function TaskDrawer({
+  task,
+  onClose,
+  isOpen,
+  onRefresh,
+  isReadOnly = false,
+}) {
   const { id: projectId } = useParams();
   const [formData, setFormData] = useState({
     title: "",
@@ -442,10 +448,10 @@ export function TaskDrawer({ task, onClose, isOpen, onRefresh }) {
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-border-light dark:border-border-dark shrink-0">
           <h2 className="text-lg font-bold text-text-primary dark:text-white">
-            {task?.id ? "Edit Task" : "Add Task"}
+            {isReadOnly ? "Task Details" : task?.id ? "Edit Task" : "Add Task"}
           </h2>
           <div className="flex items-center gap-2">
-            {task?.id && (
+            {!isReadOnly && task?.id && (
               <button
                 type="button"
                 onClick={handleDelete}
@@ -455,19 +461,21 @@ export function TaskDrawer({ task, onClose, isOpen, onRefresh }) {
                 <Trash2 className="h-5 w-5" />
               </button>
             )}
-            <button
-              type="button"
-              onClick={handleSave}
-              disabled={isSaving || !formData.title.trim()}
-              className="p-1.5 rounded-md text-primary hover:bg-primary/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              title="Save Task"
-            >
-              {isSaving ? (
-                <Loader2 className="h-5 w-5 animate-spin" />
-              ) : (
-                <Save className="h-5 w-5" />
-              )}
-            </button>
+            {!isReadOnly && (
+              <button
+                type="button"
+                onClick={handleSave}
+                disabled={isSaving || !formData.title.trim()}
+                className="p-1.5 rounded-md text-primary hover:bg-primary/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Save Task"
+              >
+                {isSaving ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : (
+                  <Save className="h-5 w-5" />
+                )}
+              </button>
+            )}
             <button
               type="button"
               onClick={onClose}
@@ -491,8 +499,9 @@ export function TaskDrawer({ task, onClose, isOpen, onRefresh }) {
                 name="title"
                 value={formData.title}
                 onChange={handleChange}
+                disabled={isReadOnly}
                 placeholder="e.g., Fix memory leak in worker thread"
-                className="w-full px-4 py-2.5 text-sm bg-gray-50 dark:bg-gray-800/50 border border-border-light dark:border-border-dark rounded-lg focus:ring-2 focus:ring-primary/20 outline-none text-text-primary dark:text-white font-medium placeholder:font-normal placeholder:text-text-tertiary transition-all"
+                className="w-full px-4 py-2.5 text-sm bg-gray-50 dark:bg-gray-800/50 border border-border-light dark:border-border-dark rounded-lg focus:ring-2 focus:ring-primary/20 outline-none text-text-primary dark:text-white font-medium placeholder:font-normal placeholder:text-text-tertiary transition-all disabled:opacity-75"
                 required
               />
             </div>
@@ -509,8 +518,9 @@ export function TaskDrawer({ task, onClose, isOpen, onRefresh }) {
                 name="description"
                 value={formData.description}
                 onChange={handleChange}
+                disabled={isReadOnly}
                 placeholder="Provide task details or context..."
-                className="w-full px-4 py-2.5 text-sm bg-gray-50 dark:bg-gray-800/50 border border-border-light dark:border-border-dark rounded-lg focus:ring-2 focus:ring-primary/20 outline-none text-text-primary dark:text-white font-medium placeholder:font-normal placeholder:text-text-tertiary min-h-[80px] resize-y custom-scrollbar transition-all"
+                className="w-full px-4 py-2.5 text-sm bg-gray-50 dark:bg-gray-800/50 border border-border-light dark:border-border-dark rounded-lg focus:ring-2 focus:ring-primary/20 outline-none text-text-primary dark:text-white font-medium placeholder:font-normal placeholder:text-text-tertiary min-h-[80px] resize-y custom-scrollbar transition-all disabled:opacity-75"
               />
             </div>
 
@@ -526,6 +536,7 @@ export function TaskDrawer({ task, onClose, isOpen, onRefresh }) {
                   onCreateOption={handleCreateCategory}
                   onDeleteOption={handleDeleteCategory}
                   placeholder="Select category"
+                  disabled={isReadOnly}
                 />
               </div>
 
@@ -538,7 +549,8 @@ export function TaskDrawer({ task, onClose, isOpen, onRefresh }) {
                     name="priority"
                     value={formData.priority}
                     onChange={handleChange}
-                    className="w-full px-4 py-2.5 text-sm bg-gray-50 dark:bg-gray-800/50 border border-border-light dark:border-border-dark rounded-lg focus:ring-2 focus:ring-primary/20 outline-none text-text-primary dark:text-white font-medium appearance-none cursor-pointer transition-all"
+                    disabled={isReadOnly}
+                    className="w-full px-4 py-2.5 text-sm bg-gray-50 dark:bg-gray-800/50 border border-border-light dark:border-border-dark rounded-lg focus:ring-2 focus:ring-primary/20 outline-none text-text-primary dark:text-white font-medium appearance-none cursor-pointer transition-all disabled:opacity-75"
                   >
                     <option value="Low">Low Priority</option>
                     <option value="Medium">Medium Priority</option>
@@ -564,7 +576,8 @@ export function TaskDrawer({ task, onClose, isOpen, onRefresh }) {
                     name="due_date"
                     value={formData.due_date}
                     onChange={handleChange}
-                    className="w-full pl-4 pr-3 py-2.5 text-sm bg-gray-50 dark:bg-gray-800/50 border border-border-light dark:border-border-dark rounded-lg focus:ring-2 focus:ring-primary/20 outline-none text-text-primary dark:text-white font-medium transition-all"
+                    disabled={isReadOnly}
+                    className="w-full pl-4 pr-3 py-2.5 text-sm bg-gray-50 dark:bg-gray-800/50 border border-border-light dark:border-border-dark rounded-lg focus:ring-2 focus:ring-primary/20 outline-none text-text-primary dark:text-white font-medium transition-all disabled:opacity-75"
                   />
                 </div>
               </div>
@@ -579,7 +592,8 @@ export function TaskDrawer({ task, onClose, isOpen, onRefresh }) {
                     name="due_time"
                     value={formData.due_time}
                     onChange={handleChange}
-                    className="w-full pl-4 pr-3 py-2.5 text-sm bg-gray-50 dark:bg-gray-800/50 border border-border-light dark:border-border-dark rounded-lg focus:ring-2 focus:ring-primary/20 outline-none text-text-primary dark:text-white font-medium transition-all"
+                    disabled={isReadOnly}
+                    className="w-full pl-4 pr-3 py-2.5 text-sm bg-gray-50 dark:bg-gray-800/50 border border-border-light dark:border-border-dark rounded-lg focus:ring-2 focus:ring-primary/20 outline-none text-text-primary dark:text-white font-medium transition-all disabled:opacity-75"
                   />
                 </div>
               </div>
@@ -595,7 +609,8 @@ export function TaskDrawer({ task, onClose, isOpen, onRefresh }) {
                   name="kanban_status"
                   value={formData.kanban_status}
                   onChange={handleChange}
-                  className="w-full px-4 py-2.5 text-sm bg-gray-50 dark:bg-gray-800/50 border border-border-light dark:border-border-dark rounded-lg focus:ring-2 focus:ring-primary/20 outline-none text-text-primary dark:text-white font-medium appearance-none cursor-pointer transition-all"
+                  disabled={isReadOnly}
+                  className="w-full px-4 py-2.5 text-sm bg-gray-50 dark:bg-gray-800/50 border border-border-light dark:border-border-dark rounded-lg focus:ring-2 focus:ring-primary/20 outline-none text-text-primary dark:text-white font-medium appearance-none cursor-pointer transition-all disabled:opacity-75"
                 >
                   <option value="todo">To Do</option>
                   <option value="progress">In Progress</option>
@@ -650,8 +665,9 @@ export function TaskDrawer({ task, onClose, isOpen, onRefresh }) {
                           <input
                             type="checkbox"
                             checked={st.is_completed}
-                            onChange={() => toggleSubtask(st.id)}
+                            onChange={() => !isReadOnly && toggleSubtask(st.id)}
                             className="peer sr-only"
+                            disabled={isReadOnly}
                           />
                           <div
                             className={cn(
@@ -681,37 +697,41 @@ export function TaskDrawer({ task, onClose, isOpen, onRefresh }) {
                           {st.title}
                         </span>
                       </label>
-                      <button
-                        type="button"
-                        onClick={() => deleteSubtask(st.id)}
-                        className="opacity-0 group-hover:opacity-100 p-1 text-text-tertiary hover:text-error transition-all shrink-0"
-                      >
-                        <X className="h-3.5 w-3.5" />
-                      </button>
+                      {!isReadOnly && (
+                        <button
+                          type="button"
+                          onClick={() => deleteSubtask(st.id)}
+                          className="opacity-0 group-hover:opacity-100 p-1 text-text-tertiary hover:text-error transition-all shrink-0"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      )}
                     </div>
                   ))}
 
-                  <div className="flex items-center gap-2 p-1.5 mt-1 bg-gray-50 dark:bg-gray-800/80 rounded-md border border-border-light dark:border-border-dark focus-within:ring-2 focus-within:ring-primary/20 transition-all">
-                    <input
-                      type="text"
-                      value={newSubtask}
-                      onChange={(e) => setNewSubtask(e.target.value)}
-                      onKeyDown={(e) =>
-                        e.key === "Enter" && handleAddSubtask(e)
-                      }
-                      placeholder="Add a subtask..."
-                      className="bg-transparent border-none p-1.5 text-sm focus:ring-0 flex-1 text-text-secondary dark:text-gray-300 placeholder:text-gray-400"
-                    />
-                    <button
-                      type="button"
-                      onClick={(e) => handleAddSubtask(e)}
-                      disabled={!newSubtask.trim()}
-                      className="p-1 text-primary hover:bg-primary/10 rounded-md transition-colors disabled:opacity-30"
-                      title="Add Subtask"
-                    >
-                      <Plus className="h-5 w-5" />
-                    </button>
-                  </div>
+                  {!isReadOnly && (
+                    <div className="flex items-center gap-2 p-1.5 mt-1 bg-gray-50 dark:bg-gray-800/80 rounded-md border border-border-light dark:border-border-dark focus-within:ring-2 focus-within:ring-primary/20 transition-all">
+                      <input
+                        type="text"
+                        value={newSubtask}
+                        onChange={(e) => setNewSubtask(e.target.value)}
+                        onKeyDown={(e) =>
+                          e.key === "Enter" && handleAddSubtask(e)
+                        }
+                        placeholder="Add a subtask..."
+                        className="bg-transparent border-none p-1.5 text-sm focus:ring-0 flex-1 text-text-secondary dark:text-gray-300 placeholder:text-gray-400"
+                      />
+                      <button
+                        type="button"
+                        onClick={(e) => handleAddSubtask(e)}
+                        disabled={!newSubtask.trim()}
+                        className="p-1 text-primary hover:bg-primary/10 rounded-md transition-colors disabled:opacity-30"
+                        title="Add Subtask"
+                      >
+                        <Plus className="h-5 w-5" />
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -829,28 +849,30 @@ export function TaskDrawer({ task, onClose, isOpen, onRefresh }) {
                 </span>
               </label>
               <div className="border border-border-light dark:border-border-dark rounded-lg p-3 bg-white dark:bg-surface-dark space-y-3 shadow-sm">
-                <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-md">
-                  <button
-                    type="button"
-                    className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-colors ${attachmentMode === "file" ? "bg-white dark:bg-surface-dark text-primary shadow-sm" : "text-text-tertiary hover:text-text-primary"}`}
-                    onClick={() => setAttachmentMode("file")}
-                  >
-                    <div className="flex items-center justify-center gap-1.5">
-                      <Paperclip className="h-3.5 w-3.5" /> File
-                    </div>
-                  </button>
-                  <button
-                    type="button"
-                    className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-colors ${attachmentMode === "url" ? "bg-white dark:bg-surface-dark text-primary shadow-sm" : "text-text-tertiary hover:text-text-primary"}`}
-                    onClick={() => setAttachmentMode("url")}
-                  >
-                    <div className="flex items-center justify-center gap-1.5">
-                      <Link2 className="h-3.5 w-3.5" /> URL
-                    </div>
-                  </button>
-                </div>
+                {!isReadOnly && (
+                  <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-md">
+                    <button
+                      type="button"
+                      className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-colors ${attachmentMode === "file" ? "bg-white dark:bg-surface-dark text-primary shadow-sm" : "text-text-tertiary hover:text-text-primary"}`}
+                      onClick={() => setAttachmentMode("file")}
+                    >
+                      <div className="flex items-center justify-center gap-1.5">
+                        <Paperclip className="h-3.5 w-3.5" /> File
+                      </div>
+                    </button>
+                    <button
+                      type="button"
+                      className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-colors ${attachmentMode === "url" ? "bg-white dark:bg-surface-dark text-primary shadow-sm" : "text-text-tertiary hover:text-text-primary"}`}
+                      onClick={() => setAttachmentMode("url")}
+                    >
+                      <div className="flex items-center justify-center gap-1.5">
+                        <Link2 className="h-3.5 w-3.5" /> URL
+                      </div>
+                    </button>
+                  </div>
+                )}
 
-                {attachmentMode === "file" && (
+                {!isReadOnly && attachmentMode === "file" && (
                   <label className="relative flex flex-col items-center justify-center p-4 border border-dashed border-border-light dark:border-border-dark hover:border-primary/50 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg cursor-pointer transition-all bg-gray-50/30 dark:bg-gray-800/20">
                     <div className="p-2 rounded-full bg-primary/10 text-primary mb-2">
                       <Paperclip className="h-4 w-4" />
@@ -867,7 +889,7 @@ export function TaskDrawer({ task, onClose, isOpen, onRefresh }) {
                   </label>
                 )}
 
-                {attachmentMode === "url" && (
+                {!isReadOnly && attachmentMode === "url" && (
                   <div className="space-y-2 p-3 border border-border-light dark:border-border-dark rounded-lg bg-gray-50/50 dark:bg-gray-800/30">
                     <input
                       type="text"
@@ -920,13 +942,15 @@ export function TaskDrawer({ task, onClose, isOpen, onRefresh }) {
                             </p>
                           </div>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveAttachment(index)}
-                          className="p-1.5 text-text-tertiary hover:text-error hover:bg-error/10 rounded-md transition-colors shrink-0"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
+                        {!isReadOnly && (
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveAttachment(index)}
+                            className="p-1.5 text-text-tertiary hover:text-error hover:bg-error/10 rounded-md transition-colors shrink-0"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        )}
                       </div>
                     ))}
                   </div>

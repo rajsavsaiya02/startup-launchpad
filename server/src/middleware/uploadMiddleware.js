@@ -9,32 +9,17 @@ const fileFilter = (req, file, cb) => {
   // Define explicitly dangerous file types that could harm the server or execute XSS attacks
   const dangerousMimeTypes = [
     "application/x-msdownload", // EXEs
-    "application/x-sh", // Bash scripts
     "application/x-executable", // Linux binaries
-    "application/javascript", // JS scripts
-    "text/javascript",
-    "text/html", // HTML pages
-    "text/x-python", // Python scripts
-    "application/x-php", // PHP scripts
   ];
 
   const dangerousExtensions = [
     ".exe",
     ".bat",
     ".cmd",
-    ".sh",
-    ".js",
-    ".py",
-    ".php",
-    ".rb",
-    ".pl",
-    ".html",
-    ".htm",
-    ".ps1",
+    ".com",
+    ".scr",
     ".vbs",
     ".msi",
-    ".apk",
-    ".app",
     ".dll",
     ".so",
   ];

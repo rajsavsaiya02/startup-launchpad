@@ -66,7 +66,21 @@ const getTasksByProject = async (req, res) => {
   try {
     const tasksQuery = `
       SELECT t.*, 
-             COALESCE(json_agg(ta.user_id) FILTER (WHERE ta.user_id IS NOT NULL), '[]') as assignee_ids
+             COALESCE(json_agg(ta.user_id) FILTER (WHERE ta.user_id IS NOT NULL), '[]') as assignee_ids,
+             COALESCE(
+               (
+                 SELECT json_agg(json_build_object(
+                   'file_asset_id', fa.file_asset_id,
+                   'file_name', fa.file_name,
+                   'storage_url', fa.storage_url,
+                   'mime_type', fa.mime_type,
+                   'is_external', fa.is_external
+                 ))
+                 FROM file_assets fa
+                 WHERE fa.context_type = 'task' AND fa.context_id = t.id
+               ),
+               '[]'::json
+             ) as attachments
       FROM tasks t
       LEFT JOIN task_assignees ta ON t.id = ta.task_id
       WHERE t.project_id = $1
@@ -90,7 +104,21 @@ const getAllTasksForUser = async (req, res) => {
       SELECT t.*, 
              p.title as project_title,
              p.owner_org_id,
-             COALESCE(json_agg(ta.user_id) FILTER (WHERE ta.user_id IS NOT NULL), '[]') as assignee_ids
+             COALESCE(json_agg(ta.user_id) FILTER (WHERE ta.user_id IS NOT NULL), '[]') as assignee_ids,
+             COALESCE(
+               (
+                 SELECT json_agg(json_build_object(
+                   'file_asset_id', fa.file_asset_id,
+                   'file_name', fa.file_name,
+                   'storage_url', fa.storage_url,
+                   'mime_type', fa.mime_type,
+                   'is_external', fa.is_external
+                 ))
+                 FROM file_assets fa
+                 WHERE fa.context_type = 'task' AND fa.context_id = t.id
+               ),
+               '[]'::json
+             ) as attachments
       FROM tasks t
       JOIN projects p ON t.project_id = p.id
       JOIN project_members pm ON p.id = pm.project_id
@@ -135,6 +163,7 @@ const createTask = async (req, res) => {
     time_spent,
     timer_started_at,
     time_logs,
+    attachment_ids,
   } = req.body;
   const created_by = req.user.id;
 
@@ -181,6 +210,17 @@ const createTask = async (req, res) => {
       }
     }
 
+    if (
+      attachment_ids &&
+      Array.isArray(attachment_ids) &&
+      attachment_ids.length > 0
+    ) {
+      await client.query(
+        `UPDATE file_assets SET context_type = 'task', context_id = $1 WHERE file_asset_id = ANY($2::int[])`,
+        [newTask.id, attachment_ids.map((id) => parseInt(id))],
+      );
+    }
+
     await client.query("COMMIT");
     res.status(201).json({ ...newTask, assignee_ids: assignee_ids || [] });
   } catch (err) {
@@ -208,6 +248,7 @@ const updateTask = async (req, res) => {
     time_spent,
     timer_started_at,
     time_logs,
+    attachment_ids,
   } = req.body;
 
   const client = await pool.connect();
@@ -276,6 +317,21 @@ const updateTask = async (req, res) => {
         await client.query(
           "INSERT INTO task_assignees (task_id, user_id) VALUES ($1, $2)",
           [taskId, user_id],
+        );
+      }
+    }
+
+    if (attachment_ids && Array.isArray(attachment_ids)) {
+      // For updates, we first clear existing associations for this task (if any)
+      // Actually, since file_assets can only belong to one context, we just need to ensure the new ones are linked.
+      // But what if some were removed? We should probably "unlink" them or just let them stay with 'task' but maybe they should go back to 'project'?
+      // Typically, we only care about the ones currently attached.
+      // Let's reset all currently attached to this task back to 'project' (optional) or just update the new set.
+      // Easiest is to update all provided IDs.
+      if (attachment_ids.length > 0) {
+        await client.query(
+          `UPDATE file_assets SET context_type = 'task', context_id = $1 WHERE file_asset_id = ANY($2::int[])`,
+          [taskId, attachment_ids.map((id) => parseInt(id))],
         );
       }
     }

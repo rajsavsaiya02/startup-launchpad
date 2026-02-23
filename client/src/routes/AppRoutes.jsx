@@ -311,6 +311,12 @@ export function AppRoutes() {
         <Route element={<UserLayout />}>
           {/* Dashboard Module */}
           <Route path="/dashboard" element={<DashboardOverview />} />
+          <Route path="/dashboard/gigs" element={<GigListPage />} />
+          <Route path="/dashboard/gigs/:id" element={<GigDetailsPage />} />
+          <Route
+            path="/dashboard/gigs/:id/applications"
+            element={<GigApplicationsPage />}
+          />
 
           {/* Productivity Module (Renamed from Work) */}
           <Route
@@ -326,12 +332,6 @@ export function AppRoutes() {
             element={<ProjectDetailsPage />}
           />
           <Route path="/productivity/tasks" element={<ProjectTasksPage />} />
-          <Route path="/productivity/gigs" element={<GigListPage />} />
-          <Route path="/productivity/gigs/:id" element={<GigDetailsPage />} />
-          <Route
-            path="/productivity/gigs/:id/applications"
-            element={<GigApplicationsPage />}
-          />
 
           <Route
             path="/organization"
@@ -417,7 +417,7 @@ export function AppRoutes() {
           />
           <Route
             path="/gigs"
-            element={<Navigate to="/productivity/gigs" replace />}
+            element={<Navigate to="/dashboard/gigs" replace />}
           />
         </Route>
       </Route>

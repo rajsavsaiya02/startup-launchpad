@@ -12,6 +12,7 @@ import {
   Target,
   Filter,
 } from "lucide-react";
+import { cn } from "../../utils/cn";
 import { Button } from "../../components/ui/Button";
 import { Badge } from "../../components/ui/Badge";
 import { Card } from "../../components/ui/Card";
@@ -30,6 +31,36 @@ const DEFAULT_CATEGORIES = [
 ];
 
 const DEFAULT_STATUSES = ["Active", "Planning", "Completed", "On Hold"];
+
+const CATEGORY_STYLES = {
+  General:
+    "bg-gray-50 text-gray-600 border-gray-200/60 dark:bg-gray-800/40 dark:text-gray-400 dark:border-gray-700/50",
+  Development:
+    "bg-blue-50/50 text-blue-600 border-blue-200/50 dark:bg-blue-900/10 dark:text-blue-400 dark:border-blue-900/30",
+  Marketing:
+    "bg-purple-50/50 text-purple-600 border-purple-200/50 dark:bg-purple-900/10 dark:text-purple-400 dark:border-purple-900/30",
+  Design:
+    "bg-rose-50/50 text-rose-600 border-rose-200/50 dark:bg-rose-900/10 dark:text-rose-400 dark:border-rose-900/30",
+  Research:
+    "bg-indigo-50/50 text-indigo-600 border-indigo-200/50 dark:bg-indigo-900/10 dark:text-indigo-400 dark:border-indigo-900/30",
+  Sales:
+    "bg-emerald-50/50 text-emerald-600 border-emerald-200/50 dark:bg-emerald-900/10 dark:text-emerald-400 dark:border-emerald-900/30",
+  DEFAULT:
+    "bg-gray-50 text-gray-600 border-gray-200/60 dark:bg-gray-800/40 dark:text-gray-400 dark:border-gray-700/50",
+};
+
+const STATUS_STYLES = {
+  Active:
+    "bg-emerald-50/50 text-emerald-600 border-emerald-200/50 dark:bg-emerald-900/10 dark:text-emerald-400 dark:border-emerald-900/30",
+  Planning:
+    "bg-amber-50/50 text-amber-600 border-amber-200/50 dark:bg-amber-900/10 dark:text-amber-400 dark:border-amber-900/30",
+  Completed:
+    "bg-indigo-50/50 text-indigo-600 border-indigo-200/50 dark:bg-indigo-900/10 dark:text-indigo-400 dark:border-indigo-900/30",
+  "On Hold":
+    "bg-rose-50/50 text-rose-600 border-rose-200/50 dark:bg-rose-900/10 dark:text-rose-400 dark:border-rose-900/30",
+  DEFAULT:
+    "bg-gray-50 text-gray-600 border-gray-200/60 dark:bg-gray-800/40 dark:text-gray-400 dark:border-gray-700/50",
+};
 
 export function ProjectsDashboard() {
   const navigate = useNavigate();
@@ -245,20 +276,35 @@ export function ProjectsDashboard() {
                 {viewMode === "list" ? (
                   <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-center">
                     {/* 1. Project Identity (Col 4) */}
-                    <div className="lg:col-span-4 flex flex-col gap-1">
-                      <div className="flex items-center gap-2 mb-1">
+                    <div className="lg:col-span-4 flex flex-col gap-2">
+                      <div className="flex flex-wrap items-center gap-2 mb-1">
                         <Badge
-                          variant="secondary"
-                          className="bg-gray-100 dark:bg-gray-800/80 text-text-secondary text-[10px] uppercase px-1.5 py-0 rounded"
+                          variant="outline"
+                          className={cn(
+                            "text-[9px] uppercase tracking-wider px-2 py-0.5 rounded-full border font-bold",
+                            CATEGORY_STYLES[project.category] ||
+                              CATEGORY_STYLES.DEFAULT,
+                          )}
                         >
                           {project.category || "General"}
+                        </Badge>
+                        <Badge
+                          variant="outline"
+                          size="sm"
+                          className={cn(
+                            "uppercase tracking-wider px-2 py-0.5 rounded-full border font-bold text-[9px]",
+                            STATUS_STYLES[project.status] ||
+                              STATUS_STYLES.DEFAULT,
+                          )}
+                        >
+                          {project.status || "Active"}
                         </Badge>
                         {(project.priority === "High" ||
                           project.priority === "Critical") && (
                           <Badge
-                            variant="error"
+                            variant="outline"
                             size="sm"
-                            className="bg-red-50 text-red-600 border-red-100 px-1.5 py-0 text-[10px]"
+                            className="bg-red-50/50 text-red-600 border-red-200/50 px-2 py-0.5 text-[9px] rounded-full font-bold uppercase tracking-wider"
                           >
                             {project.priority}
                           </Badge>
@@ -270,23 +316,6 @@ export function ProjectsDashboard() {
                       <p className="text-xs text-text-secondary dark:text-gray-400 truncate w-full">
                         {project.description || "No description provided."}
                       </p>
-                    </div>
-
-                    {/* 2. Status (Col 2) */}
-                    <div className="lg:col-span-2 flex items-center">
-                      <Badge
-                        variant={
-                          project.status === "Active"
-                            ? "success"
-                            : project.status === "Planning"
-                              ? "warning"
-                              : "default"
-                        }
-                        size="sm"
-                        className="capitalize px-2.5 py-1"
-                      >
-                        {project.status || "Active"}
-                      </Badge>
                     </div>
 
                     {/* 3. Timeline (Col 3) */}
@@ -357,14 +386,41 @@ export function ProjectsDashboard() {
                 ) : (
                   /* GRID VIEW LAYOUT (Original Polished) */
                   <>
-                    {/* Card Header: Category & Actions */}
+                    {/* Card Header: Category, Status & Actions */}
                     <div className="flex justify-between items-start mb-4 mt-1">
-                      <Badge
-                        variant="secondary"
-                        className="bg-gray-100 dark:bg-gray-800/80 text-text-secondary font-medium text-[11px] tracking-wide uppercase px-2 py-0.5 rounded-md"
-                      >
-                        {project.category || "General"}
-                      </Badge>
+                      <div className="flex flex-wrap gap-2">
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            "font-bold text-[9px] tracking-widest uppercase px-2 py-0.5 rounded-full border",
+                            CATEGORY_STYLES[project.category] ||
+                              CATEGORY_STYLES.DEFAULT,
+                          )}
+                        >
+                          {project.category || "General"}
+                        </Badge>
+                        <Badge
+                          variant="outline"
+                          size="sm"
+                          className={cn(
+                            "uppercase font-bold text-[9px] tracking-widest px-2 py-0.5 rounded-full border",
+                            STATUS_STYLES[project.status] ||
+                              STATUS_STYLES.DEFAULT,
+                          )}
+                        >
+                          {project.status || "Active"}
+                        </Badge>
+                        {(project.priority === "High" ||
+                          project.priority === "Critical") && (
+                          <Badge
+                            variant="outline"
+                            className="bg-red-50/50 text-red-600 dark:bg-red-900/10 dark:text-red-400 border-red-200/50 dark:border-red-900/30 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest"
+                            size="sm"
+                          >
+                            {project.priority}
+                          </Badge>
+                        )}
+                      </div>
                       <div className="flex gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                         <button
                           onClick={(e) => handleEditClick(e, project)}
@@ -394,33 +450,6 @@ export function ProjectsDashboard() {
                       <p className="text-sm text-text-secondary dark:text-gray-400 line-clamp-2 min-h-[40px] leading-relaxed">
                         {project.description || "No description provided."}
                       </p>
-                    </div>
-
-                    {/* Status & Priority */}
-                    <div className="flex items-center gap-2 mb-6">
-                      <Badge
-                        variant={
-                          project.status === "Active"
-                            ? "success"
-                            : project.status === "Planning"
-                              ? "warning"
-                              : "default"
-                        }
-                        size="sm"
-                        className="capitalize font-medium px-2 py-0.5"
-                      >
-                        {project.status || "Active"}
-                      </Badge>
-                      {(project.priority === "High" ||
-                        project.priority === "Critical") && (
-                        <Badge
-                          variant="error"
-                          className="bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-300 border-red-100 dark:border-red-900/30 px-2 py-0.5"
-                          size="sm"
-                        >
-                          {project.priority}
-                        </Badge>
-                      )}
                     </div>
 
                     {/* Progress */}

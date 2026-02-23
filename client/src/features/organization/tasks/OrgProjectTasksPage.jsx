@@ -8,6 +8,8 @@ import {
   Paperclip,
   Filter,
   ChevronDown,
+  ExternalLink,
+  Edit2,
 } from "lucide-react";
 import { Avatar } from "../../../components/ui/Avatar";
 import { cn } from "../../../utils/cn";
@@ -20,6 +22,7 @@ export function OrgProjectTasksPage() {
   const [isTasksLoading, setIsTasksLoading] = useState(false);
   const [selectedTask, setSelectedTask] = useState(null);
   const [isTaskDrawerOpen, setIsTaskDrawerOpen] = useState(false);
+  const [isTaskDrawerReadOnly, setIsTaskDrawerReadOnly] = useState(false);
   const [taskSearchQuery, setTaskSearchQuery] = useState("");
   const [taskPriorityFilter, setTaskPriorityFilter] = useState("All");
   const [taskCategoryFilter, setTaskCategoryFilter] = useState("All");
@@ -34,6 +37,18 @@ export function OrgProjectTasksPage() {
     } finally {
       setIsTasksLoading(false);
     }
+  };
+
+  const handleEditTask = (task) => {
+    setSelectedTask(task);
+    setIsTaskDrawerReadOnly(false);
+    setIsTaskDrawerOpen(true);
+  };
+
+  const handleViewTask = (task) => {
+    setSelectedTask(task);
+    setIsTaskDrawerReadOnly(true);
+    setIsTaskDrawerOpen(true);
   };
 
   useEffect(() => {
@@ -109,6 +124,7 @@ export function OrgProjectTasksPage() {
             <button
               onClick={() => {
                 setSelectedTask(null);
+                setIsTaskDrawerReadOnly(false);
                 setIsTaskDrawerOpen(true);
               }}
               className="flex h-9 items-center gap-2 rounded-md bg-primary px-3 text-sm font-medium text-white hover:bg-primary/90 transition-colors shadow-sm"
@@ -182,10 +198,8 @@ export function OrgProjectTasksPage() {
                   key={task.id}
                   task={task}
                   index={index}
-                  onClick={() => {
-                    setSelectedTask(task);
-                    setIsTaskDrawerOpen(true);
-                  }}
+                  onEdit={() => handleEditTask(task)}
+                  onView={() => handleViewTask(task)}
                 />
               ))}
             </WorkColumn>
@@ -200,10 +214,8 @@ export function OrgProjectTasksPage() {
                   key={task.id}
                   task={task}
                   index={index}
-                  onClick={() => {
-                    setSelectedTask(task);
-                    setIsTaskDrawerOpen(true);
-                  }}
+                  onEdit={() => handleEditTask(task)}
+                  onView={() => handleViewTask(task)}
                 />
               ))}
             </WorkColumn>
@@ -218,10 +230,8 @@ export function OrgProjectTasksPage() {
                   key={task.id}
                   task={task}
                   index={index}
-                  onClick={() => {
-                    setSelectedTask(task);
-                    setIsTaskDrawerOpen(true);
-                  }}
+                  onEdit={() => handleEditTask(task)}
+                  onView={() => handleViewTask(task)}
                 />
               ))}
             </WorkColumn>
@@ -234,6 +244,7 @@ export function OrgProjectTasksPage() {
         isOpen={isTaskDrawerOpen}
         onClose={() => setIsTaskDrawerOpen(false)}
         onRefresh={fetchTasks}
+        isReadOnly={isTaskDrawerReadOnly}
       />
     </div>
   );
@@ -275,7 +286,7 @@ function WorkColumn({ id, title, count, color, children }) {
   );
 }
 
-function TaskCard({ task, index, onClick }) {
+function TaskCard({ task, index, onEdit, onView }) {
   const priorityColors = {
     High: "text-error bg-error/10 border-error/20",
     Medium: "text-warning bg-warning/10 border-warning/20",
@@ -289,10 +300,10 @@ function TaskCard({ task, index, onClick }) {
           ref={provided.innerRef}
           {...provided.draggableProps}
           {...provided.dragHandleProps}
-          onClick={onClick}
+          onDoubleClick={onView}
           style={{ ...provided.draggableProps.style }}
           className={cn(
-            "bg-white dark:bg-surface-dark p-4 rounded-xl border border-border-light dark:border-border-dark shadow-sm hover:shadow-md transition-all cursor-pointer group hover:border-primary/50 relative",
+            "bg-white dark:bg-surface-dark p-4 rounded-xl border border-border-light dark:border-border-dark shadow-sm hover:shadow-md transition-all cursor-default group hover:border-primary/50 relative",
             snapshot.isDragging
               ? "shadow-2xl ring-2 ring-primary/50 rotate-2 z-50"
               : "",
@@ -311,9 +322,22 @@ function TaskCard({ task, index, onClick }) {
                 </span>
               )}
             </div>
-            <button className="opacity-0 group-hover:opacity-100 text-text-tertiary hover:text-primary transition-opacity">
-              <MoreHorizontal className="h-4 w-4" />
-            </button>
+            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              <button
+                onClick={onView}
+                className="p-1 text-text-tertiary hover:text-primary hover:bg-primary/10 rounded transition-colors"
+                title="View Details"
+              >
+                <ExternalLink className="h-3.5 w-3.5" />
+              </button>
+              <button
+                onClick={onEdit}
+                className="p-1 text-text-tertiary hover:text-primary hover:bg-primary/10 rounded transition-colors"
+                title="Edit Task"
+              >
+                <Edit2 className="h-3.5 w-3.5" />
+              </button>
+            </div>
           </div>
 
           <h4 className="text-sm font-semibold text-text-primary dark:text-white mb-2 leading-snug">

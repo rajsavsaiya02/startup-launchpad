@@ -24,11 +24,13 @@ import {
 
 // --- Configuration: User Dual Navigation ---
 const USER_MODULE_NAV_CONFIG = {
-  dashboard: [{ name: "Overview", path: "/dashboard", icon: LayoutDashboard }],
+  dashboard: [
+    { name: "Overview", path: "/dashboard", icon: LayoutDashboard },
+    { name: "Find Gigs", path: "/dashboard/gigs", icon: Briefcase },
+  ],
   productivity: [
     { name: "Projects", path: "/productivity/projects", icon: FolderOpen },
     { name: "Tasks", path: "/productivity/tasks", icon: CheckSquare },
-    { name: "Find Gigs", path: "/productivity/gigs", icon: Briefcase },
   ],
   organization: [
     { name: "Projects", path: "/organization/projects", icon: FolderOpen },
@@ -128,7 +130,7 @@ export function UserSidebar({
                 {settings?.platform_name || "LaunchPad"}
               </span>
               <span className="text-[10px] uppercase font-semibold text-primary tracking-[0.15em] mt-0.5">
-                Dashboard
+                {activeModule}
               </span>
             </div>
           </div>
@@ -142,11 +144,7 @@ export function UserSidebar({
 
         {/* Scrollable Navigation Area */}
         <div className="flex-1 overflow-y-auto overflow-x-hidden py-4 flex flex-col gap-4 custom-scrollbar">
-          <NavSection
-            title={activeModule.toUpperCase()}
-            items={navItems}
-            isCollapsed={isCollapsed}
-          />
+          <NavSection title={null} items={navItems} isCollapsed={isCollapsed} />
         </div>
 
         {/* Footer / Toggle Area */}
@@ -192,6 +190,7 @@ function NavSection({ title, items, isCollapsed }) {
           <NavLink
             key={item.path}
             to={item.path}
+            end
             className={({ isActive }) =>
               cn(
                 "flex items-center rounded-lg text-sm transition-all duration-200 group relative overflow-hidden whitespace-nowrap",

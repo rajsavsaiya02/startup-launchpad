@@ -72,9 +72,14 @@ exports.getProjects = async (req, res) => {
     const { scope } = req.query;
 
     let query = `
-      SELECT p.*, pm.role as user_role 
+      SELECT p.*, pm.role as user_role,
+        CASE 
+          WHEN COUNT(t.id) = 0 THEN 0
+          ELSE ROUND((COUNT(CASE WHEN t.kanban_status = 'done' THEN 1 END)::numeric / COUNT(t.id)) * 100)
+        END AS progress
       FROM projects p
       JOIN project_members pm ON p.id = pm.project_id
+      LEFT JOIN tasks t ON t.project_id = p.id
       WHERE pm.user_id = $1
     `;
     const params = [userId];
@@ -82,11 +87,10 @@ exports.getProjects = async (req, res) => {
     if (scope === "organization") {
       query += " AND p.owner_org_id IS NOT NULL";
     } else {
-      // Default to personal projects (where owner_org_id is null)
       query += " AND p.owner_org_id IS NULL";
     }
 
-    query += " ORDER BY p.updated_at DESC";
+    query += " GROUP BY p.id, pm.role ORDER BY p.updated_at DESC";
 
     const result = await pool.query(query, params);
     res.json(result.rows);

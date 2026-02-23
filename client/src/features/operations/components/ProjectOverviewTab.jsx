@@ -23,6 +23,7 @@ import { Button } from "../../../components/ui/Button";
 import taskService from "../../../services/taskService";
 import projectFinancialsService from "../../../services/projectFinancialsService";
 import projectActivityService from "../../../services/projectActivityService";
+import { cn } from "../../../utils/cn";
 
 // Helper to format INR
 const formatINR = (amount) => {
@@ -263,15 +264,36 @@ export function ProjectOverviewTab({
       {/* 1. Key Metrics Ribbon */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="p-5 bg-white dark:bg-surface-dark border-border-light dark:border-border-dark flex items-center gap-4 group hover:shadow-md transition-shadow relative overflow-hidden">
-          <div className="absolute right-0 top-0 w-24 h-24 bg-primary/5 rounded-bl-[100px] pointer-events-none group-hover:bg-primary/10 transition-colors"></div>
-          <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary group-hover:scale-110 group-hover:bg-primary group-hover:text-white transition-all shadow-sm">
+          <div
+            className={cn(
+              "absolute right-0 top-0 w-24 h-24 rounded-bl-[100px] pointer-events-none transition-colors",
+              completedTasks === totalTasks && totalTasks > 0
+                ? "bg-success/10"
+                : "bg-primary/5",
+            )}
+          ></div>
+          <div
+            className={cn(
+              "h-12 w-12 rounded-xl flex items-center justify-center transition-all shadow-sm group-hover:scale-110",
+              completedTasks === totalTasks && totalTasks > 0
+                ? "bg-success/10 text-success group-hover:bg-success group-hover:text-white"
+                : "bg-primary/10 text-primary group-hover:bg-primary group-hover:text-white",
+            )}
+          >
             <CheckCircle2 className="h-6 w-6" />
           </div>
           <div className="relative z-10">
             <p className="text-[11px] font-bold text-text-tertiary uppercase tracking-wider">
               Task Progress
             </p>
-            <p className="text-2xl font-black text-text-primary dark:text-white leading-tight">
+            <p
+              className={cn(
+                "text-2xl font-black leading-tight",
+                completedTasks === totalTasks && totalTasks > 0
+                  ? "text-success"
+                  : "text-text-primary dark:text-white",
+              )}
+            >
               {completedTasks}{" "}
               <span className="text-sm font-medium text-text-tertiary">
                 / {totalTasks}

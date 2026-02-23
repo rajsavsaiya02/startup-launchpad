@@ -56,6 +56,20 @@ import { ProjectOverviewTab } from "./components/ProjectOverviewTab";
 import projectService from "../../services/projectService";
 import { toast } from "react-toastify";
 import { motion, AnimatePresence } from "framer-motion";
+import { CreateProjectModal } from "./components/CreateProjectModal";
+
+const STATUS_STYLES = {
+  Active:
+    "bg-emerald-50/50 text-emerald-600 border-emerald-200/50 dark:bg-emerald-900/10 dark:text-emerald-400 dark:border-emerald-900/30",
+  Planning:
+    "bg-amber-50/50 text-amber-600 border-amber-200/50 dark:bg-amber-900/10 dark:text-amber-400 dark:border-amber-900/30",
+  Completed:
+    "bg-indigo-50/50 text-indigo-600 border-indigo-200/50 dark:bg-indigo-900/10 dark:text-indigo-400 dark:border-indigo-900/30",
+  "On Hold":
+    "bg-rose-50/50 text-rose-600 border-rose-200/50 dark:bg-rose-900/10 dark:text-rose-400 dark:border-rose-900/30",
+  DEFAULT:
+    "bg-gray-50 text-gray-600 border-gray-200/60 dark:bg-gray-800/40 dark:text-gray-400 dark:border-gray-700/50",
+};
 
 const MotionCard = motion.create(Card);
 
@@ -71,15 +85,22 @@ export function ProjectDetailsPage() {
   const [tasks, setTasks] = useState([]);
   const [selectedTask, setSelectedTask] = useState(null);
   const [isTaskDrawerOpen, setIsTaskDrawerOpen] = useState(false);
+  const [isTaskDrawerReadOnly, setIsTaskDrawerReadOnly] = useState(false);
   const [isExpenseDrawerOpen, setIsExpenseDrawerOpen] = useState(false);
   const [taskSearchQuery, setTaskSearchQuery] = useState("");
   const [taskPriorityFilter, setTaskPriorityFilter] = useState("All");
   const [taskCategoryFilter, setTaskCategoryFilter] = useState("All");
   const [isArchiveMode, setIsArchiveMode] = useState(false);
 
+  // --- Project Action States ---
+  const [isEditProjectModalOpen, setIsEditProjectModalOpen] = useState(false);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
   const fetchTasks = useCallback(async () => {
     if (!id) return;
     try {
+      setLoading(true);
       const data = await taskService.getTasksByProject(id);
       setTasks(data);
       setSelectedTask((prevTask) => {
@@ -87,10 +108,25 @@ export function ProjectDetailsPage() {
         const updated = data.find((t) => t.id === prevTask.id);
         return updated ? { ...updated } : prevTask;
       });
-    } catch (err) {
-      console.error("Error fetching tasks:", err);
+    } catch (error) {
+      console.error("Failed to fetch tasks:", error);
+      toast.error("Failed to load tasks");
+    } finally {
+      setLoading(false);
     }
   }, [id]);
+
+  const handleEditTask = (task) => {
+    setSelectedTask(task);
+    setIsTaskDrawerReadOnly(false);
+    setIsTaskDrawerOpen(true);
+  };
+
+  const handleViewTask = (task) => {
+    setSelectedTask(task);
+    setIsTaskDrawerReadOnly(true);
+    setIsTaskDrawerOpen(true);
+  };
 
   useEffect(() => {
     if (activeTab === "Work") {
@@ -317,31 +353,48 @@ export function ProjectDetailsPage() {
     }
   };
 
-  useEffect(() => {
-    const fetchProjectDetails = async () => {
-      try {
-        setLoading(true);
-        const data = await projectService.getProjectById(id);
-        setProject(data);
-      } catch (error) {
-        console.error("Failed to fetch project details:", error);
-        toast.error("Failed to load project details");
-      } finally {
-        setLoading(false);
-      }
-    };
-    if (id) {
-      fetchProjectDetails();
-      fetchFileAssets(id);
+  const fetchProjectDetails = useCallback(async () => {
+    try {
+      setLoading(true);
+      const data = await projectService.getProjectById(id);
+      setProject(data);
+    } catch (error) {
+      console.error("Failed to fetch project details:", error);
+      toast.error("Failed to load project details");
+    } finally {
+      setLoading(false);
     }
   }, [id]);
+
+  useEffect(() => {
+    if (id) {
+      fetchProjectDetails();
+      fetchTasks();
+      fetchFileAssets(id);
+    }
+  }, [id, fetchProjectDetails, fetchTasks]);
+
+  const handleDeleteProject = async () => {
+    try {
+      setIsDeleting(true);
+      await projectService.deleteProject(id);
+      toast.success("Project deleted successfully");
+      navigate("/productivity/projects");
+    } catch (error) {
+      console.error("Failed to delete project:", error);
+      toast.error("Failed to delete project");
+    } finally {
+      setIsDeleting(false);
+      setIsDeleteConfirmOpen(false);
+    }
+  };
 
   const handleDeleteFile = (e, asset) => {
     e.stopPropagation();
     setDeleteConfirmModalAsset(asset);
   };
 
-  const confirmDeleteFile = async () => {
+  const _confirmDeleteFile = async () => {
     if (!deleteConfirmModalAsset) return;
     try {
       await fileAssetService.deleteFileAsset(deleteConfirmModalAsset.id);
@@ -422,175 +475,228 @@ export function ProjectDetailsPage() {
   };
 
   const projectDescription = project.description || "No description provided.";
+
+  // Calculate dynamic progress
+  const totalTasksCount = tasks.length;
+  const completedTasksCount = tasks.filter(
+    (t) => t.kanban_status === "done",
+  ).length;
+  const dynamicProgress =
+    totalTasksCount > 0
+      ? Math.round((completedTasksCount / totalTasksCount) * 100)
+      : 0;
+
   return (
-    <div className="flex flex-col min-h-[calc(100vh-4rem)] bg-gray-50/50 dark:bg-background-dark overflow-y-auto p-6">
-      {/* 1. Consolidated Project Header Area */}
-      <div className="w-full bg-white/80 dark:bg-surface-dark/80 backdrop-blur-md border border-border-light dark:border-border-dark shadow-sm rounded-xl mb-6 shrink-0 sticky top-0 z-10 transition-all duration-300">
-        <div className="px-6 pt-4">
-          <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-10 pb-4 border-b border-border-light dark:border-border-dark">
-            <div className="flex-1 min-w-0">
-              {/* Project Title & Status */}
-              <div className="flex items-center gap-3 mb-2">
-                <h1 className="text-2xl font-black text-text-primary dark:text-white tracking-tight">
-                  {project.title || "Untitled Project"}
-                </h1>
-                <Badge
-                  variant={
-                    project.status === "Active"
-                      ? "success"
-                      : project.status === "Planning"
-                        ? "warning"
-                        : "default"
-                  }
-                  className="text-[10px] px-2 py-0.5 rounded-full font-bold uppercase transition-colors"
-                >
-                  {project.status || "Active"}
-                </Badge>
-              </div>
-
-              {/* Expandable Description (Smooth Height Transition) */}
-              <div className="max-w-5xl">
-                <div
-                  className={cn(
-                    "overflow-hidden transition-all duration-500 ease-in-out",
-                    isDescExpanded
-                      ? "max-h-[500px] opacity-100"
-                      : "max-h-12 opacity-90",
-                  )}
-                >
-                  <p
-                    className={cn(
-                      "text-sm text-text-secondary dark:text-gray-400 leading-relaxed",
-                      !isDescExpanded && "line-clamp-2",
-                    )}
-                  >
-                    {projectDescription}
-                  </p>
-                </div>
-                <button
-                  onClick={() => setIsDescExpanded(!isDescExpanded)}
-                  className="text-[10px] font-black uppercase tracking-widest text-primary hover:text-primary-hover mt-3 flex items-center gap-1.5 transition-colors group/btn"
-                >
-                  <span className="relative">
-                    {isDescExpanded ? "Collapse Brief" : "Read Full Brief"}
-                    <span className="absolute bottom-0 left-0 w-full h-0.5 bg-primary scale-x-0 group-hover/btn:scale-x-100 transition-transform origin-left" />
-                  </span>
-                  <ChevronDown
-                    className={cn(
-                      "h-3 w-3 transition-transform duration-500",
-                      isDescExpanded && "rotate-180",
-                    )}
-                  />
-                </button>
-              </div>
+    <div className="flex flex-col min-h-[calc(100vh-4rem)] bg-background-light dark:bg-background-dark overflow-y-auto custom-scrollbar">
+      {/* ─── Project Header ─── */}
+      <div className="mx-6 mt-6 mb-4 bg-white dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-2xl shadow-sm z-10 overflow-hidden shrink-0">
+        {/* Top Section: Title, Status, Description, Actions */}
+        <div className="flex items-start justify-between gap-4 px-8 pt-5 pb-4">
+          {/* Left: Title & Description */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-3 flex-wrap">
+              <h1 className="text-xl font-black text-text-primary dark:text-white tracking-tight leading-tight">
+                {project.title || "Untitled Project"}
+              </h1>
+              <Badge
+                variant="neutral"
+                className={cn(
+                  "text-[9px] px-2.5 py-1 rounded-full font-black uppercase tracking-widest shrink-0 border",
+                  STATUS_STYLES[project.status] || STATUS_STYLES.DEFAULT,
+                )}
+              >
+                {project.status || "Active"}
+              </Badge>
             </div>
-
-            {/* Logical Meta-Data Ribbon (Stabilized & Scaled Capsule) */}
-            <div className="flex flex-col gap-4 bg-white/60 dark:bg-gray-800/20 px-6 py-4 rounded-2xl border border-border-light dark:border-border-dark shadow-md backdrop-blur-md w-[320px] shrink-0">
-              {/* Row 1: Dates & Priority */}
-              <div className="flex items-center justify-between gap-8 pb-3 border-b border-border-light/50 dark:border-border-dark/50">
-                <div className="flex flex-col gap-0.5">
-                  <span className="text-[10px] uppercase tracking-tight font-black text-text-tertiary">
-                    Start Date
-                  </span>
-                  <span className="text-sm font-bold text-text-primary dark:text-white flex items-center gap-2 whitespace-nowrap">
-                    <Calendar className="h-3.5 w-3.5 text-primary" />{" "}
-                    {project.start_date
-                      ? new Date(project.start_date).toLocaleDateString(
-                          undefined,
-                          { month: "short", day: "numeric", year: "numeric" },
-                        )
-                      : "--"}
-                  </span>
-                </div>
-                <div className="h-8 w-px bg-border-light/50 dark:bg-border-dark/50" />
-                <div className="flex flex-col gap-0.5">
-                  <span className="text-[10px] uppercase tracking-tight font-black text-text-tertiary">
-                    Due Date
-                  </span>
-                  <span className="text-sm font-bold text-text-primary dark:text-white flex items-center gap-2 whitespace-nowrap">
-                    <Clock className="h-3.5 w-3.5 text-warning" />{" "}
-                    {project.due_date
-                      ? new Date(project.due_date).toLocaleDateString(
-                          undefined,
-                          { month: "short", day: "numeric", year: "numeric" },
-                        )
-                      : "--"}
-                  </span>
-                </div>
-              </div>
-
-              {/* Row 2: Enhanced & Scaled Progress */}
-              <div className="flex flex-col gap-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] uppercase tracking-tight font-black text-text-tertiary">
-                    Current Progress
-                  </span>
-                  <span className="text-xs font-black text-primary">
-                    {project.progress || 0}%
-                  </span>
-                </div>
-                <div className="w-full bg-gray-200/50 dark:bg-gray-700/50 rounded-full h-2.5 overflow-hidden">
-                  <div
-                    className="bg-linear-to-r from-primary to-[#60A5FA] h-2.5 rounded-full transition-all duration-1000 shadow-[0_0_10px_rgba(46,107,229,0.2)]"
-                    style={{ width: `${project.progress || 0}%` }}
-                  ></div>
-                </div>
-              </div>
+            <div className="mt-1.5 w-full">
+              <p
+                className={cn(
+                  "text-sm text-text-secondary dark:text-gray-400 leading-relaxed",
+                  !isDescExpanded && "line-clamp-1",
+                )}
+              >
+                {projectDescription}
+              </p>
+              <button
+                onClick={() => setIsDescExpanded(!isDescExpanded)}
+                className="inline-flex items-center gap-1 mt-1 text-[11px] font-bold text-primary hover:text-primary-hover transition-colors"
+              >
+                {isDescExpanded ? "Show less" : "Show more"}
+                <ChevronDown
+                  className={cn(
+                    "h-3 w-3 transition-transform duration-300",
+                    isDescExpanded && "rotate-180",
+                  )}
+                />
+              </button>
             </div>
           </div>
-
-          {/* Control Bar: Navigation, Tabs, and Main Action */}
-          <div className="flex items-center justify-between py-3">
+          {/* Right: Action Buttons */}
+          <div className="flex items-center gap-1 shrink-0 pt-0.5">
             <button
-              onClick={() => navigate("/productivity/projects")}
-              className="flex items-center gap-2 text-text-tertiary hover:text-text-primary transition-colors text-xs font-bold group"
+              onClick={() => setIsEditProjectModalOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-text-tertiary hover:text-primary hover:bg-primary/10 border border-transparent hover:border-primary/20 transition-all active:scale-95 text-xs font-bold"
+              title="Edit Project"
             >
-              <ArrowLeft className="h-3.5 w-3.5 group-hover:-translate-x-1 transition-transform" />
-              BACK TO PROJECTS
+              <Edit2 className="h-3.5 w-3.5" />
+              Edit
             </button>
-
-            <nav className="inline-flex p-1 bg-gray-100/30 dark:bg-gray-800/20 rounded-full border border-border-light dark:border-border-dark overflow-x-auto no-scrollbar">
-              {["Overview", "Work", "Financials", "Activity", "Files"].map(
-                (tab) => (
-                  <button
-                    key={tab}
-                    onClick={() => setActiveTab(tab)}
-                    className={cn(
-                      "relative flex items-center justify-center py-1.5 px-5 text-xs font-bold transition-all duration-200 rounded-full outline-none focus:outline-none whitespace-nowrap tracking-wide",
-                      activeTab === tab
-                        ? "bg-white dark:bg-surface-dark text-primary shadow-sm"
-                        : "text-text-secondary hover:text-text-primary",
-                    )}
-                  >
-                    {tab}
-                  </button>
-                ),
-              )}
-            </nav>
-
             <button
-              onClick={() => {
-                setSelectedTask(null);
-                setIsTaskDrawerOpen(true);
-              }}
-              className="group relative flex items-center gap-2 h-9 px-5 text-xs font-black tracking-widest text-white transition-all duration-300 active:scale-95 overflow-hidden rounded-lg shadow-sm shadow-primary/20"
+              onClick={() => setIsDeleteConfirmOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-text-tertiary hover:text-error hover:bg-error/10 border border-transparent hover:border-error/20 transition-all active:scale-95 text-xs font-bold"
+              title="Delete Project"
             >
-              {/* Modern Gradient Background */}
-              <div className="absolute inset-0 bg-linear-to-r from-primary to-[#4F86ED] transition-transform duration-300 group-hover:scale-105" />
-              {/* Glow Effect */}
-              <div className="absolute inset-0 opacity-0 group-hover:opacity-20 bg-white transition-opacity duration-300" />
-              <div className="relative flex items-center gap-2">
-                <Plus className="h-3.5 w-3.5 stroke-[3px]" />
-                <span>NEW TASK</span>
-              </div>
+              <Trash2 className="h-3.5 w-3.5" />
+              Delete
             </button>
           </div>
         </div>
+
+        {/* ─── Meta-Data Strip ─── */}
+        <div className="grid grid-cols-4 border-t border-b border-border-light/60 dark:border-border-dark/60 bg-gray-50/60 dark:bg-gray-800/20">
+          {/* Start Date */}
+          <div className="col-span-1 flex items-center gap-3 px-8 py-3 border-r border-border-light/40 dark:border-border-dark/40">
+            <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+              <Calendar className="h-3.5 w-3.5 text-primary" />
+            </div>
+            <div>
+              <p className="text-[9px] font-black uppercase tracking-widest text-text-tertiary">
+                Start Date
+              </p>
+              <p className="text-xs font-bold text-text-primary dark:text-white mt-0.5">
+                {project.start_date
+                  ? new Date(project.start_date).toLocaleDateString(undefined, {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    })
+                  : "—"}
+              </p>
+            </div>
+          </div>
+
+          {/* Due Date */}
+          <div className="flex items-center gap-3 px-8 py-3 border-r border-border-light/40 dark:border-border-dark/40">
+            <div className="h-8 w-8 rounded-lg bg-warning/10 flex items-center justify-center shrink-0">
+              <Clock className="h-3.5 w-3.5 text-warning" />
+            </div>
+            <div>
+              <p className="text-[9px] font-black uppercase tracking-widest text-text-tertiary">
+                Due Date
+              </p>
+              <p className="text-xs font-bold text-text-primary dark:text-white mt-0.5">
+                {project.due_date
+                  ? new Date(project.due_date).toLocaleDateString(undefined, {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    })
+                  : "—"}
+              </p>
+            </div>
+          </div>
+
+          {/* Progress */}
+          <div className="col-span-2 flex items-center gap-3 px-8 py-3">
+            <div
+              className={cn(
+                "h-8 w-8 rounded-lg shrink-0 flex items-center justify-center",
+                dynamicProgress === 100 ? "bg-success/10" : "bg-primary/10",
+              )}
+            >
+              <Flag
+                className={cn(
+                  "h-3.5 w-3.5",
+                  dynamicProgress === 100 ? "text-success" : "text-primary",
+                )}
+              />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between mb-1.5">
+                <p className="text-[9px] font-black uppercase tracking-widest text-text-tertiary">
+                  Progress
+                  {totalTasksCount === 0 && (
+                    <span className="ml-1 font-normal normal-case text-text-tertiary tracking-normal text-[9px]">
+                      (no tasks)
+                    </span>
+                  )}
+                </p>
+                <span
+                  className={cn(
+                    "text-[11px] font-black transition-colors",
+                    dynamicProgress === 100 ? "text-success" : "text-primary",
+                  )}
+                >
+                  {dynamicProgress === 100
+                    ? "100% ✓ Done"
+                    : `${dynamicProgress}%`}
+                </span>
+              </div>
+              <div className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                <div
+                  className={cn(
+                    "h-full rounded-full transition-all duration-1000",
+                    dynamicProgress === 100
+                      ? "bg-success"
+                      : "bg-linear-to-r from-primary to-blue-400",
+                  )}
+                  style={{ width: `${dynamicProgress}%` }}
+                />
+              </div>
+              <p className="text-[9px] text-text-tertiary mt-1">
+                {completedTasksCount} of {totalTasksCount} tasks done
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* ─── Control Bar: Back + Tabs + New Task ─── */}
+        <div className="flex items-center justify-between px-8 py-2.5">
+          <button
+            onClick={() => navigate("/productivity/projects")}
+            className="flex items-center gap-1.5 text-text-tertiary hover:text-text-primary transition-colors text-[11px] font-black uppercase tracking-wider group shrink-0"
+          >
+            <ArrowLeft className="h-3.5 w-3.5 group-hover:-translate-x-0.5 transition-transform" />
+            Back To Projects
+          </button>
+
+          <nav className="flex items-center gap-0.5">
+            {["Overview", "Work", "Financials", "Activity", "Files"].map(
+              (tab) => (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  className={cn(
+                    "px-4 py-2 rounded-lg text-xs font-bold transition-all duration-200 whitespace-nowrap",
+                    activeTab === tab
+                      ? "bg-primary/10 text-primary"
+                      : "text-text-secondary hover:text-text-primary hover:bg-gray-100 dark:hover:bg-gray-800",
+                  )}
+                >
+                  {tab}
+                </button>
+              ),
+            )}
+          </nav>
+
+          <button
+            onClick={() => {
+              setSelectedTask(null);
+              setIsTaskDrawerOpen(true);
+            }}
+            className="group relative flex items-center gap-1.5 h-8 px-4 text-[11px] font-black tracking-widest text-white transition-all active:scale-95 overflow-hidden rounded-lg shadow-sm shadow-primary/30 shrink-0"
+          >
+            <div className="absolute inset-0 bg-primary group-hover:bg-primary-hover transition-colors duration-200" />
+            <div className="relative flex items-center gap-1.5">
+              <Plus className="h-3.5 w-3.5 stroke-[3px]" />
+              <span>NEW TASK</span>
+            </div>
+          </button>
+        </div>
       </div>
 
-      {/* 2. Content Area - Separate Container */}
-      <div className="w-full mx-auto">
+      {/* ─── Content Area ─── */}
+      <div className="w-full p-6">
         {/* --- WORK VIEW --- */}
         {activeTab === "Work" && (
           <div className="flex flex-col gap-6">
@@ -743,10 +849,8 @@ export function ProjectDetailsPage() {
                                   <ProjectTaskListItem
                                     key={task.id}
                                     task={task}
-                                    onEdit={() => {
-                                      setSelectedTask(task);
-                                      setIsTaskDrawerOpen(true);
-                                    }}
+                                    onEdit={() => handleEditTask(task)}
+                                    onView={() => handleViewTask(task)}
                                     onDelete={async () => {
                                       if (window.confirm("Delete this task?")) {
                                         await taskService.deleteTask(
@@ -1017,6 +1121,7 @@ export function ProjectDetailsPage() {
         task={selectedTask}
         onClose={() => setIsTaskDrawerOpen(false)}
         onRefresh={fetchTasks}
+        isReadOnly={isTaskDrawerReadOnly}
       />
 
       <ProjectFileDrawer
@@ -1034,34 +1139,73 @@ export function ProjectDetailsPage() {
         mode="add"
       />
 
-      {/* Custom Delete Confirmation Modal */}
-      {deleteConfirmModalAsset && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-surface-dark p-6 rounded-xl max-w-sm w-full shadow-xl">
-            <h3 className="text-lg font-bold text-text-primary dark:text-white mb-2">
-              Delete Attachment
-            </h3>
-            <p className="text-sm text-text-secondary dark:text-gray-300 mb-6 flex-wrap break-all">
-              Are you sure you want to permanently delete{" "}
-              <strong>{deleteConfirmModalAsset.fileName}</strong>?
-            </p>
-            <div className="flex justify-end gap-3">
-              <Button
-                variant="outline"
-                onClick={() => setDeleteConfirmModalAsset(null)}
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={confirmDeleteFile}
-                className="bg-error hover:bg-error/90 text-white border-0 shadow-md"
-              >
-                Delete
-              </Button>
-            </div>
+      {/* Project Edit Modal */}
+      <CreateProjectModal
+        isOpen={isEditProjectModalOpen}
+        onClose={() => setIsEditProjectModalOpen(false)}
+        projectToEdit={project}
+        onProjectCreated={fetchProjectDetails}
+      />
+
+      {/* Delete Confirmation Modal (Premium & Sleek) */}
+      <AnimatePresence>
+        {isDeleteConfirmOpen && (
+          <div className="fixed inset-0 z-100 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsDeleteConfirmOpen(false)}
+              className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-md bg-white dark:bg-surface-dark rounded-3xl p-8 shadow-2xl border border-border-light dark:border-border-dark overflow-hidden"
+            >
+              {/* Decorative background blur */}
+              <div className="absolute top-0 right-0 w-32 h-32 bg-error/5 rounded-bl-[100px] pointer-events-none" />
+
+              <div className="flex flex-col items-center text-center">
+                <div className="h-16 w-16 rounded-2xl bg-error/10 flex items-center justify-center text-error mb-6 shadow-xs">
+                  <AlertCircle className="h-8 w-8" />
+                </div>
+
+                <h3 className="text-xl font-black text-text-primary dark:text-white mb-2">
+                  Delete Project?
+                </h3>
+                <p className="text-sm text-text-secondary dark:text-gray-400 mb-8 leading-relaxed">
+                  Are you sure you want to delete{" "}
+                  <span className="font-bold text-text-primary dark:text-white">
+                    "{project.title}"
+                  </span>
+                  ? This action is permanent and will delete all associated
+                  tasks, files, and financials.
+                </p>
+
+                <div className="flex gap-3 w-full">
+                  <Button
+                    variant="secondary"
+                    onClick={() => setIsDeleteConfirmOpen(false)}
+                    className="flex-1 h-11 rounded-xl font-bold dark:bg-gray-800 dark:hover:bg-gray-700"
+                    disabled={isDeleting}
+                  >
+                    Keep Project
+                  </Button>
+                  <Button
+                    onClick={handleDeleteProject}
+                    isLoading={isDeleting}
+                    className="flex-1 h-11 rounded-xl bg-error border-none text-white shadow-lg shadow-error/20 font-bold hover:bg-error/90 active:scale-95 transition-all"
+                  >
+                    Delete Forever
+                  </Button>
+                </div>
+              </div>
+            </motion.div>
           </div>
-        </div>
-      )}
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -1115,6 +1259,7 @@ function ProjectTaskListItem({
   onToggleComplete,
   onRefresh,
   onTaskUpdate,
+  onView,
 }) {
   const isDone = task.kanban_status === "done";
 
@@ -1319,8 +1464,12 @@ function ProjectTaskListItem({
 
   return (
     <div
+      onDoubleClick={(e) => {
+        e.preventDefault();
+        onView?.();
+      }}
       className={cn(
-        "group relative flex flex-col p-4 bg-white dark:bg-surface-dark rounded-xl border-2 transition-all min-h-[140px] h-fit",
+        "group relative flex flex-col p-4 bg-white dark:bg-surface-dark rounded-xl border-2 transition-all min-h-[140px] h-fit cursor-default",
         isDone
           ? "border-border-light dark:border-border-dark opacity-60"
           : "border-border-light dark:border-border-dark hover:border-primary/40 focus-within:border-primary/60",
@@ -1492,6 +1641,13 @@ function ProjectTaskListItem({
             ) : (
               <Play className="h-4 w-4 fill-success" />
             )}
+          </button>
+          <button
+            onClick={onView}
+            className="p-1.5 text-text-tertiary hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md transition-colors"
+            title="View Details"
+          >
+            <ExternalLink className="h-4 w-4" />
           </button>
           <button
             onClick={onEdit}

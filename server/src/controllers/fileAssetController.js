@@ -16,6 +16,16 @@ class FileAssetController {
       return result.rows.length > 0;
     }
 
+    if (contextType === "task") {
+      const result = await pool.query(
+        `SELECT 1 FROM project_members pm
+         JOIN tasks t ON pm.project_id = t.project_id
+         WHERE t.id = $1 AND pm.user_id = $2`,
+        [contextId, userId],
+      );
+      return result.rows.length > 0;
+    }
+
     // Default deny for unknown contexts
     return false;
   }
