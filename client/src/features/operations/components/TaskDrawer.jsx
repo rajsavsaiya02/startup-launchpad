@@ -18,6 +18,9 @@ import {
   Link2,
   Loader2,
   AlertCircle,
+  ChevronDown,
+  Check,
+  Clock,
 } from "lucide-react";
 import { Button } from "../../../components/ui/Button";
 import { Avatar } from "../../../components/ui/Avatar";
@@ -28,6 +31,45 @@ import userService from "../../../services/userService";
 import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 
+const CapsuleProgress = ({ completed, total }) => {
+  const percentage = total === 0 ? 0 : (completed / total) * 100;
+
+  return (
+    <div
+      className={cn(
+        "relative flex items-center justify-center px-2.5 py-1 rounded-full border-1.5 transition-all duration-500",
+        percentage === 100
+          ? "border-success bg-success/5"
+          : percentage > 0
+            ? "border-primary bg-primary/5 shadow-[0_0_10px_rgba(46,107,229,0.05)]"
+            : "border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/30",
+      )}
+    >
+      <div className="flex items-center gap-1.5">
+        <span
+          className={cn(
+            "text-[11px] font-black leading-none",
+            percentage > 0
+              ? "text-text-primary dark:text-white"
+              : "text-text-tertiary",
+          )}
+        >
+          {completed}
+        </span>
+        <div
+          className={cn(
+            "w-px h-2.5 rotate-12",
+            percentage > 0 ? "bg-primary/30" : "bg-text-tertiary/20",
+          )}
+        />
+        <span className="text-[9px] font-bold text-text-tertiary leading-none uppercase tracking-tighter">
+          {total}
+        </span>
+      </div>
+    </div>
+  );
+};
+
 export function TaskDrawer({ task, onClose, isOpen, onRefresh }) {
   const { id: projectId } = useParams();
   const [formData, setFormData] = useState({
@@ -37,6 +79,7 @@ export function TaskDrawer({ task, onClose, isOpen, onRefresh }) {
     kanban_status: "todo",
     priority: "Medium",
     due_date: "",
+    due_time: "",
     is_milestone: false,
   });
   const [isSaving, setIsSaving] = useState(false);
@@ -56,6 +99,29 @@ export function TaskDrawer({ task, onClose, isOpen, onRefresh }) {
   const [urlTitleInput, setUrlTitleInput] = useState("");
   const [newSubtask, setNewSubtask] = useState("");
 
+  const [liveTotalTime, setLiveTotalTime] = useState(0);
+
+  useEffect(() => {
+    if (!task) return;
+    setLiveTotalTime(task.time_spent || 0);
+
+    let interval = null;
+    if (task.timer_started_at) {
+      const start = new Date(task.timer_started_at).getTime();
+      if (!isNaN(start) && start > 0) {
+        interval = setInterval(() => {
+          const now = Date.now();
+          let elapsedSeconds = Math.floor((now - start) / 1000);
+          if (elapsedSeconds > 86400) {
+            elapsedSeconds = 86400; // Cap visual timer at 24h
+          }
+          setLiveTotalTime((task.time_spent || 0) + elapsedSeconds);
+        }, 1000);
+      }
+    }
+    return () => clearInterval(interval);
+  }, [task]);
+
   useEffect(() => {
     setUrlInput("");
     setUrlTitleInput("");
@@ -69,8 +135,25 @@ export function TaskDrawer({ task, onClose, isOpen, onRefresh }) {
         due_date: task.due_date
           ? new Date(task.due_date).toISOString().split("T")[0]
           : "",
+        due_time: task.due_date
+          ? new Date(task.due_date).toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+              hour12: false,
+            })
+          : "",
         is_milestone: task.is_milestone || false,
-        subtasks: Array.isArray(task.subtasks) ? task.subtasks : [],
+        subtasks: (() => {
+          if (typeof task.subtasks === "string") {
+            try {
+              return JSON.parse(task.subtasks);
+            } catch (err) {
+              console.error("Failed to parse subtasks:", err);
+              return [];
+            }
+          }
+          return Array.isArray(task.subtasks) ? task.subtasks : [];
+        })(),
       });
 
       // Load existing attachments for the task (if backend starts returning them)
@@ -87,13 +170,19 @@ export function TaskDrawer({ task, onClose, isOpen, onRefresh }) {
           : [],
       );
     } else {
+      const now = new Date();
       setFormData({
         title: "",
         description: "",
         category: "General",
         kanban_status: "todo",
         priority: "Medium",
-        due_date: "",
+        due_date: now.toISOString().split("T")[0],
+        due_time: now.toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: false,
+        }),
         is_milestone: false,
         subtasks: [],
       });
@@ -147,8 +236,11 @@ export function TaskDrawer({ task, onClose, isOpen, onRefresh }) {
   if (!isOpen) return null;
 
   const handleAddSubtask = (e) => {
-    if (e.key === "Enter" && newSubtask.trim()) {
-      e.preventDefault();
+    // If it's a keydown event, only proceed if it's "Enter"
+    if (e && e.key && e.key !== "Enter") return;
+
+    if (newSubtask.trim()) {
+      if (e && e.preventDefault) e.preventDefault();
       setFormData((prev) => ({
         ...prev,
         subtasks: [
@@ -295,7 +387,17 @@ export function TaskDrawer({ task, onClose, isOpen, onRefresh }) {
         setUploadingAttachment(false);
       }
 
-      const submissionData = { ...formData, attachment_ids: attachmentIds };
+      let finalDueDate = formData.due_date || null;
+      if (formData.due_date && formData.due_time) {
+        finalDueDate = `${formData.due_date}T${formData.due_time}`;
+      }
+
+      const submissionData = {
+        ...formData,
+        due_date: finalDueDate || null,
+        attachment_ids: attachmentIds,
+      };
+      delete submissionData.due_time;
 
       if (task?.id) {
         await taskService.updateTask(projectId, task.id, submissionData);
@@ -412,36 +514,19 @@ export function TaskDrawer({ task, onClose, isOpen, onRefresh }) {
               />
             </div>
 
-            {/* Category */}
-            <div>
-              <CreatableSelect
-                label="Category"
-                name="category"
-                value={formData.category}
-                options={categories}
-                onChange={handleChange}
-                onCreateOption={handleCreateCategory}
-                onDeleteOption={handleDeleteCategory}
-                placeholder="Select or create category"
-              />
-            </div>
-
-            {/* Grid for Due Date & Priority */}
+            {/* Grid for Category & Priority */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-text-secondary dark:text-gray-300 mb-1.5">
-                  Due Date
-                </label>
-                <div className="relative">
-                  <input
-                    type="date"
-                    name="due_date"
-                    value={formData.due_date}
-                    onChange={handleChange}
-                    className="w-full pl-4 pr-10 py-2.5 text-sm bg-gray-50 dark:bg-gray-800/50 border border-border-light dark:border-border-dark rounded-lg focus:ring-2 focus:ring-primary/20 outline-none text-text-primary dark:text-white font-medium transition-all"
-                  />
-                  <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-tertiary pointer-events-none" />
-                </div>
+                <CreatableSelect
+                  label="Category"
+                  name="category"
+                  value={formData.category}
+                  options={categories}
+                  onChange={handleChange}
+                  onCreateOption={handleCreateCategory}
+                  onDeleteOption={handleDeleteCategory}
+                  placeholder="Select category"
+                />
               </div>
 
               <div>
@@ -461,20 +546,41 @@ export function TaskDrawer({ task, onClose, isOpen, onRefresh }) {
                     <option value="Critical">Critical</option>
                   </select>
                   <div className="absolute right-3 top-1/2 -translate-y-1/2 text-text-tertiary pointer-events-none">
-                    <svg
-                      className="h-4 w-4"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="2"
-                        d="M19 9l-7 7-7-7"
-                      ></path>
-                    </svg>
+                    <ChevronDown className="h-4 w-4" />
                   </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Grid for Due Date & Time */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-text-secondary dark:text-gray-300 mb-1.5">
+                  Due Date
+                </label>
+                <div className="relative group">
+                  <input
+                    type="date"
+                    name="due_date"
+                    value={formData.due_date}
+                    onChange={handleChange}
+                    className="w-full pl-4 pr-3 py-2.5 text-sm bg-gray-50 dark:bg-gray-800/50 border border-border-light dark:border-border-dark rounded-lg focus:ring-2 focus:ring-primary/20 outline-none text-text-primary dark:text-white font-medium transition-all"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-text-secondary dark:text-gray-300 mb-1.5">
+                  Due Time
+                </label>
+                <div className="relative group">
+                  <input
+                    type="time"
+                    name="due_time"
+                    value={formData.due_time}
+                    onChange={handleChange}
+                    className="w-full pl-4 pr-3 py-2.5 text-sm bg-gray-50 dark:bg-gray-800/50 border border-border-light dark:border-border-dark rounded-lg focus:ring-2 focus:ring-primary/20 outline-none text-text-primary dark:text-white font-medium transition-all"
+                  />
                 </div>
               </div>
             </div>
@@ -515,12 +621,22 @@ export function TaskDrawer({ task, onClose, isOpen, onRefresh }) {
 
             {/* Subtasks */}
             <div>
-              <label className="block text-sm font-medium text-text-secondary dark:text-gray-300 mb-1.5">
-                Subtasks{" "}
-                <span className="text-text-tertiary font-normal">
-                  (Optional)
-                </span>
-              </label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-sm font-medium text-text-secondary dark:text-gray-300">
+                  Subtasks{" "}
+                  <span className="text-text-tertiary font-normal">
+                    (Optional)
+                  </span>
+                </label>
+                {formData.subtasks.length > 0 && (
+                  <CapsuleProgress
+                    completed={
+                      formData.subtasks.filter((s) => s.is_completed).length
+                    }
+                    total={formData.subtasks.length}
+                  />
+                )}
+              </div>
 
               <div className="border border-border-light dark:border-border-dark bg-gray-50 dark:bg-gray-800/50 rounded-lg p-2 min-h-[60px]">
                 <div className="space-y-1">
@@ -530,15 +646,33 @@ export function TaskDrawer({ task, onClose, isOpen, onRefresh }) {
                       className="group flex items-center justify-between gap-3 p-2 rounded-md hover:bg-white dark:hover:bg-surface-dark transition-colors border border-transparent hover:border-border-light dark:hover:border-border-dark hover:shadow-sm"
                     >
                       <label className="flex items-center gap-3 cursor-pointer overflow-hidden flex-1">
-                        <input
-                          type="checkbox"
-                          checked={st.is_completed}
-                          onChange={() => toggleSubtask(st.id)}
-                          className="h-4 w-4 rounded border-border-light text-primary focus:ring-primary/20 cursor-pointer"
-                        />
+                        <div className="relative flex items-center justify-center shrink-0">
+                          <input
+                            type="checkbox"
+                            checked={st.is_completed}
+                            onChange={() => toggleSubtask(st.id)}
+                            className="peer sr-only"
+                          />
+                          <div
+                            className={cn(
+                              "h-5 w-5 rounded border-2 transition-all duration-200 flex items-center justify-center",
+                              "border-gray-300 dark:border-gray-600 bg-white dark:bg-surface-dark peer-hover:border-primary/50",
+                              "peer-checked:bg-primary peer-checked:border-primary",
+                            )}
+                          >
+                            <Check
+                              className={cn(
+                                "h-3 w-3 text-white transition-all duration-200 stroke-[4px]",
+                                st.is_completed
+                                  ? "scale-100 opacity-100"
+                                  : "scale-50 opacity-0",
+                              )}
+                            />
+                          </div>
+                        </div>
                         <span
                           className={cn(
-                            "text-sm truncate transition-colors",
+                            "text-sm truncate transition-colors font-medium",
                             st.is_completed
                               ? "text-text-tertiary line-through"
                               : "text-text-secondary dark:text-gray-200",
@@ -557,20 +691,134 @@ export function TaskDrawer({ task, onClose, isOpen, onRefresh }) {
                     </div>
                   ))}
 
-                  <div className="flex items-center gap-3 p-2 mt-1">
-                    <Plus className="h-4 w-4 text-text-tertiary shrink-0" />
+                  <div className="flex items-center gap-2 p-1.5 mt-1 bg-gray-50 dark:bg-gray-800/80 rounded-md border border-border-light dark:border-border-dark focus-within:ring-2 focus-within:ring-primary/20 transition-all">
                     <input
                       type="text"
                       value={newSubtask}
                       onChange={(e) => setNewSubtask(e.target.value)}
-                      onKeyDown={handleAddSubtask}
-                      placeholder="Add a subtask and press Enter..."
-                      className="bg-transparent border-none p-0 text-sm focus:ring-0 w-full text-text-secondary dark:text-gray-300 placeholder:text-gray-400"
+                      onKeyDown={(e) =>
+                        e.key === "Enter" && handleAddSubtask(e)
+                      }
+                      placeholder="Add a subtask..."
+                      className="bg-transparent border-none p-1.5 text-sm focus:ring-0 flex-1 text-text-secondary dark:text-gray-300 placeholder:text-gray-400"
                     />
+                    <button
+                      type="button"
+                      onClick={(e) => handleAddSubtask(e)}
+                      disabled={!newSubtask.trim()}
+                      className="p-1 text-primary hover:bg-primary/10 rounded-md transition-colors disabled:opacity-30"
+                      title="Add Subtask"
+                    >
+                      <Plus className="h-5 w-5" />
+                    </button>
                   </div>
                 </div>
               </div>
             </div>
+
+            {(() => {
+              if (!task?.id || !task?.time_logs) return null;
+              let parsedLogs = [];
+              if (typeof task.time_logs === "string") {
+                try {
+                  parsedLogs = JSON.parse(task.time_logs);
+                } catch (err) {
+                  console.error("Failed to parse time_logs:", err);
+                }
+              } else if (Array.isArray(task.time_logs)) {
+                parsedLogs = task.time_logs;
+              }
+
+              if (parsedLogs.length === 0) return null;
+
+              return (
+                <div className="mt-2 text-sm">
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-sm font-medium text-text-secondary dark:text-gray-300 flex items-center gap-2">
+                      <Clock className="h-4 w-4 text-primary" />
+                      Time Tracking Log
+                    </label>
+                    <span className="text-xs font-semibold text-primary bg-primary/10 px-2 py-1 flex items-center rounded-full">
+                      Total:{" "}
+                      {(() => {
+                        const h = Math.floor(liveTotalTime / 3600);
+                        const m = Math.floor((liveTotalTime % 3600) / 60);
+                        const s = liveTotalTime % 60;
+                        return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+                      })()}
+                    </span>
+                  </div>
+                  {/* Scrollable container: Max height allows ~3 items, then it scrolls */}
+                  <div className="max-h-[200px] overflow-y-auto custom-scrollbar pr-2 space-y-2.5">
+                    {parsedLogs.map((log, index) => {
+                      const startDate = new Date(log.start_time);
+                      const endDate = new Date(log.end_time);
+                      // Calculate exactly from timestamps for maximum precision
+                      const diffInSeconds = Math.max(
+                        0,
+                        Math.floor(
+                          (endDate.getTime() - startDate.getTime()) / 1000,
+                        ),
+                      );
+
+                      const h = Math.floor(diffInSeconds / 3600);
+                      const m = Math.floor((diffInSeconds % 3600) / 60);
+                      const s = diffInSeconds % 60;
+                      const durationStr = `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+
+                      // Simple format helper to avoid undefined errors if import fails
+                      const simpleFormatTime = (d) => {
+                        if (isNaN(d.getTime())) return "Invalid Time";
+                        return d.toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                          hour12: true,
+                        });
+                      };
+                      const simpleFormatDate = (d) => {
+                        if (isNaN(d.getTime())) return "Invalid Date";
+                        return d.toLocaleDateString("en-US", {
+                          month: "short",
+                          day: "2-digit",
+                          year: "numeric",
+                        });
+                      };
+
+                      return (
+                        <div
+                          key={log.id || index}
+                          className="flex justify-between bg-gray-50/40 dark:bg-gray-800/20 rounded-2xl p-3.5 border border-border-light dark:border-border-dark transition-all hover:bg-white dark:hover:bg-surface-dark hover:shadow-sm"
+                        >
+                          <div className="flex flex-col gap-1">
+                            <span className="text-[13.5px] font-medium text-text-primary dark:text-gray-200 tracking-wide">
+                              {simpleFormatDate(startDate)}
+                            </span>
+                            <span className="text-xs text-text-tertiary tracking-wide">
+                              {simpleFormatTime(startDate)}
+                            </span>
+                          </div>
+
+                          <div className="flex flex-col justify-end pb-0.5">
+                            <span className="text-xs text-text-tertiary opacity-70">
+                              →
+                            </span>
+                          </div>
+
+                          <div className="flex flex-col gap-1 items-end">
+                            <span className="text-[13.5px] font-medium text-success tracking-wide">
+                              {durationStr}
+                            </span>
+                            <span className="text-xs text-text-tertiary tracking-wide">
+                              {simpleFormatTime(endDate)}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* Attachments */}
             <div>

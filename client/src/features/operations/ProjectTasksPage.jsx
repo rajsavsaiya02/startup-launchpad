@@ -22,6 +22,7 @@ export function ProjectTasksPage() {
   const [isTaskDrawerOpen, setIsTaskDrawerOpen] = useState(false);
   const [taskSearchQuery, setTaskSearchQuery] = useState("");
   const [taskPriorityFilter, setTaskPriorityFilter] = useState("All");
+  const [taskCategoryFilter, setTaskCategoryFilter] = useState("All");
 
   const fetchTasks = async () => {
     setIsTasksLoading(true);
@@ -76,8 +77,14 @@ export function ProjectTasksPage() {
       .includes(taskSearchQuery.toLowerCase());
     const matchesPriority =
       taskPriorityFilter === "All" || task.priority === taskPriorityFilter;
-    return matchesSearch && matchesPriority;
+    const matchesCategory =
+      taskCategoryFilter === "All" || task.category === taskCategoryFilter;
+    return matchesSearch && matchesPriority && matchesCategory;
   });
+
+  const uniqueCategories = Array.from(
+    new Set(tasks.map((t) => t.category).filter(Boolean)),
+  ).sort();
 
   const tasksByStatus = {
     todo: filteredTasks.filter((t) => t.kanban_status === "todo"),
@@ -128,6 +135,23 @@ export function ProjectTasksPage() {
             />
           </div>
           <div className="flex items-center gap-3 w-full sm:w-auto">
+            <div className="relative w-full sm:w-40 shrink-0">
+              <Filter className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-tertiary" />
+              <select
+                value={taskCategoryFilter}
+                onChange={(e) => setTaskCategoryFilter(e.target.value)}
+                className="w-full pl-9 pr-8 py-2 text-sm bg-white dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-lg focus:ring-2 focus:ring-primary/20 transition-all outline-none appearance-none cursor-pointer"
+              >
+                <option value="All">All Categories</option>
+                {uniqueCategories.map((cat) => (
+                  <option key={cat} value={cat}>
+                    {cat}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-tertiary pointer-events-none" />
+            </div>
+
             <div className="relative w-full sm:w-40 shrink-0">
               <Filter className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-tertiary" />
               <select
