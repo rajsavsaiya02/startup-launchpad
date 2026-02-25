@@ -14,12 +14,17 @@ import { AuthSuccessPage } from "../features/auth/AuthSuccessPage";
 import { ForgotPasswordPage } from "../features/auth/ForgotPasswordPage";
 import { CreateWorkspacePage } from "../features/auth/CreateWorkspacePage";
 import { ProjectsDashboard } from "../features/operations/ProjectsDashboard";
+import { OrgDashboardOverview } from "../features/organization/dashboard/OrgDashboardOverview";
 import { OrgProjectsDashboard } from "../features/organization/projects/OrgProjectsDashboard";
 import { OrgProjectDetailsPage } from "../features/organization/projects/OrgProjectDetailsPage";
 import { OrgProjectTasksPage } from "../features/organization/tasks/OrgProjectTasksPage";
 import { OrgGigListPage } from "../features/organization/gigs/OrgGigListPage";
 import { OrgGigDetailsPage } from "../features/organization/gigs/OrgGigDetailsPage";
 import { OrgGigApplicationsPage } from "../features/organization/gigs/OrgGigApplicationsPage";
+import { OrgManagementPage } from "../features/organization/management/OrgManagementPage";
+import { OrgWorkspaceSettings } from "../features/organization/settings/OrgWorkspaceSettings";
+import { OrgPublicProfileSettings } from "../features/organization/settings/OrgPublicProfileSettings";
+import { OrgPublicProfilePage } from "../features/organization/public/OrgPublicProfilePage";
 import { FinancialOverview } from "../features/finance/FinancialOverview";
 import { TalentMarketplace } from "../features/talent/TalentMarketplace";
 import { LandingPage } from "../pages/LandingPage";
@@ -85,6 +90,7 @@ import { ProtectedRoute } from "../components/layout/ProtectedRoute";
 import { AdminGuard } from "../components/layout/AdminGuard";
 import { PublicAuthGuard } from "../components/layout/PublicAuthGuard";
 import { AdminPlaceholderPage } from "../components/common/AdminPlaceholderPage";
+import { OrgGuard } from "../components/layout/OrgGuard";
 
 export function AppRoutes() {
   return (
@@ -317,7 +323,6 @@ export function AppRoutes() {
             path="/dashboard/gigs/:id/applications"
             element={<GigApplicationsPage />}
           />
-
           {/* Productivity Module (Renamed from Work) */}
           <Route
             path="/productivity"
@@ -332,36 +337,38 @@ export function AppRoutes() {
             element={<ProjectDetailsPage />}
           />
           <Route path="/productivity/tasks" element={<ProjectTasksPage />} />
-
           <Route
-            path="/organization"
-            element={<Navigate to="projects" replace />}
+            path="/org"
+            element={<Navigate to="/org/dashboard" replace />}
           />
-          <Route
-            path="/organization/projects"
-            element={<OrgProjectsDashboard />}
-          />
-          <Route
-            path="/organization/projects/:id"
-            element={<OrgProjectDetailsPage />}
-          />
-          <Route path="/organization/tasks" element={<OrgProjectTasksPage />} />
-          <Route path="/organization/gigs" element={<OrgGigListPage />} />
-          <Route
-            path="/organization/gigs/:id"
-            element={<OrgGigDetailsPage />}
-          />
-          <Route
-            path="/organization/gigs/:id/applications"
-            element={<OrgGigApplicationsPage />}
-          />
-          <Route path="/organization/team" element={<TeamPage />} />
+          {/* Organization Protected Routes */}
+          <Route element={<OrgGuard />}>
+            <Route path="/org/dashboard" element={<OrgDashboardOverview />} />
+            <Route path="/org/projects" element={<OrgProjectsDashboard />} />
+            <Route
+              path="/org/projects/:id"
+              element={<OrgProjectDetailsPage />}
+            />
+            <Route path="/org/tasks" element={<OrgProjectTasksPage />} />
+            <Route path="/org/gigs" element={<OrgGigListPage />} />
+            <Route path="/org/gigs/:id" element={<OrgGigDetailsPage />} />
+            <Route
+              path="/org/gigs/:id/applications"
+              element={<OrgGigApplicationsPage />}
+            />
+            <Route path="/org/management" element={<OrgManagementPage />} />
+            <Route
+              path="/org/public-profile"
+              element={<OrgPublicProfileSettings />}
+            />
+            <Route path="/org/settings" element={<OrgWorkspaceSettings />} />
+          </Route>
+          {/* Close OrgGuard */}
           <Route path="/talent" element={<TalentMarketplace />} />
           <Route
             path="/talent/profile/:id"
             element={<FreelancerProfilePage />}
           />
-
           {/* Financial Module (Legacy/Founder Only) - Keep at root or move to new module? 
               For now keeping at root /financials but it might not show in sidebar unless configured.
               Let's keep it accessible.
@@ -369,19 +376,15 @@ export function AppRoutes() {
           <Route path="/financials" element={<FinancialOverview />} />
           <Route path="/financials/expenses" element={<ExpenseListPage />} />
           <Route path="/financials/analytics" element={<AnalyticsPage />} />
-
           {/* Settings Module */}
           <Route path="/settings" element={<Navigate to="profile" replace />} />
-
           {/* View Profile (Public/Read-only view) */}
           <Route path="/settings/profile" element={<UserProfilePage />} />
-
           {/* Edit Profile / General Settings */}
           <Route
             path="/settings/general"
             element={<UserSettingsPage section="profile" />}
           />
-
           {/* Other Settings Sections */}
           <Route
             path="/settings/security"
@@ -399,9 +402,7 @@ export function AppRoutes() {
             path="/settings/workspace"
             element={<UserSettingsPage section="workspace" />}
           />
-
           <Route path="/settings/user/:id" element={<UserProfilePage />} />
-
           {/* Legacy Redirects (for backward compatibility if needed) */}
           <Route
             path="/projects"
@@ -413,7 +414,7 @@ export function AppRoutes() {
           />
           <Route
             path="/team"
-            element={<Navigate to="/organization/team" replace />}
+            element={<Navigate to="/org/management" replace />}
           />
           <Route
             path="/gigs"
@@ -431,6 +432,7 @@ export function AppRoutes() {
         <Route path="/not-found" element={<NotFoundPage />} />
         <Route path="/404" element={<NotFoundPage />} />
         <Route path="/sitemap" element={<SitemapPage />} />
+        <Route path="/o/:slug" element={<OrgPublicProfilePage />} />
         <Route path="/:slug" element={<DynamicPage />} />
       </Route>
 

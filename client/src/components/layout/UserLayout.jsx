@@ -4,27 +4,36 @@ import { UserHeader } from "./UserHeader";
 import { UserSidebar } from "./UserSidebar";
 import { cn } from "../../utils/cn";
 import { useSettings } from "../../context/SettingsContext";
+import { LayoutProvider } from "../../context/LayoutContext";
+import { useLayout } from "../../context/LayoutContextStore";
 
-export function UserLayout() {
+function UserLayoutContent() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(true);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { settings } = useSettings();
+  const { isSidebarHidden } = useLayout();
 
   return (
     <div className="min-h-screen bg-background-light dark:bg-background-dark font-sans text-text-primary transition-colors duration-300">
       {/* 1. User Sidebar */}
-      <UserSidebar
-        isCollapsed={isSidebarCollapsed}
-        onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-        isMobileOpen={isMobileMenuOpen}
-        onMobileClose={() => setIsMobileMenuOpen(false)}
-      />
+      {!isSidebarHidden && (
+        <UserSidebar
+          isCollapsed={isSidebarCollapsed}
+          onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+          isMobileOpen={isMobileMenuOpen}
+          onMobileClose={() => setIsMobileMenuOpen(false)}
+        />
+      )}
 
       {/* 2. Main Layout Area */}
       <div
         className={cn(
           "flex flex-col min-h-screen transition-all duration-300 ease-in-out",
-          isSidebarCollapsed ? "lg:ml-[80px]" : "lg:ml-[280px]",
+          !isSidebarHidden
+            ? isSidebarCollapsed
+              ? "lg:ml-[80px]"
+              : "lg:ml-[280px]"
+            : "lg:ml-0",
         )}
       >
         {/* Top Header */}
@@ -50,5 +59,13 @@ export function UserLayout() {
         </footer>
       </div>
     </div>
+  );
+}
+
+export function UserLayout() {
+  return (
+    <LayoutProvider>
+      <UserLayoutContent />
+    </LayoutProvider>
   );
 }

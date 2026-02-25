@@ -9,8 +9,10 @@ const auditRoutes = require("./auditRoutes");
 const systemRoutes = require("./systemRoutes");
 const cmsRoutes = require("./cmsRoutes");
 const userRoutes = require("./userRoutes");
+const organizationRoutes = require("./organizationRoutes");
 
 router.use("/users", userRoutes);
+router.use("/org", organizationRoutes);
 router.use("/auth", authRoutes);
 router.use("/admin/audit", auditRoutes);
 router.use("/admin/system", systemRoutes);

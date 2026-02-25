@@ -132,28 +132,31 @@ const PROCESSES = [
   },
 ];
 
-export function TeamPage() {
+export function TeamPage({ hideHeader = false }) {
   return (
     <div className="space-y-8 animate-in fade-in duration-500 pb-20">
       {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start gap-6 border-b border-border-light dark:border-border-dark pb-6">
-        <div>
-          <h1 className="text-3xl font-bold text-text-primary dark:text-white">
-            Organization Overview
-          </h1>
-          <p className="text-text-secondary dark:text-gray-400 mt-1">
-            Manage your organization structure, members, and operational health.
-          </p>
+      {!hideHeader && (
+        <div className="flex flex-col md:flex-row justify-between items-start gap-6 border-b border-border-light dark:border-border-dark pb-6">
+          <div>
+            <h1 className="text-3xl font-bold text-text-primary dark:text-white">
+              Organization Overview
+            </h1>
+            <p className="text-text-secondary dark:text-gray-400 mt-1">
+              Manage your organization structure, members, and operational
+              health.
+            </p>
+          </div>
+          <div className="flex gap-3">
+            <Button variant="secondary" className="gap-2">
+              <Mail className="h-4 w-4" /> Invite
+            </Button>
+            <Button className="gap-2">
+              <Plus className="h-4 w-4" /> Add Member
+            </Button>
+          </div>
         </div>
-        <div className="flex gap-3">
-          <Button variant="secondary" className="gap-2">
-            <Mail className="h-4 w-4" /> Invite
-          </Button>
-          <Button className="gap-2">
-            <Plus className="h-4 w-4" /> Add Member
-          </Button>
-        </div>
-      </div>
+      )}
 
       {/* Pulse Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">

@@ -18,7 +18,7 @@ import { Avatar } from "../../../components/ui/Avatar";
 import { Card } from "../../../components/ui/Card";
 
 export function OrgGigDetailsPage() {
-  const { id } = useParams();
+  const { id: _id } = useParams();
 
   // Mock Data
   const gig = {
@@ -49,7 +49,7 @@ export function OrgGigDetailsPage() {
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 text-sm text-text-tertiary">
         <Link
-          to="/organization/gigs"
+          to="/org/gigs"
           className="hover:text-primary flex items-center gap-1"
         >
           <ArrowLeft className="h-4 w-4" /> Back to Gigs

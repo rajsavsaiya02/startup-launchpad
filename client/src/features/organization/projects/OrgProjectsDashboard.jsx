@@ -230,9 +230,7 @@ export function OrgProjectsDashboard() {
           {filteredProjects.map((project) => (
             <div
               key={project.id}
-              onDoubleClick={() =>
-                navigate(`/organization/projects/${project.id}`)
-              }
+              onDoubleClick={() => navigate(`/org/projects/${project.id}`)}
               className="group cursor-pointer"
             >
               <Card
@@ -346,7 +344,7 @@ export function OrgProjectsDashboard() {
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          navigate(`/organization/projects/${project.id}`);
+                          navigate(`/org/projects/${project.id}`);
                         }}
                         className="p-2 text-text-tertiary hover:text-primary hover:bg-gray-100 dark:hover:bg-gray-700/50 rounded-lg transition-colors"
                         title="Open"
@@ -377,7 +375,7 @@ export function OrgProjectsDashboard() {
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            navigate(`/organization/projects/${project.id}`);
+                            navigate(`/org/projects/${project.id}`);
                           }}
                           className="text-text-tertiary hover:text-primary transition-colors p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700/50"
                           title="Open Project"

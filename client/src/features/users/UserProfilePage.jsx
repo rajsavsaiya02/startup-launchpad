@@ -441,38 +441,43 @@ export function UserProfilePage() {
                 )}
               </div>
 
-              <div className="space-y-1 mb-4">
-                <h2 className="text-2xl font-bold text-text-primary dark:text-white tracking-tight">
+              <div className="space-y-3 mb-6 overflow-hidden">
+                <h2
+                  className="text-2xl font-bold text-text-primary dark:text-white tracking-tight truncate px-2"
+                  title={`${data.firstName} ${data.lastName}`}
+                >
                   {data.firstName} {data.lastName}
                 </h2>
-                <p
-                  className="text-sm font-medium text-primary line-clamp-1 px-4"
-                  title={data.job_title || data.department}
-                >
-                  {data.job_title || data.department || "Team Member"}
-                </p>
+
+                {data.department && (
+                  <p className="text-xs font-black text-blue-500 dark:text-blue-400 uppercase tracking-[0.2em] px-2 truncate">
+                    {data.department}
+                  </p>
+                )}
+
+                <div className="flex justify-center px-4">
+                  <div className="w-full max-w-[280px] bg-gray-50/80 dark:bg-gray-800/40 border border-border-light/60 dark:border-border-dark/60 rounded-full py-3 px-4 shadow-xs">
+                    <p
+                      className="text-[9px] font-black text-text-tertiary uppercase tracking-widest leading-normal"
+                      title={data.job_title}
+                    >
+                      {data.job_title || "Team Member"}
+                    </p>
+                  </div>
+                </div>
               </div>
 
-              <div className="flex gap-2 justify-center mb-8">
-                <Badge
-                  variant="neutral"
-                  className="px-3 py-1 uppercase tracking-widest text-[10px] font-bold shadow-xs bg-gray-100 text-text-secondary border border-gray-200"
-                >
-                  {data.department || data.role || "User"}
-                </Badge>
-              </div>
-
-              <div className="space-y-4 mb-8 text-left">
+              <div className="space-y-3 mb-8 text-left">
                 {data.office_location && (
-                  <div className="flex items-center gap-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors group">
-                    <div className="h-8 w-8 rounded-full bg-white dark:bg-surface-dark flex items-center justify-center shadow-xs text-text-tertiary group-hover:text-primary transition-colors">
+                  <div className="flex items-center gap-4 p-3.5 rounded-2xl bg-gray-50/50 dark:bg-gray-800/30 border border-transparent hover:border-border-light dark:hover:border-border-dark transition-all group">
+                    <div className="h-10 w-10 shrink-0 rounded-xl bg-white dark:bg-surface-dark flex items-center justify-center shadow-sm text-text-tertiary group-hover:text-primary transition-colors border border-border-light dark:border-border-dark">
                       <MapPin className="h-4 w-4" />
                     </div>
-                    <div className="overflow-hidden">
-                      <p className="text-[10px] uppercase font-bold text-text-tertiary tracking-wide">
+                    <div className="min-w-0">
+                      <p className="text-[10px] uppercase font-black text-text-tertiary tracking-widest mb-0.5 opacity-60">
                         Location
                       </p>
-                      <p className="text-sm text-text-secondary truncate font-medium">
+                      <p className="text-sm text-text-secondary truncate font-semibold">
                         {data.office_location}
                       </p>
                     </div>
@@ -480,16 +485,16 @@ export function UserProfilePage() {
                 )}
 
                 {data.email && (
-                  <div className="flex items-center gap-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors group">
-                    <div className="h-8 w-8 rounded-full bg-white dark:bg-surface-dark flex items-center justify-center shadow-xs text-text-tertiary group-hover:text-primary transition-colors">
+                  <div className="flex items-center gap-4 p-3.5 rounded-2xl bg-gray-50/50 dark:bg-gray-800/30 border border-transparent hover:border-border-light dark:hover:border-border-dark transition-all group">
+                    <div className="h-10 w-10 shrink-0 rounded-xl bg-white dark:bg-surface-dark flex items-center justify-center shadow-sm text-text-tertiary group-hover:text-primary transition-colors border border-border-light dark:border-border-dark">
                       <Mail className="h-4 w-4" />
                     </div>
-                    <div className="overflow-hidden">
-                      <p className="text-[10px] uppercase font-bold text-text-tertiary tracking-wide">
+                    <div className="min-w-0">
+                      <p className="text-[10px] uppercase font-black text-text-tertiary tracking-widest mb-0.5 opacity-60">
                         Email
                       </p>
                       <p
-                        className="text-sm text-text-secondary truncate font-medium"
+                        className="text-sm text-text-secondary truncate font-semibold"
                         title={data.email}
                       >
                         {data.email}
@@ -499,22 +504,22 @@ export function UserProfilePage() {
                 )}
 
                 {data.phone_number && (
-                  <div className="flex items-center gap-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors group">
-                    <div className="h-8 w-8 rounded-full bg-white dark:bg-surface-dark flex items-center justify-center shadow-xs text-text-tertiary group-hover:text-primary transition-colors shrink-0">
+                  <div className="flex items-center gap-4 p-3.5 rounded-2xl bg-gray-50/50 dark:bg-gray-800/30 border border-transparent hover:border-border-light dark:hover:border-border-dark transition-all group">
+                    <div className="h-10 w-10 shrink-0 rounded-xl bg-white dark:bg-surface-dark flex items-center justify-center shadow-sm text-text-tertiary group-hover:text-primary transition-colors border border-border-light dark:border-border-dark">
                       <Phone className="h-4 w-4" />
                     </div>
-                    <div className="overflow-hidden w-full">
-                      <p className="text-[10px] uppercase font-bold text-text-tertiary tracking-wide mb-0.5">
+                    <div className="min-w-0 w-full">
+                      <p className="text-[10px] uppercase font-black text-text-tertiary tracking-widest mb-0.5 opacity-60">
                         Contact
                       </p>
-                      <div className="pointer-events-none mt-0.5">
+                      <div className="pointer-events-none">
                         <PhoneInput
                           value={data.phone_number}
                           displayInitialValueAsLocalNumber
                           disabled={true}
                           disableDropdown={true}
-                          inputClass="!bg-transparent !border-none !text-sm !font-medium !text-text-secondary !h-auto !w-full !cursor-text !pl-9 !m-0 !py-0"
-                          buttonClass="!bg-transparent !border-none !absolute !top-0 !left-0 !bottom-0"
+                          inputClass="!bg-transparent !border-none !text-sm !font-semibold !text-text-secondary !h-auto !w-full !cursor-text !pl-0 !m-0 !py-0"
+                          buttonClass="hidden"
                           dropdownClass="hidden"
                           containerClass="!w-full !relative !h-5"
                         />

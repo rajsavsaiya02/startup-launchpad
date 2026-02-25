@@ -181,10 +181,7 @@ export function OrgProjectDetailsPage() {
     return (
       <div className="flex flex-col min-h-[calc(100vh-4rem)] bg-gray-50/50 dark:bg-background-dark overflow-y-auto p-6 items-center justify-center">
         <p className="text-text-secondary">Project not found.</p>
-        <Button
-          onClick={() => navigate("/organization/projects")}
-          className="mt-4"
-        >
+        <Button onClick={() => navigate("/org/projects")} className="mt-4">
           Back to Projects
         </Button>
       </div>
@@ -200,7 +197,7 @@ export function OrgProjectDetailsPage() {
           {/* Top Bar: Navigation & Main Action (Same Row for Compactness) */}
           <div className="flex justify-between items-center mb-4">
             <button
-              onClick={() => navigate("/organization/projects")}
+              onClick={() => navigate("/org/projects")}
               className="flex items-center gap-2 text-text-tertiary hover:text-text-primary transition-colors text-xs font-bold group"
             >
               <ArrowLeft className="h-3.5 w-3.5 group-hover:-translate-x-1 transition-transform" />

@@ -67,7 +67,7 @@ export function OrgGigApplicationsPage() {
       {/* Header */}
       <div className="flex flex-col gap-4 border-b border-border-light dark:border-border-dark pb-6">
         <Link
-          to={`/organization/gigs/${id}`}
+          to={`/org/gigs/${id}`}
           className="flex items-center gap-2 text-sm text-text-tertiary hover:text-primary transition-colors w-fit"
         >
           <ArrowLeft className="h-4 w-4" /> Back to Gig Details
@@ -170,7 +170,7 @@ export function OrgGigApplicationsPage() {
 
                   <div className="flex gap-3 mt-auto">
                     <Link
-                      to={`/organization/talent/profile/${app.id}`}
+                      to={`/org/talent/profile/${app.id}`}
                       className="flex-1"
                     >
                       <Button className="w-full">View Profile</Button>

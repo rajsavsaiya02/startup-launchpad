@@ -20,43 +20,64 @@ import {
   CreditCard,
   Palette,
   Globe,
+  Building,
 } from "lucide-react";
 
 // --- Configuration: User Dual Navigation ---
 const USER_MODULE_NAV_CONFIG = {
   dashboard: [
-    { name: "Overview", path: "/dashboard", icon: LayoutDashboard },
-    { name: "Find Gigs", path: "/dashboard/gigs", icon: Briefcase },
-  ],
-  productivity: [
-    { name: "Projects", path: "/productivity/projects", icon: FolderOpen },
-    { name: "Tasks", path: "/productivity/tasks", icon: CheckSquare },
-  ],
-  organization: [
-    { name: "Projects", path: "/organization/projects", icon: FolderOpen },
-    { name: "Tasks", path: "/organization/tasks", icon: CheckSquare },
-    { name: "Gigs", path: "/organization/gigs", icon: Briefcase },
-    { name: "Team", path: "/organization/team", icon: Users },
-  ],
-  settings: [
-    { name: "My Profile", path: "/settings/profile", icon: User },
-    { name: "Public Profile", path: "/settings/general", icon: Globe },
-    { name: "Account Security", path: "/settings/security", icon: Shield },
-    { name: "Notifications", path: "/settings/notifications", icon: Bell },
-    // { name: "Billing & Plans", path: "/settings/billing", icon: CreditCard }, // TODO: We will develop this later
     {
-      name: "Workspace Customization",
-      path: "/settings/workspace",
-      icon: Palette,
+      title: "Dashboard",
+      items: [
+        { name: "Overview", path: "/dashboard", icon: LayoutDashboard },
+        { name: "Find Gigs", path: "/dashboard/gigs", icon: Briefcase },
+      ],
+    },
+    {
+      title: "Productivity",
+      items: [
+        { name: "Projects", path: "/productivity/projects", icon: FolderOpen },
+        { name: "Tasks", path: "/productivity/tasks", icon: CheckSquare },
+      ],
+    },
+    {
+      title: "Settings",
+      items: [
+        { name: "Public Profile", path: "/settings/general", icon: Globe },
+        { name: "Account Security", path: "/settings/security", icon: Shield },
+        { name: "Notifications", path: "/settings/notifications", icon: Bell },
+        // { name: "Billing & Plans", path: "/settings/billing", icon: CreditCard }, // TODO: We will develop this later
+        {
+          name: "Workspace Customization",
+          path: "/settings/workspace",
+          icon: Palette,
+        },
+      ],
+    },
+  ],
+  org: [
+    {
+      title: "Organization",
+      items: [
+        {
+          name: "Dashboard",
+          path: "/org/dashboard",
+          icon: LayoutDashboard,
+        },
+        { name: "Projects", path: "/org/projects", icon: FolderOpen },
+        { name: "Tasks", path: "/org/tasks", icon: CheckSquare },
+        { name: "Gigs", path: "/org/gigs", icon: Briefcase },
+        { name: "Management", path: "/org/management", icon: Users },
+        { name: "Public Profile", path: "/org/public-profile", icon: Globe },
+        { name: "Settings", path: "/org/settings", icon: Settings },
+      ],
     },
   ],
 };
 
 // Helper: Determine Active Module from Path
 const getActiveModule = (pathname) => {
-  if (pathname.includes("/settings")) return "settings"; // Check settings first to catch /settings/workspace
-  if (pathname.includes("/productivity")) return "productivity";
-  if (pathname.includes("/organization")) return "organization";
+  if (pathname.includes("/org")) return "org";
   return "dashboard"; // Default
 };
 
@@ -71,15 +92,24 @@ export function UserSidebar({
   const { user } = useAuth();
   const activeModule = getActiveModule(location.pathname);
 
-  const navItems =
-    USER_MODULE_NAV_CONFIG[activeModule]?.filter((item) => {
-      // Role-based filtering for sidebar items
-      if (item.name === "Find Gigs" && user?.role === "founder") return false; // Founders might not need this here
-      if (item.name === "Workspace Customization" && user?.role !== "founder")
-        return false;
-      // If we want to hide "Tasks" for someone, we do it here
-      return true;
-    }) || [];
+  const navSections =
+    USER_MODULE_NAV_CONFIG[activeModule]
+      ?.map((section) => ({
+        title: section.title,
+        items: section.items.filter((item) => {
+          // Role-based filtering for sidebar items
+          if (item.name === "Find Gigs" && user?.role === "founder")
+            return false; // Founders might not need this here
+          if (
+            item.name === "Workspace Customization" &&
+            user?.role !== "founder"
+          )
+            return false;
+          // If we want to hide "Tasks" for someone, we do it here
+          return true;
+        }),
+      }))
+      .filter((section) => section.items.length > 0) || [];
 
   return (
     <>
@@ -129,9 +159,16 @@ export function UserSidebar({
               <span className="font-bold text-xl text-text-primary dark:text-white leading-tight tracking-tight">
                 {settings?.platform_name || "LaunchPad"}
               </span>
-              <span className="text-[10px] uppercase font-semibold text-primary tracking-[0.15em] mt-0.5">
-                {activeModule}
-              </span>
+              <div className="flex items-center gap-1.5 mt-0.5 transition-colors duration-300 text-primary">
+                {activeModule === "org" ? (
+                  <Building className="h-3 w-3" />
+                ) : (
+                  <User className="h-3 w-3" />
+                )}
+                <span className="text-[10px] uppercase font-bold tracking-[0.15em]">
+                  {activeModule === "org" ? "Organization" : "Personal"}
+                </span>
+              </div>
             </div>
           </div>
           <button
@@ -144,7 +181,14 @@ export function UserSidebar({
 
         {/* Scrollable Navigation Area */}
         <div className="flex-1 overflow-y-auto overflow-x-hidden py-4 flex flex-col gap-4 custom-scrollbar">
-          <NavSection title={null} items={navItems} isCollapsed={isCollapsed} />
+          {navSections.map((section, idx) => (
+            <NavSection
+              key={idx}
+              title={section.title}
+              items={section.items}
+              isCollapsed={isCollapsed}
+            />
+          ))}
         </div>
 
         {/* Footer / Toggle Area */}

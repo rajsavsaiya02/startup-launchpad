@@ -64,7 +64,7 @@ export function OrgGigListPage() {
           </p>
         </div>
         <div className="flex gap-3">
-          <Link to="/organization/talent">
+          <Link to="/org/talent">
             <Button variant="secondary">Find Talent</Button>
           </Link>
           <Button>Post a Gig</Button>
@@ -138,14 +138,14 @@ export function OrgGigListPage() {
               </div>
 
               <div className="grid grid-cols-2 gap-3">
-                <Link to={`/organization/gigs/${gig.id}`} className="w-full">
+                <Link to={`/org/gigs/${gig.id}`} className="w-full">
                   <Button variant="secondary" className="w-full">
                     Details
                   </Button>
                 </Link>
                 {/* For Demo: Link to Applications page to show the flow */}
                 <Link
-                  to={`/organization/gigs/${gig.id}/applications`}
+                  to={`/org/gigs/${gig.id}/applications`}
                   className="w-full"
                 >
                   <Button className="w-full">Manage</Button>
