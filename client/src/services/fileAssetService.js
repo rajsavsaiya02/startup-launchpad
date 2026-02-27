@@ -19,12 +19,15 @@ class FileAssetService {
   /**
    * Upload a physical file to a given context
    */
-  async uploadFile(contextType, contextId, file, title = "") {
+  async uploadFile(contextType, contextId, file, title = "", description = "") {
     try {
       const formData = new FormData();
       formData.append("file", file);
       if (title) {
         formData.append("title", title);
+      }
+      if (description) {
+        formData.append("description", description);
       }
 
       const response = await apiClient.post(
@@ -46,12 +49,19 @@ class FileAssetService {
   /**
    * Add an external link (Drive, Dropbox, etc.) to a context
    */
-  async attachExternalLink(contextType, contextId, title, url) {
+  async attachExternalLink(
+    contextType,
+    contextId,
+    title,
+    url,
+    description = "",
+  ) {
     try {
       const payload = {
         isExternal: true,
         fileName: title,
         storageUrl: url,
+        description,
       };
       const response = await apiClient.post(
         `/file-assets/context/${contextType}/${contextId}`,
@@ -80,9 +90,12 @@ class FileAssetService {
   /**
    * Update a file asset's name.
    */
-  async updateFileAsset(id, fileName) {
+  async updateFileAsset(id, { fileName, description }) {
     try {
-      const response = await apiClient.put(`/file-assets/${id}`, { fileName });
+      const response = await apiClient.put(`/file-assets/${id}`, {
+        fileName,
+        description,
+      });
       return response.data;
     } catch (error) {
       console.error("Error updating file asset:", error);

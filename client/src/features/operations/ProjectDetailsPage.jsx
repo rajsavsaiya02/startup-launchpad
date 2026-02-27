@@ -38,6 +38,7 @@ import {
   Flag,
   Play,
   Pause,
+  MoreVertical,
 } from "lucide-react";
 import { Button } from "../../components/ui/Button";
 import { Avatar } from "../../components/ui/Avatar";
@@ -57,6 +58,8 @@ import projectService from "../../services/projectService";
 import { toast } from "react-toastify";
 import { motion, AnimatePresence } from "framer-motion";
 import { CreateProjectModal } from "./components/CreateProjectModal";
+import { Dropdown, DropdownItem } from "../../components/ui/Dropdown";
+import { FileDetailModal } from "../../components/files/FileDetailModal";
 
 const STATUS_STYLES = {
   Active:
@@ -278,7 +281,6 @@ export function ProjectDetailsPage() {
   };
 
   const timelineGroups = groupedTasks();
-  const [isFileDrawerOpen, setIsFileDrawerOpen] = useState(false);
   const [isDescExpanded, setIsDescExpanded] = useState(false);
   const [project, setProject] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -302,8 +304,10 @@ export function ProjectDetailsPage() {
 
   // UI States for File Actions
   const [deleteConfirmModalAsset, setDeleteConfirmModalAsset] = useState(null);
-  const [editingFileAsset, setEditingFileAsset] = useState(null);
-  const [editFileNameValue, setEditFileNameValue] = useState("");
+  const [assetToEdit, setAssetToEdit] = useState(null);
+  const [isEditDrawerOpen, setIsEditDrawerOpen] = useState(false);
+  const [isUploadDrawerOpen, setIsUploadDrawerOpen] = useState(false);
+  const [selectedDetailAsset, setSelectedDetailAsset] = useState(null);
 
   const formatBytes = (bytes, decimals = 2) => {
     if (!+bytes) return "0 Bytes";
@@ -401,23 +405,9 @@ export function ProjectDetailsPage() {
       toast.success("Attachment deleted");
       fetchFileAssets(id);
       setDeleteConfirmModalAsset(null);
+      setSelectedDetailAsset(null); // Close detail modal if open for this asset
     } catch (err) {
       toast.error(err?.response?.data?.error || "Failed to delete attachment");
-    }
-  };
-
-  const handleUpdateFileName = async (assetId) => {
-    try {
-      if (!editFileNameValue.trim()) {
-        toast.error("File name cannot be empty");
-        return;
-      }
-      await fileAssetService.updateFileAsset(assetId, editFileNameValue);
-      toast.success("Attachment updated");
-      setEditingFileAsset(null);
-      fetchFileAssets(id);
-    } catch (err) {
-      toast.error(err?.response?.data?.error || "Failed to update attachment");
     }
   };
 
@@ -462,7 +452,7 @@ export function ProjectDetailsPage() {
         setIsExpenseDrawerOpen(true);
         break;
       case "UploadFile":
-        setIsFileDrawerOpen(true);
+        setIsUploadDrawerOpen(true);
         break;
       case "NewActivity":
         setActiveTab("Activity");
@@ -475,6 +465,7 @@ export function ProjectDetailsPage() {
   };
 
   const projectDescription = project.description || "No description provided.";
+  const canManageProjectData = true; // Placeholder for actual permission check
 
   // Calculate dynamic progress
   const totalTasksCount = tasks.length;
@@ -944,8 +935,8 @@ export function ProjectDetailsPage() {
                   <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-tertiary pointer-events-none" />
                 </div>
                 <Button
-                  onClick={() => setIsFileDrawerOpen(true)}
-                  className="gap-2 shadow-md shadow-primary/20 shrink-0"
+                  onClick={() => setIsUploadDrawerOpen(true)}
+                  className="gap-2 shadow-md shadow-primary/20 shrink-0 rounded-xl"
                 >
                   <Plus className="h-4 w-4" /> Add Attachment
                 </Button>
@@ -981,7 +972,7 @@ export function ProjectDetailsPage() {
                       key="upload-btn"
                     >
                       <button
-                        onClick={() => setIsFileDrawerOpen(true)}
+                        onClick={() => setIsUploadDrawerOpen(true)}
                         className="w-full h-full p-3 flex items-center gap-3 rounded-xl border border-dashed border-border-light dark:border-border-dark text-text-tertiary hover:border-primary/50 hover:text-primary hover:bg-primary/5 transition-all group min-h-[64px]"
                       >
                         <div className="h-10 w-10 shrink-0 rounded-lg bg-gray-50 dark:bg-gray-800 flex items-center justify-center group-hover:bg-white dark:group-hover:bg-surface-dark group-hover:shadow-sm transition-all ring-1 ring-border-light dark:ring-border-dark">
@@ -1006,41 +997,19 @@ export function ProjectDetailsPage() {
                         exit={{ opacity: 0, scale: 0.9 }}
                         transition={{ duration: 0.2 }}
                         key={asset.id}
-                        className="p-3 flex items-center gap-3 hover:shadow-md transition-shadow cursor-default group border-border-light dark:border-border-dark bg-white dark:bg-surface-dark relative min-w-[200px]"
+                        className="p-3 flex items-center gap-3 hover:shadow-md transition-shadow cursor-pointer group border-border-light dark:border-border-dark bg-white dark:bg-surface-dark relative min-w-[200px]"
+                        onClick={() => setSelectedDetailAsset(asset)}
                       >
                         <div className="h-10 w-10 shrink-0 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-text-tertiary group-hover:bg-primary/10 transition-colors">
                           {getFileIcon(asset)}
                         </div>
-                        <div className="flex-1 min-w-0 pr-28 text-left">
-                          {editingFileAsset?.id === asset.id ? (
-                            <input
-                              type="text"
-                              autoFocus
-                              className="w-full text-sm font-bold text-text-primary dark:text-white bg-transparent outline-none border-b border-primary/50 focus:border-primary px-0 py-0.5"
-                              value={editFileNameValue}
-                              onChange={(e) =>
-                                setEditFileNameValue(e.target.value)
-                              }
-                              onClick={(e) => e.stopPropagation()}
-                              onKeyDown={async (e) => {
-                                if (e.key === "Enter") {
-                                  e.stopPropagation();
-                                  await handleUpdateFileName(asset.id);
-                                }
-                                if (e.key === "Escape") {
-                                  e.stopPropagation();
-                                  setEditingFileAsset(null);
-                                }
-                              }}
-                            />
-                          ) : (
-                            <p
-                              className="text-sm font-bold text-text-primary dark:text-white truncate"
-                              title={asset.fileName}
-                            >
-                              {asset.fileName}
-                            </p>
-                          )}
+                        <div className="flex-1 min-w-0 pr-2 text-left">
+                          <p
+                            className="text-sm font-bold text-text-primary dark:text-white truncate"
+                            title={asset.fileName}
+                          >
+                            {asset.fileName}
+                          </p>
                           <p className="text-[10px] text-text-tertiary truncate mt-0.5">
                             {new Date(asset.createdAt).toLocaleDateString()} •{" "}
                             {asset.isExternal
@@ -1049,51 +1018,52 @@ export function ProjectDetailsPage() {
                           </p>
                         </div>
 
-                        <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-100">
-                          {editingFileAsset?.id === asset.id ? (
-                            <button
-                              onClick={async (e) => {
-                                e.stopPropagation();
-                                await handleUpdateFileName(asset.id);
-                              }}
-                              className="p-1.5 text-success hover:bg-success/10 rounded-md transition-all shrink-0 bg-white dark:bg-surface-dark shadow-xs border border-border-light dark:border-border-dark"
-                              title="Save Name"
-                            >
-                              <Save className="h-4 w-4" />
-                            </button>
-                          ) : (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setEditingFileAsset(asset);
-                                setEditFileNameValue(asset.fileName);
-                              }}
-                              className="p-1.5 text-text-tertiary hover:text-primary hover:bg-primary/10 rounded-md transition-all shrink-0 bg-white dark:bg-surface-dark shadow-xs border border-border-light dark:border-border-dark"
-                              title="Edit File Name"
-                            >
-                              <Edit2 className="h-4 w-4" />
-                            </button>
-                          )}
-                          <button
-                            onClick={(e) => handleDownloadFile(e, asset)}
-                            className="p-1.5 text-text-tertiary hover:text-primary hover:bg-primary/10 rounded-md transition-all shrink-0 bg-white dark:bg-surface-dark shadow-xs border border-border-light dark:border-border-dark"
-                            title={
-                              asset.isExternal ? "Open Link" : "Download File"
-                            }
+                        <div className="shrink-0 flex items-center gap-1">
+                          <div
+                            className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center"
+                            onClick={(e) => e.stopPropagation()}
                           >
-                            {asset.isExternal ? (
-                              <ExternalLink className="h-4 w-4" />
-                            ) : (
-                              <Download className="h-4 w-4" />
-                            )}
-                          </button>
-                          <button
-                            onClick={(e) => handleDeleteFile(e, asset)}
-                            className="p-1.5 text-text-tertiary hover:text-error hover:bg-error/10 rounded-md transition-all shrink-0 bg-white dark:bg-surface-dark shadow-xs border border-border-light dark:border-border-dark"
-                            title="Delete File"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
+                            <Dropdown
+                              width="w-40"
+                              trigger={
+                                <button className="p-1.5 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-md transition-colors text-text-tertiary hover:text-text-primary">
+                                  <MoreVertical className="w-4 h-4" />
+                                </button>
+                              }
+                            >
+                              <DropdownItem
+                                icon={
+                                  asset.isExternal ? ExternalLink : Download
+                                }
+                                onClick={(e) => handleDownloadFile(e, asset)}
+                              >
+                                {asset.isExternal ? "Open Link" : "Download"}
+                              </DropdownItem>
+
+                              {canManageProjectData && (
+                                <>
+                                  <div className="my-1 border-t border-border-light dark:border-border-dark"></div>
+                                  <DropdownItem
+                                    icon={Edit2}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setAssetToEdit(asset);
+                                      setIsEditDrawerOpen(true);
+                                    }}
+                                  >
+                                    Rename
+                                  </DropdownItem>
+                                  <DropdownItem
+                                    icon={Trash2}
+                                    variant="danger"
+                                    onClick={(e) => handleDeleteFile(e, asset)}
+                                  >
+                                    Delete
+                                  </DropdownItem>
+                                </>
+                              )}
+                            </Dropdown>
+                          </div>
                         </div>
                       </MotionCard>
                     ))}
@@ -1125,11 +1095,29 @@ export function ProjectDetailsPage() {
       />
 
       <ProjectFileDrawer
-        isOpen={isFileDrawerOpen}
-        onClose={() => setIsFileDrawerOpen(false)}
+        isOpen={isUploadDrawerOpen || isEditDrawerOpen}
+        onClose={() => {
+          setIsUploadDrawerOpen(false);
+          setIsEditDrawerOpen(false);
+          setAssetToEdit(null);
+        }}
         contextType="project"
         contextId={id}
         onUploadSuccess={() => fetchFileAssets(id)}
+        editAsset={assetToEdit}
+      />
+
+      <FileDetailModal
+        isOpen={!!selectedDetailAsset}
+        onClose={() => setSelectedDetailAsset(null)}
+        asset={selectedDetailAsset}
+        canManageFiles={canManageProjectData}
+        onDownload={handleDownloadFile}
+        onEdit={(e, asset) => {
+          setAssetToEdit(asset);
+          setIsEditDrawerOpen(true);
+        }}
+        onDelete={handleDeleteFile}
       />
 
       <ExpenseDrawer

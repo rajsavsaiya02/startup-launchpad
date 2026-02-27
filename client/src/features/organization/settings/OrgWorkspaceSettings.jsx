@@ -17,6 +17,7 @@ import {
   EyeOff,
 } from "lucide-react";
 import { OrgPublicProfileSettings } from "./OrgPublicProfileSettings";
+import { OrgDesignationsSettings } from "./OrgDesignationsSettings";
 
 export function OrgWorkspaceSettings() {
   const { user } = useAuth();
@@ -172,7 +173,7 @@ export function OrgWorkspaceSettings() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in duration-500 pb-20 p-8 pt-10">
+    <div className="max-w-screen-2xl mx-auto space-y-8 animate-in fade-in duration-500 pb-20 p-8 pt-10">
       <div className="border-b border-border-light dark:border-border-dark pb-6">
         <h1 className="text-3xl font-bold text-text-primary dark:text-white">
           Workspace Settings
@@ -232,12 +233,22 @@ export function OrgWorkspaceSettings() {
             </div>
 
             <div className="flex justify-end pt-4">
-              <Button type="submit" disabled={isSaving}>
+              <Button
+                type="submit"
+                disabled={isSaving}
+                className="rounded-full px-8"
+              >
                 {isSaving ? "Updating..." : "Update Workspace"}
               </Button>
             </div>
           </form>
         </Card>
+
+        {/* Designations Component */}
+        <OrgDesignationsSettings
+          isFounder={isFounder}
+          isAdmin={user?.role?.toLowerCase() === "admin"}
+        />
 
         {/* Master Password Card */}
         {isFounder && (
@@ -256,6 +267,7 @@ export function OrgWorkspaceSettings() {
               </div>
               <Button
                 variant="outline"
+                className="rounded-full"
                 onClick={() => {
                   setShowPasswordChangeModal(true);
                   handleRequestPasswordChange();
@@ -285,7 +297,7 @@ export function OrgWorkspaceSettings() {
               </div>
               <Button
                 variant="danger"
-                className="bg-error hover:bg-error/90 text-white"
+                className="bg-error hover:bg-error/90 text-white rounded-full"
                 onClick={() => {
                   setShowDeleteModal(true);
                   handleRequestDelete();

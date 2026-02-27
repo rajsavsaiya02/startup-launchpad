@@ -368,6 +368,7 @@ const initDb = async () => {
         organization_id INTEGER REFERENCES organizations(organization_id) ON DELETE CASCADE,
         user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
         is_active BOOLEAN DEFAULT TRUE,
+        status VARCHAR(50) DEFAULT 'On Work',
         manager_member_id INTEGER REFERENCES organization_members(organization_member_id) ON DELETE SET NULL,
         joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         hourly_cost_rate NUMERIC(10, 2) DEFAULT 0.00,

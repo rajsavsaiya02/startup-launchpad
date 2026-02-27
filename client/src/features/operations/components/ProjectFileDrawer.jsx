@@ -19,16 +19,50 @@ export function ProjectFileDrawer({
   contextType = "project",
   contextId,
   onUploadSuccess,
+  editAsset = null,
 }) {
-  const [activeTab, setActiveTab] = useState("upload"); // 'upload' or 'link'
+  const [activeTab, setActiveTab] = useState(
+    editAsset?.isExternal ? "link" : "upload",
+  );
   const [dragActive, setDragActive] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
-  const [fileTitle, setFileTitle] = useState("");
+  const [fileTitle, setFileTitle] = useState(editAsset?.fileName || "");
+  const [description, setDescription] = useState(editAsset?.description || "");
 
   // Link state
-  const [linkUrl, setLinkUrl] = useState("");
-  const [linkTitle, setLinkTitle] = useState("");
+  const [linkUrl, setLinkUrl] = useState(
+    editAsset?.isExternal ? editAsset.storageUrl : "",
+  );
+  const [linkTitle, setLinkTitle] = useState(
+    editAsset?.isExternal ? editAsset.fileName : "",
+  );
+  const [linkDescription, setLinkDescription] = useState(
+    editAsset?.isExternal ? editAsset.description || "" : "",
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Sync state if editAsset changes
+  React.useEffect(() => {
+    if (editAsset) {
+      setActiveTab(editAsset.isExternal ? "link" : "upload");
+      setFileTitle(editAsset.fileName);
+      setDescription(editAsset.description || "");
+      if (editAsset.isExternal) {
+        setLinkUrl(editAsset.storageUrl);
+        setLinkTitle(editAsset.fileName);
+        setLinkDescription(editAsset.description || "");
+      }
+    } else {
+      // Reset for new attachment
+      setActiveTab("upload");
+      setFileTitle("");
+      setDescription("");
+      setLinkUrl("");
+      setLinkTitle("");
+      setLinkDescription("");
+      setSelectedFile(null);
+    }
+  }, [editAsset]);
 
   const inputRef = useRef(null);
 
@@ -84,35 +118,55 @@ export function ProjectFileDrawer({
     setIsSubmitting(true);
     try {
       if (activeTab === "upload") {
-        if (!selectedFile) {
-          toast.error("Please select a file to upload.");
-          setIsSubmitting(false);
-          return;
+        if (editAsset) {
+          await fileAssetService.updateFileAsset(editAsset.id, {
+            fileName: fileTitle,
+            description: description,
+          });
+          toast.success("File updated successfully.");
+        } else {
+          if (!selectedFile) {
+            toast.error("Please select a file to upload.");
+            setIsSubmitting(false);
+            return;
+          }
+          await fileAssetService.uploadFile(
+            contextType,
+            contextId,
+            selectedFile,
+            fileTitle,
+            description,
+          );
+          toast.success("File uploaded successfully.");
         }
-        await fileAssetService.uploadFile(
-          contextType,
-          contextId,
-          selectedFile,
-          fileTitle,
-        );
-        toast.success("File uploaded successfully.");
         removeFile();
         setFileTitle("");
+        setDescription("");
       } else {
-        if (!linkUrl || !linkTitle) {
-          toast.error("Please provide both a URL and a title.");
-          setIsSubmitting(false);
-          return;
+        if (editAsset) {
+          await fileAssetService.updateFileAsset(editAsset.id, {
+            fileName: linkTitle,
+            description: linkDescription,
+          });
+          toast.success("External link updated successfully.");
+        } else {
+          if (!linkUrl || !linkTitle) {
+            toast.error("Please provide both a URL and a title.");
+            setIsSubmitting(false);
+            return;
+          }
+          await fileAssetService.attachExternalLink(
+            contextType,
+            contextId,
+            linkTitle,
+            linkUrl,
+            linkDescription,
+          );
+          toast.success("External link attached successfully.");
         }
-        await fileAssetService.attachExternalLink(
-          contextType,
-          contextId,
-          linkTitle,
-          linkUrl,
-        );
-        toast.success("External link attached successfully.");
         setLinkUrl("");
         setLinkTitle("");
+        setLinkDescription("");
       }
       if (onUploadSuccess) onUploadSuccess();
       onClose();
@@ -139,10 +193,12 @@ export function ProjectFileDrawer({
         <div className="flex items-center justify-between p-6 border-b border-border-light dark:border-border-dark bg-gray-50/50 dark:bg-gray-800/30">
           <div>
             <h2 className="text-xl font-bold text-text-primary dark:text-white">
-              Add Attachment
+              {editAsset ? "Update Attachment" : "Add Attachment"}
             </h2>
             <p className="text-xs text-text-secondary mt-1">
-              Upload a file or link an external resource.
+              {editAsset
+                ? "Refine details for your attachment."
+                : "Upload a file or link an external resource."}
             </p>
           </div>
           <button
@@ -156,30 +212,50 @@ export function ProjectFileDrawer({
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-6">
           {/* Tabs */}
-          <div className="flex bg-gray-100 dark:bg-gray-800/50 p-1 rounded-lg mb-6">
-            <button
-              onClick={() => setActiveTab("upload")}
-              className={`flex-1 flex items-center justify-center gap-2 py-2 text-sm font-semibold rounded-md transition-all ${
-                activeTab === "upload"
-                  ? "bg-white dark:bg-surface-dark text-primary shadow-sm"
-                  : "text-text-secondary hover:text-text-primary"
-              }`}
-            >
-              <UploadCloud className="h-4 w-4" />
-              Upload File
-            </button>
-            <button
-              onClick={() => setActiveTab("link")}
-              className={`flex-1 flex items-center justify-center gap-2 py-2 text-sm font-semibold rounded-md transition-all ${
-                activeTab === "link"
-                  ? "bg-white dark:bg-surface-dark text-primary shadow-sm"
-                  : "text-text-secondary hover:text-text-primary"
-              }`}
-            >
-              <LinkIcon className="h-4 w-4" />
-              External Link
-            </button>
-          </div>
+          {!editAsset && (
+            <div className="flex bg-gray-100 dark:bg-gray-800/50 p-1 rounded-lg mb-6">
+              <button
+                onClick={() => setActiveTab("upload")}
+                className={`flex-1 flex items-center justify-center gap-2 py-2 text-sm font-semibold rounded-md transition-all ${
+                  activeTab === "upload"
+                    ? "bg-white dark:bg-surface-dark text-primary shadow-sm"
+                    : "text-text-secondary hover:text-text-primary"
+                }`}
+              >
+                <UploadCloud className="h-4 w-4" />
+                Upload File
+              </button>
+              <button
+                onClick={() => setActiveTab("link")}
+                className={`flex-1 flex items-center justify-center gap-2 py-2 text-sm font-semibold rounded-md transition-all ${
+                  activeTab === "link"
+                    ? "bg-white dark:bg-surface-dark text-primary shadow-sm"
+                    : "text-text-secondary hover:text-text-primary"
+                }`}
+              >
+                <LinkIcon className="h-4 w-4" />
+                External Link
+              </button>
+            </div>
+          )}
+
+          {editAsset && (
+            <div className="mb-6 animate-in fade-in duration-300">
+              <div className="flex items-center gap-3 p-4 bg-primary/5 rounded-xl border border-primary/10">
+                <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                  <AlertCircle className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-text-primary dark:text-white">
+                    Editing {editAsset.isExternal ? "Link" : "File"}
+                  </p>
+                  <p className="text-xs text-text-tertiary">
+                    Only title and description can be modified.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
 
           <form id="attachment-form" onSubmit={handleSubmit}>
             {activeTab === "upload" && (
@@ -250,20 +326,37 @@ export function ProjectFileDrawer({
                   </p>
                 </div>
 
-                <div className="space-y-1.5 pt-2">
-                  <label className="text-sm font-semibold text-text-primary dark:text-white flex items-center gap-2">
-                    Friendly Title{" "}
-                    <span className="text-text-tertiary text-xs font-normal">
-                      (Optional)
-                    </span>
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Q4 Budget Spreadsheet"
-                    value={fileTitle}
-                    onChange={(e) => setFileTitle(e.target.value)}
-                    className="w-full h-11 px-3 rounded-lg bg-gray-50 dark:bg-surface-dark border border-border-light dark:border-border-dark focus:ring-2 focus:ring-primary/20 text-sm"
-                  />
+                <div className="space-y-4 pt-2">
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-semibold text-text-primary dark:text-white flex items-center gap-2">
+                      Friendly Title{" "}
+                      <span className="text-text-tertiary text-xs font-normal">
+                        (Optional)
+                      </span>
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Q4 Budget"
+                      value={fileTitle}
+                      onChange={(e) => setFileTitle(e.target.value)}
+                      className="w-full h-11 px-3 rounded-lg bg-gray-50 dark:bg-surface-dark border border-border-light dark:border-border-dark focus:ring-2 focus:ring-primary/20 text-sm"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-semibold text-text-primary dark:text-white flex items-center gap-2">
+                      Description{" "}
+                      <span className="text-text-tertiary text-xs font-normal">
+                        (Optional)
+                      </span>
+                    </label>
+                    <textarea
+                      placeholder="Add more details about this file..."
+                      rows={3}
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                      className="w-full p-3 rounded-lg bg-gray-50 dark:bg-surface-dark border border-border-light dark:border-border-dark focus:ring-2 focus:ring-primary/20 text-sm resize-none"
+                    />
+                  </div>
                 </div>
               </div>
             )}
@@ -278,9 +371,14 @@ export function ProjectFileDrawer({
                     type="url"
                     placeholder="https://drive.google.com/..."
                     required
+                    disabled={!!editAsset}
                     value={linkUrl}
                     onChange={(e) => setLinkUrl(e.target.value)}
-                    className="w-full h-11 px-3 rounded-lg bg-gray-50 dark:bg-surface-dark border border-border-light dark:border-border-dark focus:ring-2 focus:ring-primary/20 text-sm"
+                    className={`w-full h-11 px-3 rounded-lg border focus:ring-2 focus:ring-primary/20 text-sm ${
+                      editAsset
+                        ? "bg-gray-100 dark:bg-gray-800/50 border-transparent cursor-not-allowed"
+                        : "bg-gray-50 dark:bg-surface-dark border-border-light dark:border-border-dark"
+                    }`}
                   />
                   <p className="text-xs text-text-tertiary flex items-center gap-1 mt-1">
                     <ExternalLink className="h-3 w-3" /> Connect Google Drive,
@@ -288,18 +386,35 @@ export function ProjectFileDrawer({
                   </p>
                 </div>
 
-                <div className="space-y-1.5">
-                  <label className="text-sm font-semibold text-text-primary dark:text-white flex items-center gap-2">
-                    Friendly Title <span className="text-error">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Q4 Budget Spreadsheet"
-                    required
-                    value={linkTitle}
-                    onChange={(e) => setLinkTitle(e.target.value)}
-                    className="w-full h-11 px-3 rounded-lg bg-gray-50 dark:bg-surface-dark border border-border-light dark:border-border-dark focus:ring-2 focus:ring-primary/20 text-sm"
-                  />
+                <div className="space-y-4">
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-semibold text-text-primary dark:text-white flex items-center gap-2">
+                      Friendly Title <span className="text-error">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Q4 Budget"
+                      required
+                      value={linkTitle}
+                      onChange={(e) => setLinkTitle(e.target.value)}
+                      className="w-full h-11 px-3 rounded-lg bg-gray-50 dark:bg-surface-dark border border-border-light dark:border-border-dark focus:ring-2 focus:ring-primary/20 text-sm"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-semibold text-text-primary dark:text-white flex items-center gap-2">
+                      Description{" "}
+                      <span className="text-text-tertiary text-xs font-normal">
+                        (Optional)
+                      </span>
+                    </label>
+                    <textarea
+                      placeholder="Add more details about this link..."
+                      rows={3}
+                      value={linkDescription}
+                      onChange={(e) => setLinkDescription(e.target.value)}
+                      className="w-full p-3 rounded-lg bg-gray-50 dark:bg-surface-dark border border-border-light dark:border-border-dark focus:ring-2 focus:ring-primary/20 text-sm resize-none"
+                    />
+                  </div>
                 </div>
               </div>
             )}
@@ -319,9 +434,11 @@ export function ProjectFileDrawer({
           >
             {isSubmitting
               ? "Processing..."
-              : activeTab === "upload"
-                ? "Upload File"
-                : "Attach Link"}
+              : editAsset
+                ? "Update Attachment"
+                : activeTab === "upload"
+                  ? "Upload File"
+                  : "Attach Link"}
           </Button>
         </div>
       </aside>

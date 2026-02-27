@@ -1,13 +1,13 @@
-import React from 'react';
-import { cn } from '../../utils/cn';
+import React from "react";
+import { cn } from "../../utils/cn";
 
 export function Card({ className, children, ...props }) {
   return (
-    <div 
+    <div
       className={cn(
-        "rounded-xl border border-border-light bg-white shadow-sm overflow-hidden",
-        className
-      )} 
+        "rounded-xl border border-border-light bg-white shadow-sm",
+        className,
+      )}
       {...props}
     >
       {children}
@@ -25,7 +25,10 @@ export function CardHeader({ className, children, ...props }) {
 
 export function CardTitle({ className, children, ...props }) {
   return (
-    <h3 className={cn("text-lg font-semibold text-text-primary", className)} {...props}>
+    <h3
+      className={cn("text-lg font-semibold text-text-primary", className)}
+      {...props}
+    >
       {children}
     </h3>
   );

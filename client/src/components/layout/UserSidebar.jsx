@@ -21,28 +21,20 @@ import {
   Palette,
   Globe,
   Building,
+  Building2,
+  LayoutList,
 } from "lucide-react";
 
 // --- Configuration: User Dual Navigation ---
 const USER_MODULE_NAV_CONFIG = {
   dashboard: [
     {
-      title: "Dashboard",
+      title: "",
       items: [
-        { name: "Overview", path: "/dashboard", icon: LayoutDashboard },
+        { name: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
         { name: "Find Gigs", path: "/dashboard/gigs", icon: Briefcase },
-      ],
-    },
-    {
-      title: "Productivity",
-      items: [
         { name: "Projects", path: "/productivity/projects", icon: FolderOpen },
         { name: "Tasks", path: "/productivity/tasks", icon: CheckSquare },
-      ],
-    },
-    {
-      title: "Settings",
-      items: [
         { name: "Public Profile", path: "/settings/general", icon: Globe },
         { name: "Account Security", path: "/settings/security", icon: Shield },
         { name: "Notifications", path: "/settings/notifications", icon: Bell },
@@ -57,17 +49,17 @@ const USER_MODULE_NAV_CONFIG = {
   ],
   org: [
     {
-      title: "Organization",
+      title: "",
       items: [
         {
           name: "Dashboard",
           path: "/org/dashboard",
           icon: LayoutDashboard,
         },
+        { name: "Management", path: "/org/management", icon: Building2 },
         { name: "Projects", path: "/org/projects", icon: FolderOpen },
         { name: "Tasks", path: "/org/tasks", icon: CheckSquare },
         { name: "Gigs", path: "/org/gigs", icon: Briefcase },
-        { name: "Management", path: "/org/management", icon: Users },
         { name: "Public Profile", path: "/org/public-profile", icon: Globe },
         { name: "Settings", path: "/org/settings", icon: Settings },
       ],
@@ -220,14 +212,16 @@ export function UserSidebar({
 function NavSection({ title, items, isCollapsed }) {
   return (
     <div className="px-3">
-      <div
-        className={cn(
-          "mb-2 text-xs font-bold text-text-tertiary uppercase tracking-wider transition-all duration-300 overflow-hidden whitespace-nowrap",
-          isCollapsed ? "h-0 opacity-0 px-0" : "h-auto opacity-100 px-3",
-        )}
-      >
-        {title}
-      </div>
+      {title && (
+        <div
+          className={cn(
+            "mb-2 text-xs font-bold text-text-tertiary uppercase tracking-wider transition-all duration-300 overflow-hidden whitespace-nowrap",
+            isCollapsed ? "h-0 opacity-0 px-0" : "h-auto opacity-100 px-3",
+          )}
+        >
+          {title}
+        </div>
+      )}
 
       <nav className="space-y-1.5">
         {items.map((item) => (

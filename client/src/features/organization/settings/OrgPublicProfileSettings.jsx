@@ -138,7 +138,7 @@ export function OrgPublicProfileSettings() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto space-y-8 animate-in fade-in duration-500 pb-20 p-8 pt-10">
+    <div className="max-w-screen-2xl mx-auto space-y-8 animate-in fade-in duration-500 pb-20 p-8 pt-10">
       <div className="border-b border-border-light dark:border-border-dark pb-6">
         <h1 className="text-3xl font-bold text-text-primary dark:text-white">
           Public Profile
@@ -255,6 +255,7 @@ export function OrgPublicProfileSettings() {
                 <Button
                   size="xs"
                   variant="ghost"
+                  className="rounded-full"
                   onClick={() =>
                     addItem("socialLinks", { platform: "", url: "" })
                   }
@@ -326,6 +327,7 @@ export function OrgPublicProfileSettings() {
               <Button
                 size="sm"
                 variant="outline"
+                className="rounded-full"
                 onClick={() =>
                   addItem("projects", { name: "", link: "", description: "" })
                 }
@@ -414,6 +416,7 @@ export function OrgPublicProfileSettings() {
               <Button
                 size="sm"
                 variant="outline"
+                className="rounded-full"
                 onClick={() =>
                   addItem("milestones", {
                     year: "",

@@ -3,6 +3,7 @@ import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { Eye, GripVertical, Crown } from "lucide-react";
 import { cn } from "../../../utils/cn";
+import { getStatusInfo } from "../team/statusConstants";
 
 export function OrgTeamMapCard({ member, onQuickView }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } =
@@ -25,6 +26,7 @@ export function OrgTeamMapCard({ member, onQuickView }) {
   const getRoleBadgeColor = (role) => {
     switch (role) {
       case "FOUNDER":
+      case "CO-FOUNDER":
         return "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 border border-purple-200 dark:border-purple-800";
       case "ADMIN":
         return "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-800";
@@ -41,22 +43,21 @@ export function OrgTeamMapCard({ member, onQuickView }) {
       style={style}
       className={cn(
         "bg-white dark:bg-surface-dark border border-gray-200 dark:border-gray-800 rounded-xl p-3 flex items-center gap-3 shadow-[0_2px_8px_-4px_rgba(0,0,0,0.1)] hover:shadow-[0_8px_24px_-8px_rgba(0,0,0,0.15)] hover:border-gray-300 dark:hover:border-gray-700 transition-all duration-300 group relative min-w-[280px]",
-        isDragging &&
-          "opacity-90 shadow-2xl scale-105 ring-2 ring-primary border-primary/50",
+        isDragging && "opacity-0 pointer-events-none",
       )}
     >
       {/* Drag Handle */}
-      {member.org_role !== "FOUNDER" ? (
+      {!member.displayRole && member.org_role === "FOUNDER" ? (
+        <div className="p-1 text-gray-200 dark:text-gray-800 pointer-events-none">
+          <Crown className="w-4 h-4 text-purple-300 dark:text-purple-900/50" />
+        </div>
+      ) : (
         <div
           {...attributes}
           {...listeners}
           className="cursor-grab active:cursor-grabbing p-1 text-gray-300 hover:text-gray-500 dark:text-gray-600 dark:hover:text-gray-400 transition-colors"
         >
           <GripVertical className="w-4 h-4" />
-        </div>
-      ) : (
-        <div className="p-1 text-gray-200 dark:text-gray-800 pointer-events-none">
-          <Crown className="w-4 h-4 text-purple-300 dark:text-purple-900/50" />
         </div>
       )}
 
@@ -70,12 +71,21 @@ export function OrgTeamMapCard({ member, onQuickView }) {
           alt={member.first_name}
           className="w-10 h-10 rounded-full object-cover border border-gray-100 dark:border-gray-700"
         />
-        <div
-          className={cn(
-            "absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full border-2 border-white dark:border-surface-dark",
-            member.is_active ? "bg-green-500" : "bg-gray-400",
-          )}
-        />
+        {(() => {
+          const statusInfo = getStatusInfo(member.status);
+          const Icon = statusInfo.icon;
+          return (
+            <div
+              className={cn(
+                "absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white dark:border-surface-dark flex items-center justify-center text-white",
+                statusInfo.color,
+              )}
+              title={member.status || "On Work"}
+            >
+              <Icon className="w-2.5 h-2.5" />
+            </div>
+          );
+        })()}
       </div>
 
       {/* Info */}
@@ -96,7 +106,7 @@ export function OrgTeamMapCard({ member, onQuickView }) {
             getRoleBadgeColor(member.org_role),
           )}
         >
-          {member.org_role}
+          {member.displayRole || member.org_role}
         </span>
         <button
           onClick={(e) => {

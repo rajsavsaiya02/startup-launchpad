@@ -147,8 +147,8 @@ export function OrgOnboarding({ onComplete }) {
     setIsSubmitting(true);
     try {
       await apiClient.post("/org/join", {
-        joinCode: joinId,
-        securityCode: joinSecurityCode,
+        join_code: joinId,
+        security_code: joinSecurityCode,
       });
       toast.success("Joined Startup Hub successfully!");
       if (onComplete) onComplete();

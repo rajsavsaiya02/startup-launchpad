@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { ChevronDown, Plus, X, Trash2 } from "lucide-react";
 import { cn } from "../../utils/cn";
-import { motion, AnimatePresence } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 
 export function CreatableSelect({
   options = [],
@@ -14,9 +14,12 @@ export function CreatableSelect({
   className,
   name,
   disabled,
+  allowCreate = true,
+  allowDelete = true,
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [inputValue, setInputValue] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
   const [isCreating, setIsCreating] = useState(false);
   const containerRef = useRef(null);
 
@@ -30,6 +33,7 @@ export function CreatableSelect({
         setIsOpen(false);
         setIsCreating(false);
         setInputValue("");
+        setSearchTerm("");
       }
     };
 
@@ -42,6 +46,7 @@ export function CreatableSelect({
   const handleSelect = (option) => {
     onChange({ target: { name, value: option } });
     setIsOpen(false);
+    setSearchTerm("");
   };
 
   const handleCreate = async () => {
@@ -64,6 +69,12 @@ export function CreatableSelect({
       }
     }
   };
+
+  const filteredOptions = options.filter((option) =>
+    option.toLowerCase().includes(searchTerm.toLowerCase()),
+  );
+
+  const MotionDiv = motion.div;
 
   return (
     <div className={cn("space-y-1.5", className)} ref={containerRef}>
@@ -100,15 +111,27 @@ export function CreatableSelect({
 
         <AnimatePresence>
           {isOpen && (
-            <motion.div
+            <MotionDiv
               initial={{ opacity: 0, y: 5 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 5 }}
               transition={{ duration: 0.15 }}
               className="absolute z-50 w-full mt-1 bg-white dark:bg-[#1E293B] border border-border-light dark:border-gray-700 rounded-lg shadow-xl overflow-hidden"
             >
+              {/* Search input */}
+              <div className="p-2 border-b border-border-light dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50">
+                <input
+                  type="text"
+                  placeholder="Search..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full h-8 text-xs bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md px-2 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                  onClick={(e) => e.stopPropagation()}
+                />
+              </div>
+
               <div className="max-h-60 overflow-y-auto custom-scrollbar p-1">
-                {options.map((option) => (
+                {filteredOptions.map((option) => (
                   <div
                     key={option}
                     onClick={() => handleSelect(option)}
@@ -120,7 +143,7 @@ export function CreatableSelect({
                     )}
                   >
                     <span>{option}</span>
-                    {onDeleteOption && (
+                    {onDeleteOption && allowDelete && (
                       <button
                         onClick={(e) => handleDelete(e, option)}
                         className="p-1 rounded-full hover:bg-red-100 dark:hover:bg-red-900/30 text-text-tertiary hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
@@ -132,61 +155,63 @@ export function CreatableSelect({
                   </div>
                 ))}
 
-                {options.length === 0 && !isCreating && (
-                  <div className="px-3 py-2 text-sm text-text-tertiary text-center">
-                    No options found
+                {filteredOptions.length === 0 && !isCreating && (
+                  <div className="px-3 py-10 text-xs text-text-tertiary text-center">
+                    {searchTerm ? "No matches found" : "No options available"}
                   </div>
                 )}
               </div>
 
-              <div className="border-t border-border-light dark:border-gray-700 p-2 bg-gray-50 dark:bg-gray-900/50">
-                {isCreating ? (
-                  <div className="flex items-center gap-2">
-                    <input
-                      autoFocus
-                      type="text"
-                      value={inputValue}
-                      onChange={(e) => setInputValue(e.target.value)}
-                      placeholder="Enter new option..."
-                      className="flex-1 h-8 text-sm bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md px-2 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          handleCreate();
-                        } else if (e.key === "Escape") {
+              {allowCreate && (
+                <div className="border-t border-border-light dark:border-gray-700 p-2 bg-gray-50 dark:bg-gray-900/50">
+                  {isCreating ? (
+                    <div className="flex items-center gap-2">
+                      <input
+                        autoFocus
+                        type="text"
+                        value={inputValue}
+                        onChange={(e) => setInputValue(e.target.value)}
+                        placeholder="Enter new option..."
+                        className="flex-1 h-8 text-sm bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md px-2 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            handleCreate();
+                          } else if (e.key === "Escape") {
+                            setIsCreating(false);
+                            setInputValue("");
+                          }
+                        }}
+                      />
+                      <button
+                        onClick={handleCreate}
+                        disabled={!inputValue.trim()}
+                        className="p-1.5 bg-primary text-white rounded-md hover:bg-primary-dark disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      >
+                        <Plus className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={() => {
                           setIsCreating(false);
                           setInputValue("");
-                        }
-                      }}
-                    />
+                        }}
+                        className="p-1.5 bg-gray-200 dark:bg-gray-700 text-text-secondary rounded-md hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ) : (
                     <button
-                      onClick={handleCreate}
-                      disabled={!inputValue.trim()}
-                      className="p-1.5 bg-primary text-white rounded-md hover:bg-primary-dark disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      onClick={() => setIsCreating(true)}
+                      className="w-full flex items-center justify-center gap-2 text-sm text-primary font-medium hover:bg-primary/5 rounded-md py-1.5 transition-colors"
                     >
                       <Plus className="h-4 w-4" />
+                      Create New
                     </button>
-                    <button
-                      onClick={() => {
-                        setIsCreating(false);
-                        setInputValue("");
-                      }}
-                      className="p-1.5 bg-gray-200 dark:bg-gray-700 text-text-secondary rounded-md hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    onClick={() => setIsCreating(true)}
-                    className="w-full flex items-center justify-center gap-2 text-sm text-primary font-medium hover:bg-primary/5 rounded-md py-1.5 transition-colors"
-                  >
-                    <Plus className="h-4 w-4" />
-                    Create New
-                  </button>
-                )}
-              </div>
-            </motion.div>
+                  )}
+                </div>
+              )}
+            </MotionDiv>
           )}
         </AnimatePresence>
       </div>

@@ -44,7 +44,7 @@ const updateDatabase = async () => {
                 manager_member_id INTEGER REFERENCES organization_members(organization_member_id) ON DELETE SET NULL,
                 joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 hourly_cost_rate NUMERIC(10, 2) DEFAULT 0.00,
-                org_role VARCHAR(50) DEFAULT 'MEMBER' CHECK (org_role IN ('FOUNDER', 'ADMIN', 'MEMBER', 'GUEST')),
+                org_role VARCHAR(50) DEFAULT 'MEMBER' CHECK (org_role IN ('FOUNDER', 'CO-FOUNDER', 'ADMIN', 'MEMBER', 'GUEST')),
                 designation_id INTEGER REFERENCES organization_designations(designation_id) ON DELETE SET NULL,
                 UNIQUE(user_id) -- Ensures 1 user = 1 org
             );

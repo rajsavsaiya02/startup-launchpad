@@ -5,8 +5,29 @@ const fs = require("fs");
 class FileAssetController {
   // Helper to check user access based on context.
   // Expand this later for other contexts like 'gig', 'transaction'.
-  async _checkAccess(userId, userRole, contextType, contextId) {
+  async _checkAccess(
+    userId,
+    userRole,
+    contextType,
+    contextId,
+    isWriteAction = false,
+  ) {
     if (userRole === "admin" || userRole === "super_admin") return true;
+
+    if (contextType === "organization") {
+      const result = await pool.query(
+        "SELECT org_role FROM organization_members WHERE organization_id = $1 AND user_id = $2",
+        [contextId, userId],
+      );
+      if (result.rows.length > 0) {
+        const orgRole = result.rows[0].org_role;
+        if (isWriteAction) {
+          return orgRole === "FOUNDER" || orgRole === "ADMIN";
+        }
+        return true; // Any member can read
+      }
+      return false;
+    }
 
     if (contextType === "project") {
       const result = await pool.query(
@@ -41,6 +62,7 @@ class FileAssetController {
         role,
         contextType,
         contextId,
+        false, // Read action
       );
       if (!hasAccess)
         return res.status(403).json({ error: "Access denied to this context" });
@@ -62,6 +84,7 @@ class FileAssetController {
         storageUrl: row.storage_url,
         isExternal: row.is_external,
         createdAt: row.created_at,
+        description: row.description,
         uploaderName:
           row.user_name ||
           (row.first_name
@@ -87,9 +110,12 @@ class FileAssetController {
         role,
         contextType,
         contextId,
+        true, // Write action
       );
       if (!hasAccess)
-        return res.status(403).json({ error: "Access denied to this context" });
+        return res
+          .status(403)
+          .json({ error: "Access denied to modify this context" });
 
       // Handle External Link
       if (req.body.isExternal === "true" || req.body.isExternal === true) {
@@ -100,8 +126,8 @@ class FileAssetController {
         }
         const result = await pool.query(
           `
-          INSERT INTO file_assets (file_name, storage_url, is_external, context_type, context_id, uploader_user_id)
-          VALUES ($1, $2, true, $3, $4, $5) RETURNING *
+          INSERT INTO file_assets (file_name, storage_url, is_external, context_type, context_id, uploader_user_id, description)
+          VALUES ($1, $2, true, $3, $4, $5, $6) RETURNING *
         `,
           [
             req.body.fileName,
@@ -109,6 +135,7 @@ class FileAssetController {
             contextType,
             contextId,
             userId,
+            req.body.description,
           ],
         );
 
@@ -132,8 +159,8 @@ class FileAssetController {
       try {
         const result = await pool.query(
           `
-          INSERT INTO file_assets (file_name, mime_type, size_bytes, storage_url, is_external, context_type, context_id, uploader_user_id)
-          VALUES ($1, $2, $3, $4, false, $5, $6, $7) RETURNING *
+          INSERT INTO file_assets (file_name, mime_type, size_bytes, storage_url, is_external, context_type, context_id, uploader_user_id, description)
+          VALUES ($1, $2, $3, $4, false, $5, $6, $7, $8) RETURNING *
         `,
           [
             customTitle || savedFile.originalName,
@@ -143,6 +170,7 @@ class FileAssetController {
             contextType,
             contextId,
             userId,
+            req.body.description,
           ],
         );
 
@@ -177,6 +205,7 @@ class FileAssetController {
         role,
         fileAsset.context_type,
         fileAsset.context_id,
+        true, // Write action
       );
 
       // Additional check: users can delete their own files even if not strictly context admins,
@@ -203,7 +232,7 @@ class FileAssetController {
   updateFileAsset = async (req, res) => {
     try {
       const { id } = req.params;
-      const { fileName } = req.body;
+      const { fileName, description } = req.body;
       const userId = req.user.id;
       const role = req.user.role;
 
@@ -224,6 +253,7 @@ class FileAssetController {
         role,
         fileAsset.context_type,
         fileAsset.context_id,
+        true, // Write action
       );
 
       // Same logic as delete: context access or uploader
@@ -232,8 +262,8 @@ class FileAssetController {
       }
 
       const updateResult = await pool.query(
-        "UPDATE file_assets SET file_name = $1, updated_at = CURRENT_TIMESTAMP WHERE file_asset_id = $2 RETURNING *",
-        [fileName.trim(), id],
+        "UPDATE file_assets SET file_name = $1, description = $2, updated_at = CURRENT_TIMESTAMP WHERE file_asset_id = $3 RETURNING *",
+        [fileName.trim(), description, id],
       );
 
       res.json(updateResult.rows[0]);
@@ -262,6 +292,7 @@ class FileAssetController {
         role,
         fileAsset.context_type,
         fileAsset.context_id,
+        false, // Read action
       );
       if (!hasAccess) return res.status(403).json({ error: "Access denied" });
 

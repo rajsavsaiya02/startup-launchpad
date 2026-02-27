@@ -210,9 +210,58 @@ const sendEmail = async ({ to, subject, html, text }) => {
   }
 };
 
+const sendOrganizationInviteEmail = async (
+  to,
+  inviteCode,
+  securityCode,
+  orgName,
+) => {
+  try {
+    const { transporter, settings } = await getTransporter();
+
+    const fromName = settings.system_email_name || "Startup LaunchPad";
+    let fromEmail = settings.system_email_address || "no-reply@launchpad.com";
+
+    if (
+      (!fromEmail || fromEmail.includes("no-reply@launchpad.com")) &&
+      settings.smtp_user
+    ) {
+      fromEmail = settings.smtp_user;
+    }
+
+    const mailOptions = {
+      from: `"${fromName}" <${fromEmail}>`,
+      to,
+      subject: `You have been invited to join ${orgName} on Startup LaunchPad`,
+      html: `
+            <div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #e5e7eb; border-radius: 8px;">
+                <h2 style="color: #4F46E5;">Invitation to join ${orgName}</h2>
+                <p>You have been invited to join the <strong>${orgName}</strong> organization on Startup LaunchPad.</p>
+                <p>Please use the following single-use credentials to join:</p>
+                
+                <div style="background-color: #f9fafb; padding: 15px; border-radius: 6px; margin: 15px 0;">
+                    <p><strong>Invitation Code:</strong> <br/><span style="color: #4F46E5; font-family: monospace; font-size: 16px; word-break: break-all;">${inviteCode}</span></p>
+                    <p><strong>Security Password:</strong> <br/><span style="color: #DC2626; font-family: monospace; font-size: 16px;">${securityCode}</span></p>
+                </div>
+
+                <p>These credentials can only be used once.</p>
+                <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
+                <p style="font-size: 12px; color: #888;">${settings.email_footer_text || ""}</p>
+            </div>
+            `,
+    };
+
+    await transporter.sendMail(mailOptions);
+    console.log(`Organization invite email sent to ${to}`);
+  } catch (error) {
+    console.error("Error sending org invite email:", error);
+  }
+};
+
 module.exports = {
   sendVerificationEmail,
   sendPasswordResetEmail,
   sendNewDeviceAlert,
   sendEmail,
+  sendOrganizationInviteEmail,
 };

@@ -45,6 +45,20 @@ router.put(
 // Get Organization Members
 router.get("/members", organizationController.getOrganizationMembers);
 
+// Invitations
+router.post(
+  "/invitations/generate",
+  protect,
+  requireOrgMember,
+  organizationController.generateInvitation,
+);
+router.post(
+  "/invitations/email",
+  protect,
+  requireOrgMember,
+  organizationController.emailInvitation,
+);
+
 // Member Management
 router.post(
   "/leave",
@@ -63,6 +77,12 @@ router.put(
   protect,
   requireOrgMember,
   organizationController.updateMemberRole,
+);
+router.put(
+  "/members/status",
+  protect,
+  requireOrgMember,
+  organizationController.updatePersonalStatus,
 );
 router.put(
   "/members/hierarchy",
@@ -118,6 +138,58 @@ router.put(
   protect,
   requireOrgMember,
   organizationController.updateSecurityCode,
+);
+
+// Departments
+router.get(
+  "/departments",
+  protect,
+  requireOrgMember,
+  organizationController.getDepartments,
+);
+router.post(
+  "/departments",
+  protect,
+  requireOrgMember,
+  organizationController.createDepartment,
+);
+router.put(
+  "/departments/:id",
+  protect,
+  requireOrgMember,
+  organizationController.updateDepartment,
+);
+router.delete(
+  "/departments/:id",
+  protect,
+  requireOrgMember,
+  organizationController.deleteDepartment,
+);
+
+// Designations
+router.get(
+  "/designations",
+  protect,
+  requireOrgMember,
+  organizationController.getDesignations,
+);
+router.post(
+  "/designations",
+  protect,
+  requireOrgMember,
+  organizationController.createDesignation,
+);
+router.put(
+  "/designations/:id",
+  protect,
+  requireOrgMember,
+  organizationController.updateDesignation,
+);
+router.delete(
+  "/designations/:id",
+  protect,
+  requireOrgMember,
+  organizationController.deleteDesignation,
 );
 
 module.exports = router;
