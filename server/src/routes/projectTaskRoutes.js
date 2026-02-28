@@ -6,6 +6,9 @@ const {
   createTask,
   updateTask,
   deleteTask,
+  getTaskComments,
+  addTaskComment,
+  deleteTaskComment,
 } = require("../controllers/projectTaskController");
 const { protect } = require("../middleware/authMiddleware");
 
@@ -15,5 +18,14 @@ router.get("/:id/tasks", protect, getTasksByProject);
 router.post("/:id/tasks", protect, createTask);
 router.put("/:id/tasks/:taskId", protect, updateTask);
 router.delete("/:id/tasks/:taskId", protect, deleteTask);
+
+// Task Comments routes
+router.get("/:id/tasks/:taskId/comments", protect, getTaskComments);
+router.post("/:id/tasks/:taskId/comments", protect, addTaskComment);
+router.delete(
+  "/:id/tasks/:taskId/comments/:commentId",
+  protect,
+  deleteTaskComment,
+);
 
 module.exports = router;

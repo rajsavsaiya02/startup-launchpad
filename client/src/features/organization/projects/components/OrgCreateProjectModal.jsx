@@ -27,7 +27,7 @@ const getFormattedDate = (date) => {
 export function OrgCreateProjectModal({
   isOpen,
   onClose,
-  onProjectCreated,
+  onSuccess,
   projectToEdit,
 }) {
   const [formData, setFormData] = useState({
@@ -202,25 +202,27 @@ export function OrgCreateProjectModal({
         return;
       }
 
+      let result;
       if (isEditing) {
-        await orgProjectService.updateProject(projectToEdit.id, formData);
-        toast.success("Organization project updated successfully!");
+        result = await orgProjectService.updateProject(
+          projectToEdit._id || projectToEdit.id,
+          formData,
+        );
+        toast.success("Project updated successfully!");
       } else {
-        await orgProjectService.createProject(formData);
-        toast.success("Organization project created successfully!");
+        result = await orgProjectService.createProject(formData);
+        toast.success("Project created successfully!");
       }
 
-      onProjectCreated?.(); // Refresh list
+      onSuccess?.(result); // Refresh list/state
       onClose();
     } catch (err) {
       console.error(err);
       setError(
         err.response?.data?.message ||
-          `Failed to ${isEditing ? "update" : "create"} organization project`,
+          `Failed to ${isEditing ? "update" : "create"} project`,
       );
-      toast.error(
-        `Failed to ${isEditing ? "update" : "create"} organization project`,
-      );
+      toast.error(`Failed to ${isEditing ? "update" : "create"} project`);
     } finally {
       setLoading(false);
     }
@@ -230,13 +232,11 @@ export function OrgCreateProjectModal({
     <Drawer
       isOpen={isOpen}
       onClose={onClose}
-      title={
-        isEditing ? "Edit Organization Project" : "New Organization Project"
-      }
+      title={isEditing ? "Edit Project" : "New Project"}
       description={
         isEditing
-          ? "Update the details of your organization project."
-          : "Create a new organization project to track team work."
+          ? "Update the details of your project."
+          : "Create a new project to track team work."
       }
     >
       <div className="space-y-6">
@@ -249,7 +249,7 @@ export function OrgCreateProjectModal({
         {/* Project Name */}
         <div className="space-y-4">
           <Input
-            label="Organization Project Name"
+            label="Project Name"
             name="title"
             value={formData.title}
             onChange={handleChange}
@@ -357,9 +357,7 @@ export function OrgCreateProjectModal({
             onClick={handleSubmit}
             isLoading={loading}
           >
-            {isEditing
-              ? "Update Organization Project"
-              : "Create Organization Project"}
+            {isEditing ? "Update Project" : "Create Project"}
           </Button>
           <Button
             variant="secondary"

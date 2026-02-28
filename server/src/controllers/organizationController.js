@@ -161,7 +161,10 @@ const organizationController = {
         return res.status(404).json({ error: "Organization not found" });
       }
 
-      res.json({ organization: orgQuery.rows[0] });
+      res.json({
+        organization: orgQuery.rows[0],
+        member: req.org_member,
+      });
     } catch (err) {
       console.error("Error fetching org:", err);
       res.status(500).json({ error: "Failed to fetch organization details" });

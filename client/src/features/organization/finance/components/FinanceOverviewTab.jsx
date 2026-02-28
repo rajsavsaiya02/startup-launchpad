@@ -1,0 +1,410 @@
+import React, { useState, useEffect } from "react";
+import { Card } from "../../../../components/ui/Card";
+import { apiClient } from "../../../../lib/axios";
+import { toast } from "react-toastify";
+import { cn } from "../../../../utils/cn";
+import {
+  Activity,
+  TrendingDown,
+  TrendingUp,
+  IndianRupee,
+  Target,
+  AlertCircle,
+  Clock,
+  Layers,
+} from "lucide-react";
+
+export function FinanceOverviewTab() {
+  const [metrics, setMetrics] = useState({
+    totalIncome: 0,
+    totalExpenses: 0,
+    orgExpenses: 0,
+    projExpenses: 0,
+    netCashflow: 0,
+    healthScore: 0,
+  });
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    let isMounted = true;
+    const fetchMetrics = async () => {
+      try {
+        setIsLoading(true);
+        const res = await apiClient.get("/org/finances/metrics");
+        if (isMounted) {
+          if (res.data && res.data.metrics) {
+            setMetrics(res.data.metrics);
+          } else {
+            console.error("Metrics data missing in response:", res.data);
+          }
+        }
+      } catch (error) {
+        console.error("Failed to fetch metrics:", error);
+        toast.error("Failed to load financial metrics");
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+    fetchMetrics();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const formatCurrency = (val) => {
+    return new Intl.NumberFormat("en-IN", {
+      style: "currency",
+      currency: "INR",
+      maximumFractionDigits: 0,
+    }).format(val);
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center p-12">
+        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 -mt-2">
+      {/* ─── Top Stats Row ─── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Net Cashflow */}
+        <div className="bg-white dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-2xl p-5 shadow-sm flex items-center justify-between transition-all hover:shadow-md group">
+          <div className="space-y-1">
+            <p className="text-[10px] font-black text-text-tertiary uppercase tracking-widest">
+              Net Cashflow
+            </p>
+            <h3
+              className={cn(
+                "text-3xl font-black tracking-tight",
+                (metrics?.netCashflow || 0) >= 0
+                  ? "text-emerald-600 dark:text-emerald-400"
+                  : "text-rose-600 dark:text-rose-400",
+              )}
+            >
+              {formatCurrency(metrics?.netCashflow || 0)}
+            </h3>
+          </div>
+          <div
+            className={cn(
+              "w-12 h-12 rounded-full border flex items-center justify-center transition-colors shadow-xs",
+              (metrics?.netCashflow || 0) >= 0
+                ? "bg-emerald-50 dark:bg-emerald-900/20 border-emerald-100 dark:border-emerald-800/50 text-emerald-500"
+                : "bg-rose-50 dark:bg-rose-900/20 border-rose-100 dark:border-rose-800/50 text-rose-500",
+            )}
+          >
+            <IndianRupee className="w-5 h-5" />
+          </div>
+        </div>
+
+        {/* Total Income */}
+        <div className="bg-white dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-2xl p-5 shadow-sm flex items-center justify-between transition-all hover:shadow-md group">
+          <div className="space-y-1">
+            <p className="text-[10px] font-black text-text-tertiary uppercase tracking-widest">
+              Total Income
+            </p>
+            <h3 className="text-3xl font-black text-text-primary dark:text-white tracking-tight">
+              {formatCurrency(metrics?.totalIncome || 0)}
+            </h3>
+          </div>
+          <div className="w-12 h-12 rounded-full bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800/50 flex items-center justify-center text-blue-500 shadow-xs">
+            <TrendingUp className="w-5 h-5" />
+          </div>
+        </div>
+
+        {/* Total Burn */}
+        <div className="bg-white dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-2xl p-5 shadow-sm flex items-center justify-between transition-all hover:shadow-md group">
+          <div className="space-y-1">
+            <p className="text-[10px] font-black text-text-tertiary uppercase tracking-widest">
+              Total Burn
+            </p>
+            <h3 className="text-3xl font-black text-text-primary dark:text-white tracking-tight">
+              {formatCurrency(metrics?.totalExpenses || 0)}
+            </h3>
+          </div>
+          <div className="w-12 h-12 rounded-full bg-rose-50 dark:bg-rose-900/20 border border-rose-100 dark:border-rose-800/50 flex items-center justify-center text-rose-500 shadow-xs">
+            <TrendingDown className="w-5 h-5" />
+          </div>
+        </div>
+
+        {/* AI Health Score */}
+        <div className="bg-white dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-2xl p-5 shadow-sm flex items-center justify-between transition-all hover:shadow-md group">
+          <div className="space-y-1">
+            <p className="text-[10px] font-black text-text-tertiary uppercase tracking-widest">
+              Health Score
+            </p>
+            <h3 className="text-3xl font-black text-text-primary dark:text-white tracking-tight">
+              {metrics?.healthScore || 0}
+              <span className="text-sm text-text-tertiary font-bold">/100</span>
+            </h3>
+          </div>
+          <div
+            className={cn(
+              "w-12 h-12 rounded-full border flex items-center justify-center transition-colors shadow-xs",
+              (metrics?.healthScore || 0) >= 80
+                ? "bg-emerald-50 dark:bg-emerald-900/20 border-emerald-100 dark:border-emerald-800/50 text-emerald-500"
+                : (metrics?.healthScore || 0) >= 50
+                  ? "bg-amber-50 dark:bg-amber-900/20 border-amber-100 dark:border-amber-800/50 text-amber-500"
+                  : "bg-rose-50 dark:bg-rose-900/20 border-rose-100 dark:border-rose-800/50 text-rose-500",
+            )}
+          >
+            {(metrics?.healthScore || 0) >= 50 ? (
+              <Target className="w-5 h-5" />
+            ) : (
+              <AlertCircle className="w-5 h-5" />
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* ─── Left Column (Distribution & Insights) ─── */}
+        <div className="lg:col-span-2 space-y-6">
+          <div className="bg-white dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-2xl p-6 shadow-sm flex flex-col h-full">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-2 text-text-primary dark:text-white font-black uppercase tracking-tight text-sm px-1">
+                <div className="w-5 h-5 rounded border-2 border-primary/20 flex items-center justify-center bg-primary/5 text-primary">
+                  <Activity className="w-3 h-3" />
+                </div>
+                Expense Distribution
+              </div>
+              <div className="text-[11px] font-bold text-text-tertiary bg-gray-50 dark:bg-gray-800 px-2 py-1 rounded-lg border border-border-light dark:border-border-dark">
+                Dynamic Rollup
+              </div>
+            </div>
+
+            <div className="space-y-8 mt-2">
+              <div>
+                <div className="flex justify-between items-end mb-3">
+                  <div className="space-y-1">
+                    <p className="text-xs font-bold text-text-primary dark:text-gray-200">
+                      Overhead vs Project Burn
+                    </p>
+                    <p className="text-[10px] font-bold text-text-tertiary uppercase tracking-widest">
+                      Consolidated Operational Metrics
+                    </p>
+                  </div>
+                  <span className="text-xs font-black text-text-primary dark:text-white">
+                    Total: {formatCurrency(metrics?.totalExpenses || 0)}
+                  </span>
+                </div>
+
+                <div className="w-full flex h-8 rounded-xl overflow-hidden shadow-xs ring-4 ring-gray-50 dark:ring-gray-900/30">
+                  {metrics?.totalExpenses === 0 ? (
+                    <div className="w-full bg-gray-100 dark:bg-gray-800 h-full flex items-center justify-center text-[10px] font-bold text-text-tertiary uppercase tracking-widest">
+                      Waiting for transactions
+                    </div>
+                  ) : (
+                    <>
+                      <div
+                        className="bg-primary/90 transition-all hover:bg-primary cursor-pointer relative group"
+                        style={{
+                          width: `${((metrics?.orgExpenses || 0) / (metrics?.totalExpenses || 1)) * 100}%`,
+                        }}
+                      >
+                        <div className="absolute inset-0 opacity-0 group-hover:opacity-100 bg-white/10 transition-opacity" />
+                      </div>
+                      <div
+                        className="bg-amber-400 hover:bg-amber-500 transition-all cursor-pointer relative group"
+                        style={{
+                          width: `${((metrics?.projExpenses || 0) / (metrics?.totalExpenses || 1)) * 100}%`,
+                        }}
+                      >
+                        <div className="absolute inset-0 opacity-0 group-hover:opacity-100 bg-white/10 transition-opacity" />
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-6 mt-5">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-2.5 h-2.5 rounded-full bg-primary/90 shadow-sm" />
+                    <div>
+                      <p className="text-[10px] font-black text-text-tertiary uppercase tracking-widest leading-none">
+                        Org Overhead
+                      </p>
+                      <p className="text-xs font-bold text-text-primary dark:text-white mt-1">
+                        {formatCurrency(metrics?.orgExpenses || 0)}{" "}
+                        <span className="text-text-tertiary font-medium">
+                          (
+                          {metrics?.totalExpenses
+                            ? Math.round(
+                                ((metrics?.orgExpenses || 0) /
+                                  metrics.totalExpenses) *
+                                  100,
+                              )
+                            : 0}
+                          %)
+                        </span>
+                      </p>
+                    </div>
+                  </div>
+                  <div className="w-px h-6 bg-border-light dark:bg-border-dark" />
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-2.5 h-2.5 rounded-full bg-amber-400 shadow-sm" />
+                    <div>
+                      <p className="text-[10px] font-black text-text-tertiary uppercase tracking-widest leading-none">
+                        Project Burn
+                      </p>
+                      <p className="text-xs font-bold text-text-primary dark:text-white mt-1">
+                        {formatCurrency(metrics?.projExpenses || 0)}{" "}
+                        <span className="text-text-tertiary font-medium">
+                          (
+                          {metrics?.totalExpenses
+                            ? Math.round(
+                                ((metrics?.projExpenses || 0) /
+                                  metrics.totalExpenses) *
+                                  100,
+                              )
+                            : 0}
+                          %)
+                        </span>
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-auto pt-8">
+              <div className="flex items-center gap-3 p-4 bg-gray-50 dark:bg-gray-800/40 rounded-2xl border border-border-light dark:border-border-dark">
+                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                  <Activity className="w-5 h-5" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-[11px] font-black text-text-primary dark:text-white uppercase tracking-tight">
+                    AI Strategic Advisory
+                  </p>
+                  <p className="text-[11px] font-medium text-text-tertiary leading-relaxed mt-0.5">
+                    Your {metrics?.healthScore >= 70 ? "optimal" : "current"}{" "}
+                    burn-to-capital ratio suggests a{" "}
+                    <span className="text-primary font-bold">
+                      {(metrics?.healthScore || 0) >= 80
+                        ? "highly efficient"
+                        : "standard"}
+                    </span>{" "}
+                    growth trajectory. Maintain visibility over project
+                    tranches.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ─── Right Column (Runway & Structure) ─── */}
+        <div className="space-y-6">
+          {/* Runway Estimator Card */}
+          <div className="bg-linear-to-br from-gray-900 to-gray-800 dark:from-black dark:to-gray-900 text-white rounded-3xl p-6 shadow-xl border-t border-white/10 relative overflow-hidden group hover:scale-[1.01] transition-transform duration-300">
+            <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:opacity-20 transition-opacity">
+              <TrendingUp className="w-32 h-32 rotate-12" />
+            </div>
+
+            <div className="relative z-10">
+              <div className="flex items-center justify-between mb-8">
+                <div className="space-y-0.5">
+                  <h3 className="text-lg font-black tracking-tight">
+                    Runway Estimator
+                  </h3>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">
+                    Startup Survival Metrics
+                  </p>
+                </div>
+                <div className="w-10 h-10 rounded-xl bg-white/10 backdrop-blur-md flex items-center justify-center border border-white/20">
+                  <Clock className="w-5 h-5 text-primary" />
+                </div>
+              </div>
+
+              <div className="bg-white/5 backdrop-blur-xl rounded-2xl p-5 border border-white/10 shadow-inner">
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">
+                  Estimated Runway
+                </p>
+                <div className="flex items-baseline gap-2 mt-2">
+                  <span className="text-6xl font-black tracking-tighter text-white">
+                    {(metrics?.totalExpenses || 0) > 0
+                      ? Math.max(
+                          0,
+                          Math.round(
+                            (metrics?.netCashflow || 0) / metrics.totalExpenses,
+                          ),
+                        )
+                      : "∞"}
+                  </span>
+                  <span className="text-lg font-black text-primary uppercase">
+                    Months
+                  </span>
+                </div>
+              </div>
+
+              <div className="mt-8 flex items-start gap-3 p-4 bg-white/5 rounded-2xl border border-white/5">
+                <AlertCircle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+                <p className="text-[11px] text-gray-300 leading-relaxed font-medium">
+                  Financial health tracks both projected liabilities and liquid
+                  assets. Accuracy depends on precise project-level budget
+                  logging.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Quick Insights Section */}
+          <div className="bg-white dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-2xl p-6 shadow-sm">
+            <h3 className="font-black text-text-primary dark:text-white uppercase tracking-tight text-sm mb-6 flex items-center gap-2">
+              <Layers className="w-4 h-4 text-primary" />
+              Cash Composition
+            </h3>
+
+            <div className="space-y-5">
+              <div className="flex justify-between items-center group">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center text-emerald-600">
+                    <TrendingUp className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold text-text-primary dark:text-gray-200 truncate">
+                      Liquid Revenue
+                    </p>
+                    <p className="text-[10px] font-bold text-text-tertiary">
+                      Verified Settlements
+                    </p>
+                  </div>
+                </div>
+                <div className="text-xs font-black text-emerald-600 dark:text-emerald-400">
+                  {formatCurrency(metrics?.totalIncome || 0)}
+                </div>
+              </div>
+
+              <div className="flex justify-between items-center group">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-rose-50 dark:bg-rose-900/20 flex items-center justify-center text-rose-600">
+                    <TrendingDown className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold text-text-primary dark:text-gray-200 truncate">
+                      Current Liabilities
+                    </p>
+                    <p className="text-[10px] font-bold text-text-tertiary">
+                      Accounts Payable
+                    </p>
+                  </div>
+                </div>
+                <div className="text-xs font-black text-text-primary dark:text-white">
+                  {formatCurrency(metrics?.totalExpenses || 0)}
+                </div>
+              </div>
+            </div>
+
+            <button className="w-full py-2.5 mt-8 bg-gray-50 hover:bg-gray-100 dark:bg-gray-800/50 dark:hover:bg-gray-800 rounded-xl text-[11px] font-black text-text-tertiary hover:text-primary transition-all border border-border-light dark:border-border-dark shadow-xs uppercase tracking-widest">
+              Review Master Ledger
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

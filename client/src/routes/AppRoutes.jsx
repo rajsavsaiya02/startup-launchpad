@@ -25,6 +25,7 @@ import { OrgManagementPage } from "../features/organization/management/OrgManage
 import { OrgWorkspaceSettings } from "../features/organization/settings/OrgWorkspaceSettings";
 import { OrgPublicProfileSettings } from "../features/organization/settings/OrgPublicProfileSettings";
 import { OrgPublicProfilePage } from "../features/organization/public/OrgPublicProfilePage";
+import { OrgFinanceDashboard } from "../features/organization/finance/OrgFinanceDashboard";
 import { FinancialOverview } from "../features/finance/FinancialOverview";
 import { TalentMarketplace } from "../features/talent/TalentMarketplace";
 import { LandingPage } from "../pages/LandingPage";
@@ -362,6 +363,7 @@ export function AppRoutes() {
               element={<OrgPublicProfileSettings />}
             />
             <Route path="/org/settings" element={<OrgWorkspaceSettings />} />
+            <Route path="/org/finances/*" element={<OrgFinanceDashboard />} />
           </Route>
           {/* Close OrgGuard */}
           <Route path="/talent" element={<TalentMarketplace />} />

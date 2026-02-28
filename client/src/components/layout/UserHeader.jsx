@@ -1,6 +1,5 @@
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import {
-  Bell,
   Menu,
   LogOut,
   User,
@@ -76,23 +75,6 @@ export function UserHeader({ onMobileMenuClick }) {
 
       {/* Right: Actions & Profile */}
       <div className="flex items-center gap-3">
-        <Dropdown
-          trigger={
-            <button className="h-10 w-10 flex items-center justify-center rounded-full text-text-tertiary hover:bg-white dark:hover:bg-surface-dark hover:shadow-sm transition-all relative group">
-              <Bell className="h-5 w-5 group-hover:text-primary transition-colors" />
-            </button>
-          }
-          align="right"
-          width="w-80"
-        >
-          <div className="px-4 py-3 border-b border-border-light dark:border-border-dark bg-gray-50/50">
-            <h4 className="font-semibold text-sm">Notifications</h4>
-          </div>
-          <div className="p-4 text-center text-text-tertiary text-sm">
-            No new notifications
-          </div>
-        </Dropdown>
-
         {/* Help Icon */}
         <button
           onClick={() => navigate("/help-center")}

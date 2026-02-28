@@ -364,10 +364,126 @@ const deleteTask = async (req, res) => {
   }
 };
 
+const getTaskComments = async (req, res) => {
+  const { id: projectId, taskId } = req.params;
+  const userId = req.user.id;
+
+  try {
+    // Check if user is a member of the project
+    const memberCheck = await pool.query(
+      "SELECT id FROM project_members WHERE project_id = $1 AND user_id = $2",
+      [projectId, userId],
+    );
+    if (memberCheck.rows.length === 0) {
+      return res
+        .status(403)
+        .json({ message: "You are not a member of this project" });
+    }
+
+    const result = await pool.query(
+      `
+      SELECT tc.*, u.first_name, u.last_name, u.email, u.avatar as profile_picture_url 
+      FROM task_comments tc
+      JOIN users u ON tc.user_id = u.id
+      WHERE tc.task_id = $1
+      ORDER BY tc.created_at ASC
+    `,
+      [taskId],
+    );
+    res.json(result.rows);
+  } catch (err) {
+    logger.error("Error fetching task comments:", err);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
+const addTaskComment = async (req, res) => {
+  const { id: projectId, taskId } = req.params;
+  const { comment } = req.body;
+  const userId = req.user.id;
+
+  if (!comment || comment.trim() === "") {
+    return res.status(400).json({ message: "Comment cannot be empty" });
+  }
+
+  try {
+    // Check if user is a member of the project
+    const memberCheck = await pool.query(
+      "SELECT id FROM project_members WHERE project_id = $1 AND user_id = $2",
+      [projectId, userId],
+    );
+    if (memberCheck.rows.length === 0) {
+      return res
+        .status(403)
+        .json({ message: "You are not a member of this project" });
+    }
+
+    // Check if the task belongs to the project
+    const taskCheck = await pool.query(
+      "SELECT id FROM tasks WHERE id = $1 AND project_id = $2",
+      [taskId, projectId],
+    );
+    if (taskCheck.rows.length === 0) {
+      return res
+        .status(404)
+        .json({ message: "Task not found in this project" });
+    }
+
+    const result = await pool.query(
+      `
+      INSERT INTO task_comments (task_id, user_id, comment)
+      VALUES ($1, $2, $3)
+      RETURNING *
+    `,
+      [taskId, userId, comment],
+    );
+
+    const userResult = await pool.query(
+      "SELECT first_name, last_name, email, avatar as profile_picture_url FROM users WHERE id = $1",
+      [userId],
+    );
+
+    const newComment = {
+      ...result.rows[0],
+      ...userResult.rows[0],
+    };
+
+    res.status(201).json(newComment);
+  } catch (err) {
+    logger.error("Error adding task comment:", err);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
+const deleteTaskComment = async (req, res) => {
+  const { commentId } = req.params;
+  const userId = req.user.id;
+
+  try {
+    const check = await pool.query(
+      "SELECT user_id FROM task_comments WHERE id = $1",
+      [commentId],
+    );
+    if (check.rows.length === 0)
+      return res.status(404).json({ message: "Comment not found" });
+    if (check.rows[0].user_id !== userId)
+      return res.status(403).json({ message: "Forbidden" });
+
+    await pool.query("DELETE FROM task_comments WHERE id = $1", [commentId]);
+    res.json({ message: "Comment deleted" });
+  } catch (err) {
+    logger.error("Error deleting task comment:", err);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
 module.exports = {
   getTasksByProject,
   getAllTasksForUser,
   createTask,
   updateTask,
   deleteTask,
+  getTaskComments,
+  addTaskComment,
+  deleteTaskComment,
 };

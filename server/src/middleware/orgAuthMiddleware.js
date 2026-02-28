@@ -14,11 +14,11 @@ const requireOrgMember = async (req, res, next) => {
                 m.organization_member_id,
                 m.organization_id,
                 m.org_role,
-                m.is_active,
                 m.designation_id,
                 o.name as organization_name,
                 o.timezone as organization_timezone,
-                o.status as organization_status
+                o.status as organization_status,
+                (SELECT EXISTS (SELECT 1 FROM organization_teams WHERE team_lead_member_id = m.organization_member_id)) as is_team_lead
             FROM organization_members m
             JOIN organizations o ON m.organization_id = o.organization_id
             WHERE m.user_id = $1 AND m.is_active = true
@@ -27,23 +27,19 @@ const requireOrgMember = async (req, res, next) => {
     );
 
     if (memberQuery.rows.length === 0) {
-      return res
-        .status(403)
-        .json({
-          error:
-            "Access denied: You are not an active member of any organization.",
-        });
+      return res.status(403).json({
+        error:
+          "Access denied: You are not an active member of any organization.",
+      });
     }
 
     const memberData = memberQuery.rows[0];
 
     if (memberData.organization_status !== "active") {
-      return res
-        .status(403)
-        .json({
-          error:
-            "Access denied: Your organization is currently inactive or suspended.",
-        });
+      return res.status(403).json({
+        error:
+          "Access denied: Your organization is currently inactive or suspended.",
+      });
     }
 
     // Attach to request
@@ -58,16 +54,15 @@ const requireOrgMember = async (req, res, next) => {
       member_id: memberData.organization_member_id,
       role: memberData.org_role,
       designation_id: memberData.designation_id,
+      is_team_lead: memberData.is_team_lead,
     };
 
     next();
   } catch (error) {
     console.error("Error in requireOrgMember middleware:", error);
-    res
-      .status(500)
-      .json({
-        error: "Internal server error during organization authorization",
-      });
+    res.status(500).json({
+      error: "Internal server error during organization authorization",
+    });
   }
 };
 

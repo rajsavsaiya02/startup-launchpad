@@ -113,6 +113,10 @@ const getExpenses = async (req, res) => {
     const queryStr = `
             SELECT 
                 pe.*, 
+                u1.name as creator_name,
+                u1.avatar as creator_avatar,
+                u2.name as updater_name,
+                u2.avatar as updater_avatar,
                 COALESCE(
                   (
                     SELECT json_agg(json_build_object(
@@ -128,6 +132,8 @@ const getExpenses = async (req, res) => {
                   '[]'::json
                 ) as attachments
             FROM project_expenses pe
+            LEFT JOIN users u1 ON pe.created_by_id = u1.id
+            LEFT JOIN users u2 ON pe.updated_by_id = u2.id
             ${whereClause} 
             ORDER BY pe.expense_date DESC 
             ${queryLimit}
@@ -183,8 +189,8 @@ const createExpense = async (req, res) => {
     const result = await pool.query(
       `
             INSERT INTO project_expenses 
-            (project_id, description, brief, category, vendor_name, expense_date, amount, status, payment_modes)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+            (project_id, description, brief, category, vendor_name, expense_date, amount, status, payment_modes, created_by_id)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
             RETURNING *
         `,
       [
@@ -197,6 +203,7 @@ const createExpense = async (req, res) => {
         parseFloat(amount),
         status || "Pending",
         payment_modes ? JSON.stringify(payment_modes) : "[]",
+        req.user.id,
       ],
     );
 
@@ -228,6 +235,24 @@ const createExpense = async (req, res) => {
 const updateExpense = async (req, res) => {
   try {
     const { id: projectId, expenseId } = req.params;
+    const userId = req.user.id;
+
+    // Ownership check
+    const checkRes = await pool.query(
+      "SELECT created_by_id FROM project_expenses WHERE id = $1 AND project_id = $2",
+      [expenseId, projectId],
+    );
+
+    if (checkRes.rows.length === 0) {
+      return res.status(404).json({ error: "Expense not found" });
+    }
+
+    if (checkRes.rows[0].created_by_id !== userId) {
+      return res
+        .status(403)
+        .json({ error: "Only the creator can edit this record" });
+    }
+
     const {
       description,
       brief,
@@ -252,7 +277,8 @@ const updateExpense = async (req, res) => {
                 amount = COALESCE($6, amount),
                 status = COALESCE($7, status),
                 payment_modes = COALESCE($8, payment_modes),
-                updated_at = CURRENT_TIMESTAMP
+                updated_at = CURRENT_TIMESTAMP,
+                updated_by_id = $11
             WHERE id = $9 AND project_id = $10
             RETURNING *
         `,
@@ -267,6 +293,7 @@ const updateExpense = async (req, res) => {
         payment_modes ? JSON.stringify(payment_modes) : undefined,
         expenseId,
         projectId,
+        req.user.id,
       ],
     );
 
@@ -302,6 +329,23 @@ const updateExpense = async (req, res) => {
 const deleteExpense = async (req, res) => {
   try {
     const { id: projectId, expenseId } = req.params;
+    const userId = req.user.id;
+
+    // Ownership check
+    const checkRes = await pool.query(
+      "SELECT created_by_id FROM project_expenses WHERE id = $1 AND project_id = $2",
+      [expenseId, projectId],
+    );
+
+    if (checkRes.rows.length === 0) {
+      return res.status(404).json({ error: "Expense not found" });
+    }
+
+    if (checkRes.rows[0].created_by_id !== userId) {
+      return res
+        .status(403)
+        .json({ error: "Only the creator can delete this record" });
+    }
 
     const result = await pool.query(
       "DELETE FROM project_expenses WHERE id = $1 AND project_id = $2 RETURNING id",

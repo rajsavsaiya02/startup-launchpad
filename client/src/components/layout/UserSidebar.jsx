@@ -15,14 +15,13 @@ import {
   User,
   Rocket,
   X,
-  Shield,
-  Bell,
   CreditCard,
   Palette,
   Globe,
   Building,
   Building2,
   LayoutList,
+  Wallet,
 } from "lucide-react";
 
 // --- Configuration: User Dual Navigation ---
@@ -36,8 +35,7 @@ const USER_MODULE_NAV_CONFIG = {
         { name: "Projects", path: "/productivity/projects", icon: FolderOpen },
         { name: "Tasks", path: "/productivity/tasks", icon: CheckSquare },
         { name: "Public Profile", path: "/settings/general", icon: Globe },
-        { name: "Account Security", path: "/settings/security", icon: Shield },
-        { name: "Notifications", path: "/settings/notifications", icon: Bell },
+        { name: "Settings", path: "/settings/security", icon: Settings },
         // { name: "Billing & Plans", path: "/settings/billing", icon: CreditCard }, // TODO: We will develop this later
         {
           name: "Workspace Customization",
@@ -60,6 +58,7 @@ const USER_MODULE_NAV_CONFIG = {
         { name: "Projects", path: "/org/projects", icon: FolderOpen },
         { name: "Tasks", path: "/org/tasks", icon: CheckSquare },
         { name: "Gigs", path: "/org/gigs", icon: Briefcase },
+        { name: "Finances", path: "/org/finances", icon: Wallet },
         { name: "Public Profile", path: "/org/public-profile", icon: Globe },
         { name: "Settings", path: "/org/settings", icon: Settings },
       ],

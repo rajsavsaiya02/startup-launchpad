@@ -39,6 +39,22 @@ const orgProjectService = {
   createProject,
   updateProject,
   deleteProject,
+  getProjectMembers: async (id) => {
+    const response = await apiClient.get(`${BASE_PATH}/${id}/members`);
+    return response.data;
+  },
+  addProjectMembers: async (id, userIds) => {
+    const response = await apiClient.post(`${BASE_PATH}/${id}/members`, {
+      userIds,
+    });
+    return response.data;
+  },
+  removeProjectMember: async (id, userId) => {
+    const response = await apiClient.delete(
+      `${BASE_PATH}/${id}/members/${userId}`,
+    );
+    return response.data;
+  },
 };
 
 export default orgProjectService;
