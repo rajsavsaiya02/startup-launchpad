@@ -72,6 +72,7 @@ app.use("/api/settings", require("./routes/settingsRoutes"));
 app.use("/api/projects", require("./routes/projectActivityRoutes")); // Must be before projectRoutes to catch /:projectId/activities
 app.use("/api/projects", require("./routes/projectFinancialsRoutes")); // Mount financials routes
 app.use("/api/projects", require("./routes/projectTaskRoutes")); // Mount task routes
+app.use("/api/tasks", require("./routes/projectTaskRoutes")); // Mount for independent tasks
 app.use("/api/projects", require("./routes/projectRoutes"));
 app.use("/api", routes);
 

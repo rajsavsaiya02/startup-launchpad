@@ -120,17 +120,21 @@ const getAllTasksForUser = async (req, res) => {
                '[]'::json
              ) as attachments
       FROM tasks t
-      JOIN projects p ON t.project_id = p.id
-      JOIN project_members pm ON p.id = pm.project_id
+      LEFT JOIN projects p ON t.project_id = p.id
+      LEFT JOIN project_members pm ON p.id = pm.project_id
       LEFT JOIN task_assignees ta ON t.id = ta.task_id
-      WHERE pm.user_id = $1
+      WHERE (pm.user_id = $1 OR (t.project_id IS NULL AND t.created_by = $1))
     `;
     const params = [userId];
 
     if (scope === "organization") {
       tasksQuery += " AND p.owner_org_id IS NOT NULL";
+    } else if (scope === "personal") {
+      tasksQuery += " AND (p.owner_org_id IS NULL OR t.project_id IS NULL)";
     } else {
-      tasksQuery += " AND p.owner_org_id IS NULL";
+      // Default: exclude organization tasks if not explicitly requested?
+      // Actually, if it's "My Tasks", maybe we show everything personal + independent?
+      tasksQuery += " AND (p.owner_org_id IS NULL OR t.project_id IS NULL)";
     }
 
     tasksQuery += `
@@ -148,7 +152,7 @@ const getAllTasksForUser = async (req, res) => {
 };
 
 const createTask = async (req, res) => {
-  const { id: project_id } = req.params;
+  const project_id = req.params.id || null;
   const {
     title,
     description,

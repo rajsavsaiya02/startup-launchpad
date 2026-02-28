@@ -14,7 +14,10 @@ class FileAssetController {
   ) {
     if (userRole === "admin" || userRole === "super_admin") return true;
 
-    if (contextType === "organization") {
+    if (
+      contextType === "organization" ||
+      contextType === "organization_finance"
+    ) {
       const result = await pool.query(
         "SELECT org_role FROM organization_members WHERE organization_id = $1 AND user_id = $2",
         [contextId, userId],
@@ -45,6 +48,11 @@ class FileAssetController {
         [contextId, userId],
       );
       return result.rows.length > 0;
+    }
+
+    if (contextType === "user") {
+      // Users can access their own global context
+      return contextId === userId.toString() || contextId === userId;
     }
 
     // Default deny for unknown contexts

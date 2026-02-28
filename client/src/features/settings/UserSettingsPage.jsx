@@ -32,7 +32,6 @@ const SECTION_TITLES = {
   security: "Account Security",
   notifications: "Notifications",
   billing: "Billing & Plans",
-  workspace: "Workspace Settings",
 };
 
 export function UserSettingsPage({ section = "profile" }) {
@@ -406,61 +405,24 @@ export function UserSettingsPage({ section = "profile" }) {
           </div>
         )}
 
-        {/* WORKSPACE TAB */}
-        {activeSection === "workspace" && (
-          <Card className="p-8 bg-white dark:bg-surface-dark border-border-light dark:border-border-dark">
-            <div className="border-b border-border-light dark:border-border-dark pb-6 mb-6">
-              <h2 className="text-xl font-bold text-text-primary dark:text-white">
-                Organization Identity
-              </h2>
-              <p className="text-text-secondary dark:text-gray-400 text-sm mt-1">
-                Manage your organization's display settings.
-              </p>
+        {/* Placeholder for other tabs */}
+        {activeSection !== "profile" && activeSection !== "security" && (
+          <Card className="p-16 flex flex-col items-center justify-center text-center bg-white dark:bg-surface-dark border-dashed border-2">
+            <div className="h-20 w-20 bg-gray-50 dark:bg-gray-800 rounded-full flex items-center justify-center mb-6">
+              <Settings className="h-10 w-10 text-text-tertiary/50" />
             </div>
-            <div className="space-y-6">
-              <Input label="Workspace Name" defaultValue="LaunchPad Inc." />
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium text-text-secondary">
-                  Workspace URL
-                </label>
-                <div className="flex items-center">
-                  <span className="bg-gray-100 dark:bg-gray-800 border border-r-0 border-border-light dark:border-border-dark rounded-l-lg px-3 py-2.5 text-sm text-text-tertiary">
-                    launchpad.com/
-                  </span>
-                  <input
-                    type="text"
-                    defaultValue="startup-inc"
-                    className="flex-1 rounded-r-lg border border-border-light bg-white dark:bg-background-dark dark:border-border-dark px-3 py-2.5 text-sm focus:ring-2 focus:ring-primary/20"
-                  />
-                </div>
-              </div>
-              <div className="flex justify-end pt-4">
-                <Button>Update Workspace</Button>
-              </div>
-            </div>
+            <h3 className="text-xl font-bold text-text-primary dark:text-white">
+              Coming Soon
+            </h3>
+            <p className="text-text-secondary mt-2 max-w-md">
+              The{" "}
+              <span className="font-semibold text-primary">
+                {SECTION_TITLES[activeSection]}
+              </span>{" "}
+              panel is currently under development.
+            </p>
           </Card>
         )}
-
-        {/* Placeholder for other tabs */}
-        {activeSection !== "profile" &&
-          activeSection !== "workspace" &&
-          activeSection !== "security" && (
-            <Card className="p-16 flex flex-col items-center justify-center text-center bg-white dark:bg-surface-dark border-dashed border-2">
-              <div className="h-20 w-20 bg-gray-50 dark:bg-gray-800 rounded-full flex items-center justify-center mb-6">
-                <Settings className="h-10 w-10 text-text-tertiary/50" />
-              </div>
-              <h3 className="text-xl font-bold text-text-primary dark:text-white">
-                Coming Soon
-              </h3>
-              <p className="text-text-secondary mt-2 max-w-md">
-                The{" "}
-                <span className="font-semibold text-primary">
-                  {SECTION_TITLES[activeSection]}
-                </span>{" "}
-                panel is currently under development.
-              </p>
-            </Card>
-          )}
       </div>
     </div>
   );

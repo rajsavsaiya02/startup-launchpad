@@ -15,10 +15,8 @@ const getTasksByProject = async (projectId) => {
 };
 
 const createTask = async (projectId, taskData) => {
-  const response = await apiClient.post(
-    `${BASE_PATH}/${projectId}/tasks`,
-    taskData,
-  );
+  const url = projectId ? `${BASE_PATH}/${projectId}/tasks` : `/tasks`;
+  const response = await apiClient.post(url, taskData);
   return response.data;
 };
 

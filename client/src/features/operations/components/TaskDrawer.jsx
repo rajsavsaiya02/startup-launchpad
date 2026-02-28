@@ -30,6 +30,7 @@ import fileAssetService from "../../../services/fileAssetService";
 import userService from "../../../services/userService";
 import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
+import { useAuth } from "../../../context/AuthContext";
 
 const CapsuleProgress = ({ completed, total }) => {
   const percentage = total === 0 ? 0 : (completed / total) * 100;
@@ -78,6 +79,7 @@ export function TaskDrawer({
   isReadOnly = false,
 }) {
   const { id: projectId } = useParams();
+  const { user } = useAuth();
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -198,17 +200,18 @@ export function TaskDrawer({
 
   useEffect(() => {
     if (isOpen) {
-      const fetchPreferences = async () => {
+      const fetchInitialData = async () => {
         try {
           const prefs = await userService.getPreferences();
+
           if (prefs.task_categories && prefs.task_categories.length > 0) {
             setCategories(prefs.task_categories);
           }
         } catch (err) {
-          console.error("Failed to fetch user preferences:", err);
+          console.error("Failed to fetch initial TaskDrawer data:", err);
         }
       };
-      fetchPreferences();
+      fetchInitialData();
     }
   }, [isOpen]);
 
@@ -305,9 +308,13 @@ export function TaskDrawer({
     try {
       const title =
         urlTitleInput || urlInput.split("/").pop() || "External Link";
+
+      const contextType = projectId ? "project" : "user";
+      const contextId = projectId || user?.id;
+
       const newAsset = await fileAssetService.attachExternalLink(
-        "project", // We attach task files to project level for now to reuse context easily.
-        projectId,
+        contextType,
+        contextId,
         title,
         urlInput,
       );
@@ -370,10 +377,13 @@ export function TaskDrawer({
       if (filesToUpload.length > 0) {
         setUploadingAttachment(true);
         try {
+          const contextType = projectId ? "project" : "user";
+          const contextId = projectId || user?.id;
+
           const uploadPromises = filesToUpload.map((att) =>
             fileAssetService.uploadFile(
-              "project",
-              projectId,
+              contextType,
+              contextId,
               att.file,
               att.file.name,
             ),

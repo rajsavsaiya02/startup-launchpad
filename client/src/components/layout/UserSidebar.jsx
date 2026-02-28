@@ -37,11 +37,6 @@ const USER_MODULE_NAV_CONFIG = {
         { name: "Public Profile", path: "/settings/general", icon: Globe },
         { name: "Settings", path: "/settings/security", icon: Settings },
         // { name: "Billing & Plans", path: "/settings/billing", icon: CreditCard }, // TODO: We will develop this later
-        {
-          name: "Workspace Customization",
-          path: "/settings/workspace",
-          icon: Palette,
-        },
       ],
     },
   ],

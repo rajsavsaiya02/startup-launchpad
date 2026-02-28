@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Share2,
   Plus,
@@ -10,6 +10,7 @@ import {
   ChevronDown,
   ExternalLink,
   Edit2,
+  Check,
 } from "lucide-react";
 import { Avatar } from "../../../components/ui/Avatar";
 import { cn } from "../../../utils/cn";
@@ -19,7 +20,6 @@ import { TaskDrawer } from "../../operations/components/TaskDrawer";
 
 export function OrgProjectTasksPage() {
   const [tasks, setTasks] = useState([]);
-  const [isTasksLoading, setIsTasksLoading] = useState(false);
   const [selectedTask, setSelectedTask] = useState(null);
   const [isTaskDrawerOpen, setIsTaskDrawerOpen] = useState(false);
   const [isTaskDrawerReadOnly, setIsTaskDrawerReadOnly] = useState(false);
@@ -27,17 +27,14 @@ export function OrgProjectTasksPage() {
   const [taskPriorityFilter, setTaskPriorityFilter] = useState("All");
   const [taskCategoryFilter, setTaskCategoryFilter] = useState("All");
 
-  const fetchTasks = async () => {
-    setIsTasksLoading(true);
+  const fetchTasks = useCallback(async () => {
     try {
       const data = await taskService.getAllTasks("organization");
       setTasks(data);
     } catch (err) {
       console.error("Error fetching tasks:", err);
-    } finally {
-      setIsTasksLoading(false);
     }
-  };
+  }, []);
 
   const handleEditTask = (task) => {
     setSelectedTask(task);
@@ -51,9 +48,44 @@ export function OrgProjectTasksPage() {
     setIsTaskDrawerOpen(true);
   };
 
+  const handleToggleSubtask = async (task, subtaskIndex) => {
+    try {
+      const subtasks = (() => {
+        if (typeof task.subtasks === "string") {
+          try {
+            return JSON.parse(task.subtasks);
+          } catch {
+            return [];
+          }
+        }
+        return Array.isArray(task.subtasks) ? task.subtasks : [];
+      })();
+
+      const updatedSubtasks = [...subtasks];
+      updatedSubtasks[subtaskIndex].is_completed =
+        !updatedSubtasks[subtaskIndex].is_completed;
+
+      // Optimistic Update
+      const updatedTasks = tasks.map((t) =>
+        t.id === task.id ? { ...t, subtasks: updatedSubtasks } : t,
+      );
+      setTasks(updatedTasks);
+
+      await taskService.updateTask(task.project_id, task.id, {
+        subtasks: updatedSubtasks,
+      });
+    } catch (err) {
+      console.error("Failed to toggle subtask:", err);
+      fetchTasks();
+    }
+  };
+
   useEffect(() => {
-    fetchTasks();
-  }, []);
+    const load = async () => {
+      await fetchTasks();
+    };
+    load();
+  }, [fetchTasks]);
 
   const onDragEnd = async (result) => {
     const { destination, source, draggableId } = result;
@@ -200,6 +232,7 @@ export function OrgProjectTasksPage() {
                   index={index}
                   onEdit={() => handleEditTask(task)}
                   onView={() => handleViewTask(task)}
+                  onToggleSubtask={handleToggleSubtask}
                 />
               ))}
             </WorkColumn>
@@ -216,6 +249,7 @@ export function OrgProjectTasksPage() {
                   index={index}
                   onEdit={() => handleEditTask(task)}
                   onView={() => handleViewTask(task)}
+                  onToggleSubtask={handleToggleSubtask}
                 />
               ))}
             </WorkColumn>
@@ -232,6 +266,7 @@ export function OrgProjectTasksPage() {
                   index={index}
                   onEdit={() => handleEditTask(task)}
                   onView={() => handleViewTask(task)}
+                  onToggleSubtask={handleToggleSubtask}
                 />
               ))}
             </WorkColumn>
@@ -286,7 +321,7 @@ function WorkColumn({ id, title, count, color, children }) {
   );
 }
 
-function TaskCard({ task, index, onEdit, onView }) {
+function TaskCard({ task, index, onEdit, onView, onToggleSubtask }) {
   const priorityColors = {
     High: "text-error bg-error/10 border-error/20",
     Medium: "text-warning bg-warning/10 border-warning/20",
@@ -343,6 +378,59 @@ function TaskCard({ task, index, onEdit, onView }) {
           <h4 className="text-sm font-semibold text-text-primary dark:text-white mb-2 leading-snug">
             {task.title}
           </h4>
+
+          {/* Subtasks Preview */}
+          {(() => {
+            const subtasks = (() => {
+              if (typeof task.subtasks === "string") {
+                try {
+                  return JSON.parse(task.subtasks);
+                } catch {
+                  return [];
+                }
+              }
+              return Array.isArray(task.subtasks) ? task.subtasks : [];
+            })();
+            if (subtasks.length === 0) return null;
+
+            return (
+              <div className="flex flex-col gap-1.5 mb-3 bg-gray-50/50 dark:bg-gray-800/40 p-2 rounded-lg border border-border-light/40 dark:border-border-dark/40">
+                {subtasks.map((st, sIdx) => (
+                  <div key={sIdx} className="flex items-center gap-2 group/sub">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onToggleSubtask?.(task, sIdx);
+                      }}
+                      className={cn(
+                        "h-3.5 w-3.5 rounded border flex items-center justify-center transition-all",
+                        st.is_completed
+                          ? "bg-primary border-primary"
+                          : "bg-white dark:bg-surface-dark border-text-tertiary group-hover/sub:border-primary",
+                      )}
+                    >
+                      {st.is_completed && (
+                        <Check
+                          className="h-2.5 w-2.5 text-white"
+                          strokeWidth={4}
+                        />
+                      )}
+                    </button>
+                    <span
+                      className={cn(
+                        "text-[10px] font-bold transition-all truncate",
+                        st.is_completed
+                          ? "text-text-tertiary line-through"
+                          : "text-text-secondary dark:text-gray-300",
+                      )}
+                    >
+                      {st.title}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
 
           <div className="flex justify-between items-center pt-3 border-t border-border-light dark:border-border-dark border-dashed mt-3">
             <div className="flex items-center gap-3">

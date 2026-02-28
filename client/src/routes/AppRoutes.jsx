@@ -400,10 +400,6 @@ export function AppRoutes() {
             path="/settings/billing"
             element={<UserSettingsPage section="billing" />}
           />
-          <Route
-            path="/settings/workspace"
-            element={<UserSettingsPage section="workspace" />}
-          />
           <Route path="/settings/user/:id" element={<UserProfilePage />} />
           {/* Legacy Redirects (for backward compatibility if needed) */}
           <Route
