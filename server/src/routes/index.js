@@ -11,7 +11,9 @@ const cmsRoutes = require("./cmsRoutes");
 const userRoutes = require("./userRoutes");
 const organizationRoutes = require("./organizationRoutes");
 const orgFinanceRoutes = require("./orgFinanceRoutes");
+const talentRoutes = require("./talentRoutes");
 
+router.use("/talent", talentRoutes);
 router.use("/users", userRoutes);
 router.use("/org/finances", orgFinanceRoutes);
 router.use("/org", organizationRoutes);

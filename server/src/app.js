@@ -50,7 +50,21 @@ app.use(
 app.use(passport.initialize());
 
 // Static Files
-app.use(express.static(path.join(__dirname, "../public")));
+app.use(express.static(path.join(__dirname, "../public"))); // Legacy support
+
+// Tiered Public Storage Serving
+// Accessible via /public-assets/[tier]/public/...
+// Security: Blocks any access to paths containing '/private/'
+app.use(
+  "/public-assets",
+  (req, res, next) => {
+    if (req.path.toLowerCase().includes("/private/")) {
+      return res.status(403).json({ error: "Access denied to private assets" });
+    }
+    next();
+  },
+  express.static(path.join(__dirname, "../storage")),
+);
 
 // Maintenance Mode Middleware
 const maintenanceMiddleware = require("./middleware/maintenanceMiddleware");
@@ -70,10 +84,10 @@ app.use("/api/file-assets", require("./routes/fileAssetRoutes"));
 app.use("/api/sessions", require("./routes/sessionRoutes"));
 app.use("/api/settings", require("./routes/settingsRoutes"));
 app.use("/api/projects", require("./routes/projectActivityRoutes")); // Must be before projectRoutes to catch /:projectId/activities
+app.use("/api/projects", require("./routes/projectRoutes")); // Mount main project routes first
 app.use("/api/projects", require("./routes/projectFinancialsRoutes")); // Mount financials routes
 app.use("/api/projects", require("./routes/projectTaskRoutes")); // Mount task routes
 app.use("/api/tasks", require("./routes/projectTaskRoutes")); // Mount for independent tasks
-app.use("/api/projects", require("./routes/projectRoutes"));
 app.use("/api", routes);
 
 // Serve React Static Files (JS/CSS/Images) - Avoid index.html to allow SEO Injection

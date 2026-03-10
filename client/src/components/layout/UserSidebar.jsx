@@ -52,7 +52,7 @@ const USER_MODULE_NAV_CONFIG = {
         { name: "Management", path: "/org/management", icon: Building2 },
         { name: "Projects", path: "/org/projects", icon: FolderOpen },
         { name: "Tasks", path: "/org/tasks", icon: CheckSquare },
-        { name: "Gigs", path: "/org/gigs", icon: Briefcase },
+        { name: "Talent Hub", path: "/org/talent", icon: Users },
         { name: "Finances", path: "/org/finances", icon: Wallet },
         { name: "Public Profile", path: "/org/public-profile", icon: Globe },
         { name: "Settings", path: "/org/settings", icon: Settings },
@@ -84,8 +84,12 @@ export function UserSidebar({
         title: section.title,
         items: section.items.filter((item) => {
           // Role-based filtering for sidebar items
-          if (item.name === "Find Gigs" && user?.role === "founder")
-            return false; // Founders might not need this here
+          const isOrganizationRole =
+            user?.role === "founder" ||
+            user?.role === "admin" ||
+            user?.role === "super_admin";
+
+          if (item.name === "Find Gigs" && isOrganizationRole) return false; // Founders/Admins should use the Org side
           if (
             item.name === "Workspace Customization" &&
             user?.role !== "founder"

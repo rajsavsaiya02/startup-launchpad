@@ -83,36 +83,90 @@ export function PublicProfile() {
         // Parse public_profile JSON if it exists
         const publicProfile = userData.public_profile || {};
 
-        // Determine effective avatar:
-        // 1. If public_profile has avatar_url, use it.
-        // 2. Otherwise use userData.avatar_url (main profile).
+        // Effective avatar: public_profile override → user.avatar → user.avatar_url
         const effectiveAvatar =
-          publicProfile.avatar_url || userData.avatar_url || "";
+          publicProfile.avatar_url ||
+          userData.avatar ||
+          userData.avatar_url ||
+          "";
+
+        // ── Normalise helpers ─────────────────────────────────────────────
+        // Each item must have a stable unique `id` for React list keys.
+        // The seeder may use different field names (dates, desc, url, title)
+        // than the form (duration, description, link, name).
+        let _uid = 0;
+        const ensureId = (item) =>
+          item && item.id
+            ? item
+            : { ...item, id: `pp-${Date.now()}-${++_uid}` };
+
+        const normaliseExp = (exp) => ({
+          ...ensureId(exp),
+          duration: exp.duration ?? exp.dates ?? "",
+          description: exp.description ?? exp.desc ?? "",
+        });
+
+        const normaliseEdu = (edu) => ({
+          ...ensureId(edu),
+          // year: take last part of a "YYYY - YYYY" dates string, or edu.year
+          year:
+            edu.year ??
+            (edu.dates ? String(edu.dates).split("-").at(-1).trim() : ""),
+        });
+
+        // achievements may be plain strings ("Forbes 30...") or objects
+        const normaliseAch = (ach) => {
+          if (typeof ach === "string") {
+            return {
+              id: `pp-${Date.now()}-${++_uid}`,
+              title: ach,
+              date: "",
+              description: "",
+            };
+          }
+          return { description: "", date: "", ...ensureId(ach) };
+        };
+
+        // portfolio / projects: seeded as { title, url } → form uses { name, link }
+        const normaliseProject = (proj) => ({
+          description: "",
+          ...ensureId(proj),
+          name: proj.name ?? proj.title ?? "",
+          link: proj.link ?? proj.url ?? "",
+        });
 
         setFormData({
           firstName: userData.first_name || "",
           lastName: userData.last_name || "",
-          headline: userData.job_title || "", // Mapping job_title to headline for now if needed
+          headline: publicProfile.headline || userData.job_title || "",
           occupation:
             userData.role === "founder"
               ? "Founder"
               : publicProfile.occupation || userData.job_title || "",
           bio: userData.bio || "",
           location: userData.location || "",
-          website: userData.social_website || "",
+          website: userData.social_website || publicProfile.website || "",
           avatar_url: effectiveAvatar,
-          main_avatar_url: userData.avatar_url || "",
+          main_avatar_url: userData.avatar || userData.avatar_url || "",
           isPublic:
             publicProfile.isPublic !== undefined
               ? publicProfile.isPublic
               : true,
 
-          // Load dynamic sections from public_profile or default to empty arrays
-          experiences: publicProfile.experiences || [],
-          education: publicProfile.education || [],
-          projects: publicProfile.projects || [],
-          achievements: publicProfile.achievements || [],
-          socialLinks: publicProfile.socialLinks || [],
+          // Normalise every dynamic section (handle both seeded & user-entered data)
+          experiences: (
+            publicProfile.experiences ||
+            publicProfile.experience ||
+            []
+          ).map(normaliseExp),
+          education: (publicProfile.education || []).map(normaliseEdu),
+          projects: (
+            publicProfile.projects ||
+            publicProfile.portfolio ||
+            []
+          ).map(normaliseProject),
+          achievements: (publicProfile.achievements || []).map(normaliseAch),
+          socialLinks: (publicProfile.socialLinks || []).map(ensureId),
           skills: userData.skills || [],
         });
       } catch (error) {

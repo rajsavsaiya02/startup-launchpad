@@ -1,0 +1,572 @@
+{
+    "_meta": {
+        "description": "Dummy seed data for 5 users covering all 4 platform roles. Each user has complete account fields + a public_profile JSONB.",
+        "roles": [
+            "founder",
+            "freelancer",
+            "student",
+            "normal_user"
+        ],
+        "avatar_directory": "server/public/avatars/seeds/",
+        "avatar_source": "https://thispersondoesnotexist.com/"
+    },
+    "users": [
+        {
+            "_comment": "User 1 — FOUNDER",
+            "username": "aryan_mehta",
+            "email": "aryan.mehta@launchpad.dev",
+            "password": "123456",
+            "name": "Aryan Mehta",
+            "first_name": "Aryan",
+            "last_name": "Mehta",
+            "role": "founder",
+            "is_verified": true,
+            "provider": "local",
+            "avatar_filename": "seed_user_01_aryan.jpg",
+            "bio": "Aryan is a serial entrepreneur and the founder of two venture-backed SaaS companies. With 12 years of experience spanning product strategy, engineering leadership, and fundraising, he now helps early-stage founders navigate the chaos of the 0-to-1 journey through Startup LaunchPad.",
+            "location": "Bangalore, India",
+            "office_location": "91Springboard, Koramangala, Bangalore",
+            "phone_number": "+91-98456-78901",
+            "job_title": "Founder & CEO",
+            "department": "Executive",
+            "employee_id": "EXEC-001",
+            "social_linkedin": "https://linkedin.com/in/aryan-mehta-founder",
+            "social_github": "https://github.com/aryan-mehta",
+            "social_website": "https://aryanmehta.io",
+            "skills": [
+                "Product Strategy",
+                "Fundraising",
+                "Go-to-Market",
+                "Leadership",
+                "React",
+                "Node.js",
+                "PostgreSQL",
+                "Investor Relations"
+            ],
+            "preferences": {
+                "theme": "dark",
+                "notifications": {
+                    "email": true,
+                    "push": true
+                },
+                "dashboard_layout": "compact"
+            },
+            "public_profile": {
+                "headline": "Founder & CEO | Building the future of startup infrastructure",
+                "availability": "Open to advisory roles & angel investing",
+                "rate": "$250/hr (advisory)",
+                "open_to": [
+                    "Advisory",
+                    "Board Seat",
+                    "Angel Investment",
+                    "Mentorship"
+                ],
+                "portfolio": [
+                    {
+                        "title": "LaunchPad SaaS Platform",
+                        "description": "All-in-one workspace for early-stage startups — project management, talent marketplace, and financials.",
+                        "url": "https://startupLaunchpad.io",
+                        "image": "https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=600&fit=crop"
+                    },
+                    {
+                        "title": "FlowHR (Acquired)",
+                        "description": "Built and scaled an HR automation SaaS to 400+ enterprise clients before acquisition.",
+                        "url": "https://flowhr.io",
+                        "image": "https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=600&fit=crop"
+                    }
+                ],
+                "experience": [
+                    {
+                        "role": "Founder & CEO",
+                        "company": "Startup LaunchPad",
+                        "dates": "2022 - Present",
+                        "desc": "Founded and scaled the platform from 0 to 10,000+ users. Led a 6-person founding team, raised $1.2M pre-seed, and shaped the entire product roadmap."
+                    },
+                    {
+                        "role": "Co-Founder & CTO",
+                        "company": "FlowHR",
+                        "dates": "2018 - 2022",
+                        "desc": "Built the core product from scratch using React + Node.js + PostgreSQL. Grew ARR to $2.4M before acquisition by TalentOS."
+                    },
+                    {
+                        "role": "Senior Software Engineer",
+                        "company": "Razorpay",
+                        "dates": "2015 - 2018",
+                        "desc": "Led the payments SDK team, engineered high-throughput APIs serving 5M+ daily transactions."
+                    }
+                ],
+                "education": [
+                    {
+                        "degree": "B.Tech Computer Science",
+                        "school": "IIT Bombay",
+                        "dates": "2011 - 2015"
+                    },
+                    {
+                        "degree": "Executive Education — Entrepreneurship",
+                        "school": "Stanford Graduate School of Business",
+                        "dates": "2020"
+                    }
+                ],
+                "achievements": [
+                    "Forbes 30 Under 30 — Technology (2021)",
+                    "YC Alumni (W18 batch)",
+                    "Speaker at SaaStr Annual 2023"
+                ],
+                "languages": [
+                    "English",
+                    "Hindi",
+                    "Gujarati"
+                ]
+            }
+        },
+        {
+            "_comment": "User 2 — FREELANCER",
+            "username": "sofia_chen",
+            "email": "sofia.chen@launchpad.dev",
+            "password": "123456",
+            "name": "Sofia Chen",
+            "first_name": "Sofia",
+            "last_name": "Chen",
+            "role": "freelancer",
+            "is_verified": true,
+            "provider": "local",
+            "avatar_filename": "seed_user_02_sofia.jpg",
+            "bio": "Sofia is a full-stack freelance developer and UI/UX specialist with 7 years of experience delivering pixel-perfect, production-ready applications for startups and Fortune 500 companies alike. She specialises in React, TypeScript, and design systems.",
+            "location": "Toronto, Canada",
+            "office_location": "Remote",
+            "phone_number": "+1-416-234-5678",
+            "job_title": "Senior Freelance Developer & UI/UX Designer",
+            "department": "Engineering & Design",
+            "employee_id": null,
+            "social_linkedin": "https://linkedin.com/in/sofia-chen-dev",
+            "social_github": "https://github.com/sofia-creates",
+            "social_website": "https://sofischen.design",
+            "skills": [
+                "React",
+                "TypeScript",
+                "Node.js",
+                "Figma",
+                "UI/UX Design",
+                "Next.js",
+                "TailwindCSS",
+                "PostgreSQL",
+                "REST APIs",
+                "GraphQL"
+            ],
+            "preferences": {
+                "theme": "light",
+                "notifications": {
+                    "email": true,
+                    "push": false
+                },
+                "dashboard_layout": "full"
+            },
+            "public_profile": {
+                "headline": "Full-Stack Developer & UI/UX Designer | React · TypeScript · Figma",
+                "availability": "Available — up to 40 hrs/week",
+                "rate": "$95/hr",
+                "open_to": [
+                    "Freelance Projects",
+                    "Contract Roles",
+                    "Design System Audits",
+                    "Short-term Gigs"
+                ],
+                "portfolio": [
+                    {
+                        "title": "FinTrack Dashboard",
+                        "description": "Designed and built a real-time financial analytics dashboard for a VC-backed fintech. React + D3.js + Node.js.",
+                        "url": "https://fintrack-demo.vercel.app",
+                        "image": "https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=600&fit=crop"
+                    },
+                    {
+                        "title": "Orion Design System",
+                        "description": "Created a comprehensive Figma design system + React component library for a Series B SaaS company.",
+                        "url": "https://orion.sofischen.design",
+                        "image": "https://images.unsplash.com/photo-1581291518633-83b4ebd1d83e?w=600&fit=crop"
+                    },
+                    {
+                        "title": "NomadWork — Remote Job Board",
+                        "description": "End-to-end design and development of a remote-first job board with AI-powered matching.",
+                        "url": "https://nomadwork.io",
+                        "image": "https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=600&fit=crop"
+                    }
+                ],
+                "experience": [
+                    {
+                        "role": "Senior Freelance Developer",
+                        "company": "Self-Employed",
+                        "dates": "2019 - Present",
+                        "desc": "Worked with 30+ clients across fintech, edtech, and e-commerce. Delivered full-stack applications, design systems, and SaaS MVPs on time and on budget."
+                    },
+                    {
+                        "role": "UI Engineer",
+                        "company": "Shopify",
+                        "dates": "2017 - 2019",
+                        "desc": "Built and maintained core checkout UI components used by millions of merchants. Contributed to the Polaris design system."
+                    },
+                    {
+                        "role": "Junior Frontend Developer",
+                        "company": "Pivotal Labs (now VMware Tanzu)",
+                        "dates": "2015 - 2017",
+                        "desc": "Practiced extreme programming (TDD, pair programming) and delivered React SPAs for enterprise clients."
+                    }
+                ],
+                "education": [
+                    {
+                        "degree": "B.S. Computer Science",
+                        "school": "University of Toronto",
+                        "dates": "2011 - 2015"
+                    },
+                    {
+                        "degree": "UX Design Certificate",
+                        "school": "Google / Coursera",
+                        "dates": "2020"
+                    }
+                ],
+                "achievements": [
+                    "Top Rated Plus on Upwork (5+ years)",
+                    "Figma Community — Featured resource (15k+ duplicates)",
+                    "Open Source Contributor — React Aria"
+                ],
+                "languages": [
+                    "English",
+                    "Mandarin",
+                    "French (conversational)"
+                ]
+            }
+        },
+        {
+            "_comment": "User 3 — STUDENT",
+            "username": "dev_krishna",
+            "email": "krishna.dev@launchpad.dev",
+            "password": "123456",
+            "name": "Krishna Iyer",
+            "first_name": "Krishna",
+            "last_name": "Iyer",
+            "role": "student",
+            "is_verified": true,
+            "provider": "local",
+            "avatar_filename": "seed_user_03_krishna.jpg",
+            "bio": "Krishna is a final-year MCA student at VIT Vellore with a deep passion for backend development and distributed systems. He actively contributes to open-source projects, has completed multiple internships, and is building his first SaaS product as a solo developer.",
+            "location": "Vellore, Tamil Nadu, India",
+            "office_location": "VIT University Campus",
+            "phone_number": "+91-99876-54321",
+            "job_title": "MCA Student & Aspiring Backend Developer",
+            "department": "Computer Science",
+            "employee_id": null,
+            "social_linkedin": "https://linkedin.com/in/krishna-iyer-dev",
+            "social_github": "https://github.com/krishna-builds",
+            "social_website": "https://krishnaiyer.dev",
+            "skills": [
+                "Node.js",
+                "Express.js",
+                "PostgreSQL",
+                "Python",
+                "Django",
+                "REST APIs",
+                "Docker",
+                "Git",
+                "Java",
+                "Data Structures & Algorithms"
+            ],
+            "preferences": {
+                "theme": "dark",
+                "notifications": {
+                    "email": true,
+                    "push": true
+                },
+                "dashboard_layout": "compact"
+            },
+            "public_profile": {
+                "headline": "Final Year MCA Student | Backend Dev | Open Source Enthusiast",
+                "availability": "Available for internships & part-time remote roles",
+                "rate": "$20/hr",
+                "open_to": [
+                    "Internships",
+                    "Part-time Gigs",
+                    "Open Source Collaboration",
+                    "Hackathons"
+                ],
+                "portfolio": [
+                    {
+                        "title": "TaskForge — Project Management API",
+                        "description": "Designed and built a fully-featured REST API for project & task management using Node.js, Express, and PostgreSQL with JWT authentication.",
+                        "url": "https://github.com/krishna-builds/taskforge",
+                        "image": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=600&fit=crop"
+                    },
+                    {
+                        "title": "AlgoVisualiser",
+                        "description": "Web app that visualises sorting algorithms step-by-step using vanilla JS and Canvas API. 200+ GitHub stars.",
+                        "url": "https://github.com/krishna-builds/algo-visual",
+                        "image": "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=600&fit=crop"
+                    }
+                ],
+                "experience": [
+                    {
+                        "role": "Backend Intern",
+                        "company": "Zoho Corporation",
+                        "dates": "Jun 2024 - Aug 2024",
+                        "desc": "Built REST APIs for the CRM module, optimised N+1 query issues reducing API response time by 40%, and wrote 80+ unit tests."
+                    },
+                    {
+                        "role": "Full Stack Intern",
+                        "company": "StartupXP (Early Stage)",
+                        "dates": "Dec 2023 - Feb 2024",
+                        "desc": "Helped build the MVP of a B2B lead management tool from scratch using React and Node.js. Sole developer for the backend layer."
+                    }
+                ],
+                "education": [
+                    {
+                        "degree": "Master of Computer Applications (MCA)",
+                        "school": "VIT University, Vellore",
+                        "dates": "2023 - 2025"
+                    },
+                    {
+                        "degree": "B.Sc. Computer Science",
+                        "school": "Loyola College, Chennai",
+                        "dates": "2020 - 2023"
+                    }
+                ],
+                "achievements": [
+                    "Winner — Smart India Hackathon 2024 (Software Edition)",
+                    "HackerRank — 5-star Gold Badge (Problem Solving)",
+                    "LeetCode — Top 15% globally (350+ problems solved)"
+                ],
+                "languages": [
+                    "English",
+                    "Tamil",
+                    "Hindi"
+                ]
+            }
+        },
+        {
+            "_comment": "User 4 — NORMAL USER (Professional / Job Seeker)",
+            "username": "priya_nair",
+            "email": "priya.nair@launchpad.dev",
+            "password": "123456",
+            "name": "Priya Nair",
+            "first_name": "Priya",
+            "last_name": "Nair",
+            "role": "normal_user",
+            "is_verified": true,
+            "provider": "local",
+            "avatar_filename": "seed_user_04_priya.jpg",
+            "bio": "Priya is a data analyst and growth marketer with 5 years of experience working in early-stage startups. She blends quantitative rigour with creative storytelling to turn raw data into growth strategies. Currently exploring new opportunities in product analytics and growth roles.",
+            "location": "Mumbai, India",
+            "office_location": "Remote / Mumbai",
+            "phone_number": "+91-98201-34567",
+            "job_title": "Growth Analyst & Digital Marketer",
+            "department": "Marketing & Analytics",
+            "employee_id": null,
+            "social_linkedin": "https://linkedin.com/in/priya-nair-growth",
+            "social_github": "https://github.com/priya-analytica",
+            "social_website": "https://priya-nair.notion.site",
+            "skills": [
+                "Google Analytics",
+                "SQL",
+                "Python (pandas)",
+                "Mixpanel",
+                "A/B Testing",
+                "SEO",
+                "Content Strategy",
+                "HubSpot",
+                "Data Visualisation",
+                "Growth Hacking"
+            ],
+            "preferences": {
+                "theme": "light",
+                "notifications": {
+                    "email": true,
+                    "push": false
+                },
+                "dashboard_layout": "full"
+            },
+            "public_profile": {
+                "headline": "Growth Analyst | Data-driven Marketing | Startup Enthusiast",
+                "availability": "Open to full-time opportunities",
+                "rate": "Negotiable / Salaried preferred",
+                "open_to": [
+                    "Full-time Roles",
+                    "Growth Consulting",
+                    "Fractional CMO",
+                    "Data Analysis Projects"
+                ],
+                "portfolio": [
+                    {
+                        "title": "Growth Playbook — 0 to 50k Users",
+                        "description": "Documented the full growth strategy for an edtech startup that grew from 0 to 50,000 MAU in 18 months using organic SEO and community-led growth.",
+                        "url": "https://priya-nair.notion.site/growth-playbook",
+                        "image": "https://images.unsplash.com/photo-1556761175-4b46a572b786?w=600&fit=crop"
+                    },
+                    {
+                        "title": "Retention Dashboard",
+                        "description": "Built an automated retention dashboard in Google Looker Studio connected to Mixpanel API — tracked WAU, DAU, churn, and cohort retention.",
+                        "url": "https://priya-nair.notion.site/retention-dashboard",
+                        "image": "https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=600&fit=crop"
+                    }
+                ],
+                "experience": [
+                    {
+                        "role": "Growth Analyst",
+                        "company": "EduZen (EdTech Startup)",
+                        "dates": "2022 - Present",
+                        "desc": "Own the entire growth analytics stack. Built and maintained dashboards, ran 20+ A/B tests, identified SEO opportunities that drove 3x organic traffic growth."
+                    },
+                    {
+                        "role": "Digital Marketing Executive",
+                        "company": "The Minimalist (Design Agency)",
+                        "dates": "2020 - 2022",
+                        "desc": "Managed paid and organic campaigns for 10+ clients across fintech and consumer brands. Reduced CPL by 35% through audience segmentation."
+                    },
+                    {
+                        "role": "Marketing Intern",
+                        "company": "Zomato",
+                        "dates": "May 2019 - Aug 2019",
+                        "desc": "Assisted the B2B marketing team with restaurant partner acquisition campaigns in tier-2 cities."
+                    }
+                ],
+                "education": [
+                    {
+                        "degree": "MBA — Marketing & Analytics",
+                        "school": "Symbiosis Institute of Business Management, Pune",
+                        "dates": "2018 - 2020"
+                    },
+                    {
+                        "degree": "B.Com (Hons.)",
+                        "school": "St. Xavier's College, Mumbai",
+                        "dates": "2015 - 2018"
+                    }
+                ],
+                "achievements": [
+                    "Grew organic blog traffic from 2k to 80k monthly sessions in 12 months",
+                    "HubSpot Certified — Content Marketing & Email",
+                    "Google Analytics 4 Certified"
+                ],
+                "languages": [
+                    "English",
+                    "Hindi",
+                    "Malayalam"
+                ]
+            }
+        },
+        {
+            "_comment": "User 5 — FREELANCER (Designer focus)",
+            "username": "james_okafor",
+            "email": "james.okafor@launchpad.dev",
+            "password": "123456",
+            "name": "James Okafor",
+            "first_name": "James",
+            "last_name": "Okafor",
+            "role": "freelancer",
+            "is_verified": true,
+            "provider": "local",
+            "avatar_filename": "seed_user_05_james.jpg",
+            "bio": "James is a brand designer and motion graphics artist based in London with 9 years of experience crafting memorable visual identities for tech startups and creative agencies. He has worked with clients from 22 countries and is known for his cinematic, story-driven design aesthetic.",
+            "location": "London, UK",
+            "office_location": "Remote (GMT timezone)",
+            "phone_number": "+44-7891-234567",
+            "job_title": "Brand Designer & Motion Graphics Artist",
+            "department": "Design",
+            "employee_id": null,
+            "social_linkedin": "https://linkedin.com/in/james-okafor-design",
+            "social_github": "https://github.com/james-okafor",
+            "social_website": "https://jamesokafor.studio",
+            "skills": [
+                "Brand Identity",
+                "Figma",
+                "Adobe Illustrator",
+                "After Effects",
+                "Motion Design",
+                "Typography",
+                "Logo Design",
+                "Webflow",
+                "UI/UX Design",
+                "3D (Blender)"
+            ],
+            "preferences": {
+                "theme": "dark",
+                "notifications": {
+                    "email": false,
+                    "push": true
+                },
+                "dashboard_layout": "compact"
+            },
+            "public_profile": {
+                "headline": "Brand Designer & Motion Artist | 9 yrs | Startups & Agencies",
+                "availability": "Available — project-based, min. 2 weeks",
+                "rate": "$120/hr or fixed project pricing",
+                "open_to": [
+                    "Brand Identity Projects",
+                    "Motion Design",
+                    "Pitch Deck Design",
+                    "UI Design Sprints",
+                    "Creative Direction"
+                ],
+                "portfolio": [
+                    {
+                        "title": "NovaSpark — Brand Identity",
+                        "description": "Full brand identity system for a cybersecurity startup — logo, colour palette, typography, icon set, and brand guidelines.",
+                        "url": "https://jamesokafor.studio/novaspark",
+                        "image": "https://images.unsplash.com/photo-1611162617474-5b21e879e113?w=600&fit=crop"
+                    },
+                    {
+                        "title": "Motion Reel 2024",
+                        "description": "A 90-second showreel of motion graphics and brand animation work across fintech, SaaS, and consumer brands.",
+                        "url": "https://vimeo.com/jamesokafor/reel2024",
+                        "image": "https://images.unsplash.com/photo-1586717791821-3f44a5638d48?w=600&fit=crop"
+                    },
+                    {
+                        "title": "Equinox — App UI Design",
+                        "description": "End-to-end UI design for a wellness tracking app — from user flows and wireframes to high-fidelity Figma prototype.",
+                        "url": "https://jamesokafor.studio/equinox",
+                        "image": "https://images.unsplash.com/photo-1545235617-9465d2a55698?w=600&fit=crop"
+                    },
+                    {
+                        "title": "Luminary Pitch Deck",
+                        "description": "50-slide investor pitch deck for a Series A edtech startup. Helped them close a $4.5M round.",
+                        "url": "https://jamesokafor.studio/luminary",
+                        "image": "https://images.unsplash.com/photo-1509395062549-057d3fc8ae47?w=600&fit=crop"
+                    }
+                ],
+                "experience": [
+                    {
+                        "role": "Senior Brand Designer (Freelance)",
+                        "company": "Self-Employed / James Okafor Studio",
+                        "dates": "2017 - Present",
+                        "desc": "Delivered brand identities, motion graphics, and UI design for 60+ clients across 22 countries including London, New York, and Lagos."
+                    },
+                    {
+                        "role": "Mid-Level Designer",
+                        "company": "Pentagram (London)",
+                        "dates": "2015 - 2017",
+                        "desc": "Worked on brand identity and editorial design projects for global clients under the mentorship of award-winning senior partners."
+                    },
+                    {
+                        "role": "Junior Graphic Designer",
+                        "company": "Wolff Olins",
+                        "dates": "2013 - 2015",
+                        "desc": "Contributed to rebranding projects for major telecoms and financial institutions. Developed skills in brand strategy and visual communication."
+                    }
+                ],
+                "education": [
+                    {
+                        "degree": "BA (Hons) Graphic Design",
+                        "school": "Central Saint Martins, University of the Arts London",
+                        "dates": "2010 - 2013"
+                    }
+                ],
+                "achievements": [
+                    "D&AD Wood Pencil — Brand Identity (2022)",
+                    "Awwwards Site of the Day — jamesokafor.studio",
+                    "Featured in HOW International Design Annual 2023",
+                    "Clients: Techstars, YC-backed startups, BBC Creative"
+                ],
+                "languages": [
+                    "English",
+                    "Yoruba",
+                    "French (intermediate)"
+                ]
+            }
+        }
+    ]
+}

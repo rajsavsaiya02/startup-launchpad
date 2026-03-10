@@ -47,11 +47,17 @@ export function Sidebar({ className }) {
 
   // Filter NAV_ITEMS based on role
   const filteredNavItems = NAV_ITEMS.map((section) => {
-    // If founder/admin, return everything
-    if (isFounderOrAdmin) return section;
-
     // Filter items based on specific roles
     const filteredItems = section.items.filter((item) => {
+      // Logic for founder/admin: hide 'Find Gigs' (jobs) but keep 'Find Talent'
+      if (isFounderOrAdmin) {
+        if (item.path === "/gigs") return false;
+        if (item.path === "/talent") {
+          return { ...item, path: "/org/talent/find" };
+        }
+        return true;
+      }
+
       // Common restrictions for all non-founder/admins
       const alwaysRestricted = ["/financials", "/settings"];
       if (alwaysRestricted.includes(item.path)) return false;

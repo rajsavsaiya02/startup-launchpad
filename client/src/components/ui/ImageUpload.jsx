@@ -9,9 +9,10 @@ import {
   Image as ImageIcon,
   Crop as CropIcon,
 } from "lucide-react";
-import { Button } from "./Button";
 import { cn } from "../../utils/cn"; // Assuming you have this utility
 import { useToast } from "./Toast";
+import { SERVER_URL } from "../../lib/axios";
+import { Button } from "./Button";
 
 // Helper to create the cropped image
 const getCroppedImg = async (imageSrc, pixelCrop) => {
@@ -155,7 +156,13 @@ export function ImageUpload({ value, onChange, aspect = 1, className }) {
       >
         {previewUrl ? (
           <img
-            src={previewUrl}
+            src={
+              previewUrl.startsWith("http") ||
+              previewUrl.startsWith("blob:") ||
+              previewUrl.startsWith("data:")
+                ? previewUrl
+                : `${SERVER_URL}${previewUrl}`
+            }
             alt="Preview"
             className="h-full w-full object-cover rounded-full"
           />

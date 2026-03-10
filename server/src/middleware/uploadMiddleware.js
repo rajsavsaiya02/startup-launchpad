@@ -2,11 +2,11 @@ const multer = require("multer");
 const path = require("path");
 
 // Configure storage
-// We use memory storage to access the buffer before saving to disk via StorageService
+// We use memory storage to access the buffer before saving to disk via UnifiedStorageService
 const storage = multer.memoryStorage();
 
 const fileFilter = (req, file, cb) => {
-  // Define explicitly dangerous file types that could harm the server or execute XSS attacks
+  // Define explicitly dangerous file types
   const dangerousMimeTypes = [
     "application/x-msdownload", // EXEs
     "application/x-executable", // Linux binaries
@@ -32,7 +32,6 @@ const fileFilter = (req, file, cb) => {
     dangerousMimeTypes.includes(file.mimetype.toLowerCase()) ||
     dangerousExtensions.includes(ext)
   ) {
-    // Return a 400 status error string that can be caught
     const error = new Error(
       `File type not permitted for security reasons: ${ext || file.mimetype}`,
     );
@@ -40,16 +39,30 @@ const fileFilter = (req, file, cb) => {
     return cb(error, false);
   }
 
-  // Allow all other file types (PSD, CAD, CDR, etc.)
   cb(null, true);
 };
 
+// Default upload instance
 const upload = multer({
   storage: storage,
   limits: {
-    fileSize: 10 * 1024 * 1024, // 10MB default limit
+    fileSize: 50 * 1024 * 1024, // Increased to 50MB as standard for docs/media
   },
   fileFilter: fileFilter,
 });
+
+/**
+ * Dynamic configuration helper (optional use)
+ * Allows routes to override limits or add storage hints
+ */
+upload.configure = (options = {}) => {
+  return multer({
+    storage: storage,
+    limits: {
+      fileSize: options.fileSize || 50 * 1024 * 1024,
+    },
+    fileFilter: options.fileFilter || fileFilter,
+  });
+};
 
 module.exports = upload;

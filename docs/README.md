@@ -4,42 +4,42 @@ This directory contains all project documentation, organized by category.
 
 ## Directory Structure
 
+### 📚 [guides](./guides)
+
+Technical guides and configuration documentation for developers.
+
+- `DATABASE_GUIDE.md`: Guidelines and conventions for database interaction.
+- `EMAIL_CONFIGURATION.md`: Setup and usage of the email system.
+- `FRONTEND_TECHNICAL_GUIDE.md`: Frontend architecture and technical guidelines.
+- `ORG_GUIDE.md`: Guide to organization structure and management.
+- `PROJECT_AND_REPO_GUIDE.md`: General project and repository conventions.
+
+### 🖼️ [diagrams](./diagrams)
+
+Architectural, structural, and behavioral diagrams of the system.
+
+- `Startup_LaunchPad_Activity_Diagrams.drawio`: Activity diagrams for system workflows.
+- `Startup_LaunchPad_Sequence_Diagrams.drawio`: Sequence diagrams for component interactions.
+- **[architecture](./diagrams/architecture):** System architecture and database design diagrams.
+- **[data_flows](./diagrams/data_flows):** Data Flow Diagrams (DFDs) at various levels.
+- **[system_flows](./diagrams/system_flows):** Visual flows for key system modules.
+- **[use_cases](./diagrams/use_cases):** Use case diagrams for different user roles.
+- **[planning](./diagrams/planning):** Project planning and timeline documents.
+
+### 📸 [screenshots](./screenshots)
+
+UI screenshots of the application features.
+
 ### 📂 [general](./general)
+
 Contains high-level project documentation and drafts.
+
 - `Startup_Launchpad_Full_Documentation_v1.pdf`: Main project documentation.
 - `Startup_Launchpad_Original_Draft.pdf`: Original raw draft.
 
-### 🏛️ [architecture](./architecture)
-System architecture and database design diagrams.
-- `System_High_Level_Architecture_Diagram.png`: High-level system architecture view.
-- `Database_Entity_Relationship_Diagram.png`: Entity-Relationship diagram for the database.
+### 📙 [reference](./reference)
 
-### 🔄 [data_flows](./data_flows)
-Data Flow Diagrams (DFDs) at various levels.
-- `Data_Flow_Diagram_Level_0_System_Context.png`: Level 0 Context diagram.
-- `Data_Flow_Diagram_Level_1_Process_1_0.png`
-- `Data_Flow_Diagram_Level_1_Process_1_6.png`
-- `Data_Flow_Diagram_Level_1_Process_1_17.png`
-- `Data_Flow_Diagram_Level_1_Process_1_24.png`
-- `Data_Flow_Diagram_Level_1_Process_1_32.png`
-- `Data_Flow_Diagram_Level_1_Process_1_43.png`
+Reference data and static reports.
 
-### ⚙️ [system_flows](./system_flows)
-Visual flows for key system modules.
-- `System_Flow_01_Authentication_and_Navigation.png`
-- `System_Flow_02_Operations_Hub_Projects_Tasks.png`
-- `System_Flow_03_Financial_Hub_Expenses_BurnRate.png`
-- `System_Flow_04_Talent_Marketplace_Hiring.png`
-- `System_Flow_05_Dashboard_and_AI_Insights.png`
-- `System_Flow_06_Platform_Admin_Tools.png`
-
-### 👤 [use_cases](./use_cases)
-Use case diagrams for different user roles.
-- `Use_Case_Diagram_Global_System_Overview.png`: Overall system use cases.
-- `Use_Case_Diagram_Founder_and_Admin.png`: Specific to Founders and Admins.
-- `Use_Case_Diagram_Freelancer.png`: Specific to Freelancers.
-
-### 📅 [planning](./planning)
-Project planning and timeline documents.
-- `Project_Timeline_Gantt_Chart_Nov_2025.png`: Project timeline and milestones.
-
+- `organization_accounts.csv`
+- `productivity_insights_report.md`

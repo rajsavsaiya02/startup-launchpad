@@ -18,9 +18,6 @@ import { OrgDashboardOverview } from "../features/organization/dashboard/OrgDash
 import { OrgProjectsDashboard } from "../features/organization/projects/OrgProjectsDashboard";
 import { OrgProjectDetailsPage } from "../features/organization/projects/OrgProjectDetailsPage";
 import { OrgProjectTasksPage } from "../features/organization/tasks/OrgProjectTasksPage";
-import { OrgGigListPage } from "../features/organization/gigs/OrgGigListPage";
-import { OrgGigDetailsPage } from "../features/organization/gigs/OrgGigDetailsPage";
-import { OrgGigApplicationsPage } from "../features/organization/gigs/OrgGigApplicationsPage";
 import { OrgManagementPage } from "../features/organization/management/OrgManagementPage";
 import { OrgWorkspaceSettings } from "../features/organization/settings/OrgWorkspaceSettings";
 import { OrgPublicProfileSettings } from "../features/organization/settings/OrgPublicProfileSettings";
@@ -69,6 +66,12 @@ import { AdminPreferencesPage } from "../features/admin/users/AdminPreferencesPa
 import { FreelancerProfilePage } from "../features/talent/FreelancerProfilePage";
 import { GigApplicationsPage } from "../features/talent/GigApplicationsPage";
 import { GigListPage } from "../features/talent/GigListPage";
+import { OpportunitiesBoardPage } from "../features/talent/OpportunitiesBoardPage";
+import { OpportunityDetailsPage } from "../features/talent/OpportunityDetailsPage";
+import { MyApplicationsPage } from "../features/talent/MyApplicationsPage";
+import { ApplicationReviewPage } from "../features/talent/ApplicationReviewPage";
+import { TalentArchivePage } from "../features/talent/TalentArchivePage";
+import { PublicProfilePage } from "../features/talent/PublicProfilePage";
 import { ProjectDetailsPage } from "../features/operations/ProjectDetailsPage";
 import { ProjectTasksPage } from "../features/operations/ProjectTasksPage";
 import { ExpenseListPage } from "../features/finance/ExpenseListPage";
@@ -77,7 +80,6 @@ import { DashboardOverview } from "../features/dashboard/DashboardOverview";
 import { TeamPage } from "../features/team/TeamPage";
 import { UserSettingsPage } from "../features/settings/UserSettingsPage";
 import { UserProfilePage } from "../features/users/UserProfilePage";
-// import { CMSPageList } from '../features/admin/content/CMSPageList'; // Removed in favor of PublicPageManager
 import { CMSEditorPage } from "../features/admin/content/CMSEditorPage";
 import { NavigationManager } from "../features/admin/content/NavigationManager";
 import { DynamicPage } from "../pages/DynamicPage";
@@ -92,6 +94,8 @@ import { AdminGuard } from "../components/layout/AdminGuard";
 import { PublicAuthGuard } from "../components/layout/PublicAuthGuard";
 import { AdminPlaceholderPage } from "../components/common/AdminPlaceholderPage";
 import { OrgGuard } from "../components/layout/OrgGuard";
+import { TalentGuard } from "../components/layout/TalentGuard";
+import { OrgTalentDashboard } from "../features/organization/talent/OrgTalentDashboard";
 
 export function AppRoutes() {
   return (
@@ -324,6 +328,37 @@ export function AppRoutes() {
             path="/dashboard/gigs/:id/applications"
             element={<GigApplicationsPage />}
           />
+          {/* New Talent & Opportunity Routes */}
+          <Route element={<TalentGuard />}>
+            <Route
+              path="/dashboard/opportunities"
+              element={<OpportunitiesBoardPage />}
+            />
+            <Route
+              path="/dashboard/opportunities/:id"
+              element={<OpportunityDetailsPage />}
+            />
+            <Route
+              path="/dashboard/applications"
+              element={<MyApplicationsPage />}
+            />
+            <Route path="/dashboard/archives" element={<TalentArchivePage />} />
+          </Route>
+
+          {/* Org Side mapped from Dashboard */}
+          <Route
+            path="/dashboard/opportunities/manage"
+            element={<Navigate to="/org/talent/postings" replace />}
+          />
+          <Route
+            path="/dashboard/opportunities/:id/applications"
+            element={<Navigate to="/org/talent/applications" replace />}
+          />
+
+          <Route
+            path="/talent/profile/:username"
+            element={<PublicProfilePage />}
+          />
           {/* Productivity Module (Renamed from Work) */}
           <Route
             path="/productivity"
@@ -351,11 +386,15 @@ export function AppRoutes() {
               element={<OrgProjectDetailsPage />}
             />
             <Route path="/org/tasks" element={<OrgProjectTasksPage />} />
-            <Route path="/org/gigs" element={<OrgGigListPage />} />
-            <Route path="/org/gigs/:id" element={<OrgGigDetailsPage />} />
+            <Route
+              path="/org/gigs"
+              element={<Navigate to="/org/talent/postings" replace />}
+            />
+            <Route path="/org/talent/*" element={<OrgTalentDashboard />} />
+            <Route path="/org/gigs/:id" element={<OpportunityDetailsPage />} />
             <Route
               path="/org/gigs/:id/applications"
-              element={<OrgGigApplicationsPage />}
+              element={<ApplicationReviewPage />}
             />
             <Route path="/org/management" element={<OrgManagementPage />} />
             <Route

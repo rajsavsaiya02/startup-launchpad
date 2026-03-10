@@ -1,10 +1,9 @@
 const { pool } = require("../database");
-const fileAssetStorage = require("../services/fileAssetStorage");
+const unifiedStorage = require("../services/UnifiedStorageService");
 const fs = require("fs");
 
 class FileAssetController {
   // Helper to check user access based on context.
-  // Expand this later for other contexts like 'gig', 'transaction'.
   async _checkAccess(
     userId,
     userRole,
@@ -51,11 +50,9 @@ class FileAssetController {
     }
 
     if (contextType === "user") {
-      // Users can access their own global context
       return contextId === userId.toString() || contextId === userId;
     }
 
-    // Default deny for unknown contexts
     return false;
   }
 
@@ -70,7 +67,7 @@ class FileAssetController {
         role,
         contextType,
         contextId,
-        false, // Read action
+        false,
       );
       if (!hasAccess)
         return res.status(403).json({ error: "Access denied to this context" });
@@ -118,7 +115,7 @@ class FileAssetController {
         role,
         contextType,
         contextId,
-        true, // Write action
+        true,
       );
       if (!hasAccess)
         return res
@@ -133,10 +130,8 @@ class FileAssetController {
             .json({ error: "Missing required link fields" });
         }
         const result = await pool.query(
-          `
-          INSERT INTO file_assets (file_name, storage_url, is_external, context_type, context_id, uploader_user_id, description)
-          VALUES ($1, $2, true, $3, $4, $5, $6) RETURNING *
-        `,
+          `INSERT INTO file_assets (file_name, storage_url, is_external, context_type, context_id, uploader_user_id, description)
+           VALUES ($1, $2, true, $3, $4, $5, $6) RETURNING *`,
           [
             req.body.fileName,
             req.body.storageUrl,
@@ -146,7 +141,6 @@ class FileAssetController {
             req.body.description,
           ],
         );
-
         return res.status(201).json(result.rows[0]);
       }
 
@@ -155,23 +149,34 @@ class FileAssetController {
         return res.status(400).json({ error: "No file or link provided" });
       }
 
-      const customTitle = req.body.title?.trim();
+      // Determine Tier for Unified Storage
+      let tier = "org";
+      let targetContextId = contextId;
+      let subPath = contextType;
 
-      const savedFile = await fileAssetStorage.saveFile(
-        req.file.buffer,
-        req.file.originalname,
-        contextType,
-        contextId,
-      );
+      if (contextType === "user") {
+        tier = "user";
+        subPath = "assets";
+      } else if (contextType === "organization") {
+        tier = "org";
+        subPath = "general";
+      }
+
+      const savedFile = await unifiedStorage.saveFile({
+        buffer: req.file.buffer,
+        originalName: req.file.originalname,
+        tier: tier,
+        visibility: "private", // File Assets are private by default in this context
+        contextId: targetContextId,
+        subPath: subPath,
+      });
 
       try {
         const result = await pool.query(
-          `
-          INSERT INTO file_assets (file_name, mime_type, size_bytes, storage_url, is_external, context_type, context_id, uploader_user_id, description)
-          VALUES ($1, $2, $3, $4, false, $5, $6, $7, $8) RETURNING *
-        `,
+          `INSERT INTO file_assets (file_name, mime_type, size_bytes, storage_url, is_external, context_type, context_id, uploader_user_id, description)
+           VALUES ($1, $2, $3, $4, false, $5, $6, $7, $8) RETURNING *`,
           [
-            customTitle || savedFile.originalName,
+            req.body.title || savedFile.originalName,
             req.file.mimetype,
             savedFile.size,
             savedFile.path,
@@ -184,8 +189,7 @@ class FileAssetController {
 
         res.status(201).json(result.rows[0]);
       } catch (dbErr) {
-        // Rollback physical file if DB insertion fails
-        await fileAssetStorage.deleteFile(savedFile.path);
+        await unifiedStorage.deleteFile(savedFile.path);
         throw dbErr;
       }
     } catch (error) {
@@ -213,18 +217,16 @@ class FileAssetController {
         role,
         fileAsset.context_type,
         fileAsset.context_id,
-        true, // Write action
+        true,
       );
 
-      // Additional check: users can delete their own files even if not strictly context admins,
-      // but if they lost context access entirely, allow if they are uploader
       if (!hasAccess && fileAsset.uploader_user_id !== userId) {
         return res.status(403).json({ error: "Access denied" });
       }
 
       // Delete from disk if local
       if (!fileAsset.is_external) {
-        await fileAssetStorage.deleteFile(fileAsset.storage_url);
+        await unifiedStorage.deleteFile(fileAsset.storage_url);
       }
 
       await pool.query("DELETE FROM file_assets WHERE file_asset_id = $1", [
@@ -261,10 +263,9 @@ class FileAssetController {
         role,
         fileAsset.context_type,
         fileAsset.context_id,
-        true, // Write action
+        true,
       );
 
-      // Same logic as delete: context access or uploader
       if (!hasAccess && fileAsset.uploader_user_id !== userId) {
         return res.status(403).json({ error: "Access denied" });
       }
@@ -300,7 +301,7 @@ class FileAssetController {
         role,
         fileAsset.context_type,
         fileAsset.context_id,
-        false, // Read action
+        false,
       );
       if (!hasAccess) return res.status(403).json({ error: "Access denied" });
 
@@ -310,14 +311,13 @@ class FileAssetController {
           .json({ error: "Cannot download external link directly" });
       }
 
-      const filePath = fileAssetStorage.getAbsolutePath(fileAsset.storage_url);
+      const filePath = unifiedStorage.getAbsolutePath(fileAsset.storage_url);
 
       if (!fs.existsSync(filePath)) {
         return res.status(404).json({ error: "File physically missing" });
       }
 
       const encodedFilename = encodeURIComponent(fileAsset.file_name);
-      // Use filename*=UTF-8'' for safe headers, or fallback to simple filename
       res.setHeader(
         "Content-Type",
         fileAsset.mime_type || "application/octet-stream",

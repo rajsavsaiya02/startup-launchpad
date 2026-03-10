@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import {
   Filter,
@@ -18,8 +18,26 @@ import {
 import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
 import { Avatar } from "../../components/ui/Avatar";
+import projectService from "../../services/projectService";
 
 export function FounderDashboard() {
+  const [projects, setProjects] = useState([]);
+  const [loadingProjects, setLoadingProjects] = useState(true);
+
+  useEffect(() => {
+    const fetchProjects = async () => {
+      try {
+        const data = await projectService.getProjects();
+        setProjects(data.slice(0, 4)); // Show up to 4 recent projects
+      } catch (error) {
+        console.error("Failed to fetch projects:", error);
+      } finally {
+        setLoadingProjects(false);
+      }
+    };
+    fetchProjects();
+  }, []);
+
   return (
     <div className="space-y-8 animate-in fade-in duration-500 pb-20">
       {/* Header */}
@@ -92,39 +110,34 @@ export function FounderDashboard() {
               Project Progress
             </h2>
             <div className="space-y-6">
-              {[
-                {
-                  name: "Phoenix Initiative",
-                  progress: 75,
-                  color: "bg-primary",
-                },
-                {
-                  name: "Quantum Leap AI",
-                  progress: 40,
-                  color: "bg-purple-500",
-                },
-                {
-                  name: "Marketplace Redesign",
-                  progress: 90,
-                  color: "bg-success",
-                },
-                { name: "Mobile App V2", progress: 25, color: "bg-warning" },
-              ].map((proj, i) => (
-                <div key={i}>
-                  <div className="flex justify-between text-sm mb-2">
-                    <span className="font-medium text-text-primary dark:text-white">
-                      {proj.name}
-                    </span>
-                    <span className="text-text-tertiary">{proj.progress}%</span>
-                  </div>
-                  <div className="h-2 w-full bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
-                    <div
-                      className={`h-full ${proj.color}`}
-                      style={{ width: `${proj.progress}%` }}
-                    ></div>
-                  </div>
+              {loadingProjects ? (
+                <div className="flex justify-center py-4">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
                 </div>
-              ))}
+              ) : projects.length === 0 ? (
+                <p className="text-sm text-text-tertiary">
+                  No projects found. Create one to get started!
+                </p>
+              ) : (
+                projects.map((proj) => (
+                  <div key={proj.id}>
+                    <div className="flex justify-between text-sm mb-2">
+                      <span className="font-medium text-text-primary dark:text-white">
+                        {proj.title}
+                      </span>
+                      <span className="text-text-tertiary">
+                        {proj.progress || 0}%
+                      </span>
+                    </div>
+                    <div className="h-2 w-full bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full ${(proj.progress || 0) >= 100 ? "bg-success" : "bg-primary"}`}
+                        style={{ width: `${proj.progress || 0}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </Card>
 
