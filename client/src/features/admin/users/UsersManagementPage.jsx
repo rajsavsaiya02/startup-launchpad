@@ -1,27 +1,76 @@
-import React, { useState } from 'react';
-import { Search, Filter, Plus, MoreHorizontal } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Search, Filter, Plus, MoreHorizontal, Loader2 } from 'lucide-react';
 import { Button } from '../../../components/ui/Button';
 import { Input } from '../../../components/ui/Input';
 import { Avatar } from '../../../components/ui/Avatar';
 import { Badge } from '../../../components/ui/Badge';
 import { UserDrawer } from './components/UserDrawer';
-
-// Mock Data
-const USERS = [
-  { id: 1, name: 'Olivia Hart', email: 'olivia.h@launchmail.com', org: 'BrightPath Studios', role: 'Founder', status: 'Active', lastActive: '2 hours ago', avatar: 'https://i.pravatar.cc/150?u=olivia' },
-  { id: 2, name: 'Daniel Kim', email: 'd.kim@orionlabs.io', org: 'Orion Labs', role: 'Admin', status: 'Active', lastActive: 'Yesterday', avatar: 'https://i.pravatar.cc/150?u=daniel' },
-  { id: 3, name: 'Chloe Davis', email: 'chloe@creativebay.com', org: 'CreativeBay', role: 'Member', status: 'Suspended', lastActive: '3 days ago', avatar: 'https://i.pravatar.cc/150?u=chloe' },
-  { id: 4, name: 'Marcus Allen', email: 'marcus@finexpo.net', org: 'FinExpo', role: 'Member', status: 'Active', lastActive: '5 hours ago', avatar: 'https://i.pravatar.cc/150?u=marcus' },
-  { id: 5, name: 'Sarah Lee', email: 'slee@northforge.tech', org: 'NorthForge', role: 'Admin', status: 'Active', lastActive: 'Just now', avatar: 'https://i.pravatar.cc/150?u=sarah' },
-];
+import { AddUserDrawer } from './components/AddUserDrawer';
+import { adminUserService } from '../../../services/adminUserService';
+import { toast } from 'react-toastify';
 
 export function UsersManagementPage() {
   const [selectedUser, setSelectedUser] = useState(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [isAddUserDrawerOpen, setIsAddUserDrawerOpen] = useState(false);
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterMode, setFilterMode] = useState(''); // '', 'active', 'suspended'
+  const [pagination, setPagination] = useState({
+      page: 1,
+      limit: 10,
+      total: 0,
+      totalPages: 1
+  });
+
+  const fetchUsers = async () => {
+    try {
+      setLoading(true);
+      const filters = {};
+      if (searchTerm) filters.search = searchTerm;
+      if (filterMode === 'active') filters.status = 'active';
+      if (filterMode === 'suspended') filters.status = 'suspended';
+      filters.page = pagination.page;
+      filters.limit = pagination.limit;
+
+      const data = await adminUserService.getPlatformUsers(filters);
+      setUsers(data.users || []);
+      setPagination(prev => ({
+          ...prev,
+          total: data.total || 0,
+          totalPages: data.totalPages || 1
+      }));
+    } catch (error) {
+      console.error('Failed to fetch users:', error);
+      toast.error('Failed to load users');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    // Debounce search slightly
+    const timer = setTimeout(() => {
+        fetchUsers();
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchTerm, filterMode, pagination.page, pagination.limit]);
 
   const handleRowClick = (user) => {
     setSelectedUser(user);
     setIsDrawerOpen(true);
+  };
+
+  const handleUserUpdated = () => {
+    // Refresh the list when a user is updated or deleted from the drawer
+    fetchUsers();
+  };
+
+  const formatLastActive = (dateString) => {
+    if (!dateString) return 'Never';
+    const date = new Date(dateString);
+    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
   };
 
   return (
@@ -41,25 +90,36 @@ export function UsersManagementPage() {
               icon={Search} 
               placeholder="Search users..." 
               className="h-10 text-sm"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
           <div className="relative">
-            <select className="h-10 pl-4 pr-8 rounded-md border border-border-light bg-background-light text-sm focus:ring-2 focus:ring-primary/20 dark:bg-background-dark dark:border-border-dark dark:text-white appearance-none cursor-pointer">
-              <option>Filter: All Users</option>
-              <option>Filter: Active</option>
-              <option>Filter: Suspended</option>
-              <option>Filter: Admins</option>
+            <select 
+                className="h-10 pl-4 pr-8 rounded-md border border-border-light bg-background-light text-sm focus:ring-2 focus:ring-primary/20 dark:bg-background-dark dark:border-border-dark dark:text-white appearance-none cursor-pointer"
+                value={filterMode}
+                onChange={(e) => setFilterMode(e.target.value)}
+            >
+              <option value="">Filter: All Users</option>
+              <option value="active">Filter: Active</option>
+              <option value="suspended">Filter: Suspended</option>
             </select>
             <Filter className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-tertiary pointer-events-none" />
           </div>
         </div>
-        <Button className="w-full sm:w-auto gap-2">
+        <Button className="w-full sm:w-auto gap-2" onClick={() => setIsAddUserDrawerOpen(true)}>
           <Plus className="h-4 w-4" /> Add New User
         </Button>
       </div>
 
       {/* Data Table */}
-      <div className="bg-white dark:bg-surface-dark rounded-xl border border-border-light dark:border-border-dark shadow-sm overflow-hidden">
+      <div className="bg-white dark:bg-surface-dark rounded-xl border border-border-light dark:border-border-dark shadow-sm overflow-hidden relative min-h-[400px]">
+        {loading ? (
+            <div className="absolute inset-0 flex items-center justify-center bg-white/50 dark:bg-surface-dark/50 z-10 backdrop-blur-sm">
+                 <Loader2 className="h-8 w-8 text-primary animate-spin" />
+            </div>
+        ) : null}
+        
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead className="bg-gray-50 dark:bg-gray-900/50 border-b border-border-light dark:border-border-dark">
@@ -72,7 +132,14 @@ export function UsersManagementPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border-light dark:divide-border-dark">
-              {USERS.map((user) => (
+              {users.length === 0 && !loading && (
+                <tr>
+                    <td colSpan="7" className="px-6 py-8 text-center text-text-secondary">
+                        No users found matching your criteria.
+                    </td>
+                </tr>
+              )}
+              {users.map((user) => (
                 <tr 
                   key={user.id} 
                   onClick={() => handleRowClick(user)}
@@ -80,20 +147,20 @@ export function UsersManagementPage() {
                 >
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
-                      <Avatar src={user.avatar} size="sm" />
-                      <span className="font-medium text-text-primary dark:text-white">{user.name}</span>
+                      <Avatar src={user.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name || 'User')}&background=random`} size="sm" />
+                      <span className="font-medium text-text-primary dark:text-white">{user.name || 'Unknown'}</span>
                     </div>
                   </td>
                   <td className="px-6 py-4 text-text-secondary dark:text-gray-400">{user.email}</td>
-                  <td className="px-6 py-4 text-text-secondary dark:text-gray-400">{user.org}</td>
+                  <td className="px-6 py-4 text-text-secondary dark:text-gray-400">{user.organization || '-'}</td>
                   <td className="px-6 py-4">
-                    <Badge variant="neutral" className="bg-gray-100 dark:bg-gray-800 text-text-secondary border-gray-200">{user.role}</Badge>
+                    <Badge variant="neutral" className="bg-gray-100 dark:bg-gray-800 text-text-secondary border-gray-200 capitalize">{user.role?.replace('_', ' ')}</Badge>
                   </td>
                   <td className="px-6 py-4">
-                    <Badge variant={user.status === 'Active' ? 'success' : 'error'}>{user.status}</Badge>
+                    <Badge variant={user.status === 'active' ? 'success' : 'error'} className="capitalize">{user.status || 'Active'}</Badge>
                   </td>
-                  <td className="px-6 py-4 text-text-tertiary">{user.lastActive}</td>
-                  <td className="px-6 py-4">
+                  <td className="px-6 py-4 text-text-tertiary whitespace-nowrap">{formatLastActive(user.last_active)}</td>
+                  <td className="px-6 py-4 text-right">
                     <button className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 text-text-tertiary transition-colors">
                       <MoreHorizontal className="h-5 w-5" />
                     </button>
@@ -104,14 +171,46 @@ export function UsersManagementPage() {
           </table>
         </div>
         
-        {/* Pagination (Simple) */}
-        <div className="p-4 border-t border-border-light dark:border-border-dark flex justify-between items-center bg-gray-50 dark:bg-gray-900/50">
-          <span className="text-xs text-text-tertiary">Showing 1-5 of 14,208 users</span>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" disabled>Previous</Button>
-            <Button variant="outline" size="sm">Next</Button>
-          </div>
-        </div>
+        {/* Pagination */}
+        {!loading && users.length > 0 && (
+            <div className="p-4 border-t border-border-light dark:border-border-dark flex justify-between items-center bg-gray-50 dark:bg-gray-900/50">
+            <div className="flex items-center gap-4">
+                <span className="text-xs text-text-tertiary shrink-0">
+                    Showing {((pagination.page - 1) * pagination.limit) + 1} to {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total} entries
+                </span>
+                <select 
+                    className="h-8 pl-3 pr-8 rounded-md border border-border-light bg-background-light text-xs focus:ring-2 focus:ring-primary/20 dark:bg-background-dark dark:border-border-dark dark:text-white appearance-none cursor-pointer"
+                    value={pagination.limit}
+                    onChange={(e) => setPagination({ ...pagination, limit: Number(e.target.value), page: 1 })}
+                >
+                    <option value="10">10 per page</option>
+                    <option value="20">20 per page</option>
+                    <option value="50">50 per page</option>
+                </select>
+            </div>
+            <div className="flex gap-2 items-center">
+                <Button 
+                    variant="outline" 
+                    size="sm" 
+                    disabled={pagination.page <= 1}
+                    onClick={() => setPagination(prev => ({ ...prev, page: prev.page - 1 }))}
+                >
+                    Previous
+                </Button>
+                <span className="text-xs font-medium text-text-primary dark:text-white px-2">
+                    Page {pagination.page} of {pagination.totalPages}
+                </span>
+                <Button 
+                    variant="outline" 
+                    size="sm" 
+                    disabled={pagination.page >= pagination.totalPages}
+                    onClick={() => setPagination(prev => ({ ...prev, page: prev.page + 1 }))}
+                >
+                    Next
+                </Button>
+            </div>
+            </div>
+        )}
       </div>
 
       {/* User Detail Drawer */}
@@ -119,6 +218,14 @@ export function UsersManagementPage() {
         user={selectedUser} 
         isOpen={isDrawerOpen} 
         onClose={() => setIsDrawerOpen(false)} 
+        onUpdate={handleUserUpdated}
+      />
+
+      {/* Add User Drawer */}
+      <AddUserDrawer
+        isOpen={isAddUserDrawerOpen}
+        onClose={() => setIsAddUserDrawerOpen(false)}
+        onUserAdded={fetchUsers}
       />
 
     </div>

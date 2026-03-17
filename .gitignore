@@ -138,13 +138,23 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 
-# OS generated files
+# macOS system files
 .DS_Store
 .DS_Store?
 ._*
 .Trashes
+.Spotlight-V100
+.fseventsd
+Icon?
+.AppleDouble
+.LSOverride
+
+# Windows system files
 ehthumbs.db
 Thumbs.db
+
+# Agent Metadata
+.agents/
 
 *storybook.log
 storybook-static

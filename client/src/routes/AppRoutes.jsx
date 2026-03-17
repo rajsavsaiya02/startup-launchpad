@@ -70,6 +70,7 @@ import { OpportunitiesBoardPage } from "../features/talent/OpportunitiesBoardPag
 import { OpportunityDetailsPage } from "../features/talent/OpportunityDetailsPage";
 import { MyApplicationsPage } from "../features/talent/MyApplicationsPage";
 import { ApplicationReviewPage } from "../features/talent/ApplicationReviewPage";
+import { ApplicationChat } from "../features/talent/ApplicationChat";
 import { TalentArchivePage } from "../features/talent/TalentArchivePage";
 import { PublicProfilePage } from "../features/talent/PublicProfilePage";
 import { ProjectDetailsPage } from "../features/operations/ProjectDetailsPage";
@@ -341,6 +342,10 @@ export function AppRoutes() {
             <Route
               path="/dashboard/applications"
               element={<MyApplicationsPage />}
+            />
+            <Route
+              path="/dashboard/applications/:id/messages"
+              element={<ApplicationChat />}
             />
             <Route path="/dashboard/archives" element={<TalentArchivePage />} />
           </Route>

@@ -291,28 +291,30 @@ export function ProjectTasksPage() {
   return (
     <div className="flex flex-col min-h-full bg-background-light dark:bg-background-dark">
       {/* 1. Project Header Card */}
-      <div className="mx-4 mt-4 mb-2 bg-white dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-2xl shadow-sm z-10 overflow-hidden shrink-0">
-        <div className="px-8 pt-6 pb-5 flex items-start justify-between gap-4">
+      <div className="mt-6 mb-4 bg-white/70 dark:bg-surface-dark/70 border border-border-light dark:border-border-dark shadow-xl shadow-gray-200/20 dark:shadow-none rounded-[2.5rem] z-10 overflow-hidden shrink-0 backdrop-blur-xl">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-primary/5 blur-[100px] rounded-full -mr-32 -mt-32 pointer-events-none" />
+        <div className="px-12 pt-10 pb-8 flex items-start justify-between gap-4 relative z-10">
           <div className="flex-1 min-w-0">
-            <h1 className="text-xl font-black text-text-primary dark:text-white tracking-tight leading-tight">
-              My Tasks
+            <h1 className="text-4xl font-black text-transparent bg-clip-text bg-linear-to-r from-gray-950 to-gray-600 dark:from-white dark:to-gray-400 tracking-tight leading-tight">
+              Task Setup & Management
             </h1>
-            <p className="mt-1 text-sm text-text-secondary dark:text-gray-400 leading-relaxed">
-              Manage all your tasks across your personal projects.
+            <p className="mt-2 text-base text-text-tertiary dark:text-gray-400 leading-relaxed font-medium max-w-2xl">
+              Configure your workspace, track productivity metrics, and manage
+              your project tasks with elite-level precision.
             </p>
           </div>
-          <div className="flex items-center gap-3 shrink-0 pt-0.5">
+          <div className="flex items-center gap-4 shrink-0 pt-1.5">
             <button
               onClick={() => {
                 setSelectedTask(null);
                 setIsTaskDrawerReadOnly(false);
                 setIsTaskDrawerOpen(true);
               }}
-              className="group relative flex items-center gap-1.5 h-9 px-4 text-[11px] font-black tracking-widest text-white transition-all overflow-hidden rounded-lg shadow-sm shadow-primary/30 active:scale-95 cursor-pointer"
+              className="group relative flex items-center gap-2.5 h-12 px-8 text-[12px] font-black tracking-[0.2em] text-white transition-all rounded-full shadow-lg shadow-primary/25 hover:shadow-primary/40 hover:-translate-y-0.5 active:scale-95 cursor-pointer"
             >
-              <div className="absolute inset-0 bg-primary group-hover:bg-primary-hover transition-colors duration-200" />
-              <div className="relative flex items-center gap-1.5">
-                <Plus className="h-3.5 w-3.5 stroke-[3px]" />
+              <div className="absolute rounded-2xl border inset-0 bg-gradient-to-br from-primary to-indigo-600 group-hover:from-primary-hover group-hover:to-indigo-700 transition-all duration-300" />
+              <div className="relative flex items-center gap-2.5">
+                <Plus className="h-5 w-5 stroke-[3.5px]" />
                 <span>NEW TASK</span>
               </div>
             </button>
@@ -320,19 +322,26 @@ export function ProjectTasksPage() {
         </div>
 
         {/* Tabs Control Bar */}
-        <div className="flex items-center justify-center px-8 pb-4">
-          <div className="bg-gray-50/80 dark:bg-gray-800/50 p-1 rounded-xl border border-border-light dark:border-border-dark inline-flex items-center">
+        <div className="flex items-center justify-center px-12 pb-6">
+          <div className="bg-gray-100/30 dark:bg-gray-900/40 p-1 rounded-2xl border border-border-light/30 dark:border-border-dark/20 inline-flex items-center backdrop-blur-xl relative">
             {["Work Board", "Productivity", "Resources"].map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
                 className={cn(
-                  "px-6 py-2 rounded-lg text-xs font-bold transition-all duration-200 whitespace-nowrap",
+                  "relative px-7 py-2 rounded-xl text-[10px] font-black transition-colors duration-300 whitespace-nowrap uppercase tracking-[0.15em] z-10",
                   activeTab === tab
-                    ? "bg-white dark:bg-surface-dark text-primary shadow-sm border border-border-light/50 dark:border-border-dark/50"
-                    : "text-text-secondary hover:text-text-primary hover:bg-gray-100/50 dark:hover:bg-white/5",
+                    ? "text-primary"
+                    : "text-text-secondary hover:text-text-primary",
                 )}
               >
+                {activeTab === tab && (
+                  <motion.div
+                    layoutId="activeTab"
+                    className="absolute inset-0 bg-white dark:bg-surface-dark rounded-xl shadow-md border border-border-light/50 dark:border-border-dark/50 z-[-1]"
+                    transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                  />
+                )}
                 {tab}
               </button>
             ))}
@@ -343,16 +352,17 @@ export function ProjectTasksPage() {
       {/* 2. Main Board Area */}
       {activeTab === "Work Board" && (
         <div className="flex-1 min-h-0 overflow-hidden px-4 pb-4 pt-2 flex flex-col gap-4">
-          {/* Board Filters */}
-          <div className="flex flex-col sm:flex-row gap-4 mb-2 items-center justify-between shrink-0">
-            <div className="relative flex-1 w-full max-w-md">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-tertiary" />
+          <div className="flex flex-col sm:flex-row gap-4 py-2 items-center justify-between shrink-0">
+            <div className="relative flex-1 w-full max-w-xl">
+              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                <Search className="h-4 w-4 text-text-tertiary" />
+              </div>
               <input
                 type="text"
-                placeholder="Search tasks..."
+                placeholder="Search tasks across board..."
                 value={taskSearchQuery}
                 onChange={(e) => setTaskSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 text-sm bg-white dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-lg focus:ring-2 focus:ring-primary/20 transition-all outline-none"
+                className="w-full pl-10 pr-4 py-3 text-sm bg-white dark:bg-surface-dark border-none ring-1 ring-gray-200 dark:ring-gray-800 rounded-2xl focus:ring-2 focus:ring-primary/40 transition-all outline-none shadow-sm placeholder:text-text-tertiary dark:placeholder:text-gray-600"
               />
             </div>
             <div className="flex items-center gap-3 w-full sm:w-auto">
@@ -378,14 +388,14 @@ export function ProjectTasksPage() {
                 <select
                   value={taskPriorityFilter}
                   onChange={(e) => setTaskPriorityFilter(e.target.value)}
-                  className="w-full pl-9 pr-8 py-2 text-sm bg-white dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-lg focus:ring-2 focus:ring-primary/20 transition-all outline-none appearance-none cursor-pointer"
+                  className="w-full pl-10 pr-10 py-3 text-xs font-bold text-text-secondary dark:text-gray-400 bg-white dark:bg-surface-dark border-none ring-1 ring-gray-200 dark:ring-gray-800 rounded-2xl focus:ring-2 focus:ring-primary/40 transition-all outline-none appearance-none cursor-pointer shadow-sm"
                 >
                   <option value="All">All Priorities</option>
                   <option value="High">High Priority</option>
                   <option value="Medium">Medium Priority</option>
                   <option value="Low">Low Priority</option>
                 </select>
-                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-tertiary pointer-events-none" />
+                <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text-tertiary pointer-events-none" />
               </div>
             </div>
           </div>
@@ -693,15 +703,20 @@ function WorkColumn({ id, title, count, color, children }) {
   if (bgDot.includes("purple")) bgDot = "bg-purple-500";
 
   return (
-    <div className="flex flex-1 min-w-[300px] flex-col bg-slate-50 dark:bg-slate-900/50 border border-border-light dark:border-border-dark rounded-2xl shadow-sm">
-      <div className="bg-white/60 dark:bg-surface-dark border-b border-border-light dark:border-border-dark px-4 py-3.5 flex justify-between items-center shrink-0 backdrop-blur-md rounded-t-2xl">
-        <div className="flex items-center gap-2.5">
-          <div className={cn("w-2 h-2 rounded-full", bgDot)} />
-          <h2 className="text-sm font-black text-text-primary dark:text-white uppercase tracking-wider">
+    <div className="flex flex-1 min-w-[300px] flex-col bg-slate-50/50 dark:bg-slate-900/30 border border-border-light dark:border-border-dark rounded-[1.5rem] shadow-sm overflow-hidden backdrop-blur-sm">
+      <div className="bg-white/80 dark:bg-surface-dark/80 border-b border-border-light dark:border-border-dark px-5 py-4 flex justify-between items-center shrink-0 backdrop-blur-md">
+        <div className="flex items-center gap-3">
+          <div
+            className={cn(
+              "w-2.5 h-2.5 rounded-full shadow-[0_0_10px_rgba(0,0,0,0.1)]",
+              bgDot,
+            )}
+          />
+          <h2 className="text-[11px] font-black text-text-primary dark:text-white uppercase tracking-[0.15em]">
             {title}
           </h2>
         </div>
-        <span className="text-xs font-bold text-text-tertiary bg-gray-100 dark:bg-gray-800 px-2.5 py-1 rounded-full tabular-nums border border-border-light/50 dark:border-border-dark/50">
+        <span className="text-[10px] font-black text-primary bg-primary/10 border border-primary/20 px-2.5 py-1 rounded-lg tabular-nums">
           {count}
         </span>
       </div>

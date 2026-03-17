@@ -137,6 +137,7 @@ const initDb = async () => {
         -- Preferences & public profile
         preferences       JSONB DEFAULT '{}'::jsonb,
         public_profile    JSONB DEFAULT '{}'::jsonb,
+        status            VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active', 'suspended')),
         created_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);

@@ -28,8 +28,8 @@ export function DashboardLayout() {
       <div className="lg:pl-[260px] flex flex-col min-h-screen">
         <Header onMenuClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} />
         
-        <main className="flex-1 p-6 lg:p-8 overflow-x-hidden">
-          <div className="mx-auto max-w-7xl">
+        <main className="flex-1 p-4 lg:p-5 overflow-x-hidden">
+          <div className="w-full">
             <Outlet />
           </div>
         </main>
