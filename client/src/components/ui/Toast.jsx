@@ -1,24 +1,30 @@
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { X, CheckCircle, AlertCircle, Info } from 'lucide-react';
 import { cn } from '../../utils/cn';
 
 const ToastContext = createContext();
 
 export const ToastProvider = ({ children }) => {
+  useEffect(() => {
+    console.log("[DEBUG] ToastProvider: MOUNTED");
+    return () => console.log("[DEBUG] ToastProvider: UNMOUNTED");
+  }, []);
   const [toasts, setToasts] = useState([]);
 
-  const addToast = (message, type = 'info', duration = 3000) => {
+  const addToast = useCallback((message, type = 'info', duration = 3000) => {
     const id = Math.random().toString(36).substr(2, 9);
     setToasts((prev) => [...prev, { id, message, type, duration }]);
-  };
+  }, []);
 
-  const removeToast = (id) => {
+  const removeToast = useCallback((id) => {
     setToasts((prev) => prev.filter((toast) => toast.id !== id));
-  };
+  }, []);
+
+  const value = useMemo(() => ({ addToast }), [addToast]);
 
   return (
-    <ToastContext.Provider value={{ addToast }}>
+    <ToastContext.Provider value={value}>
       {children}
       <div className="fixed bottom-4 right-4 z-[100] flex flex-col gap-2 pointer-events-none">
         {toasts.map((toast) => (

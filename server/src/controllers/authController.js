@@ -8,6 +8,8 @@ const { parseUserAgent } = require("../utils/deviceDetector");
 const { getLocationFromIp } = require("../utils/geoLocator");
 const { getSystemSettings } = require("../services/systemSettingsService");
 const logger = require("../utils/logger");
+const { logAudit } = require("../utils/auditLogger");
+
 
 // Helper to generate token with sessionId
 const generateToken = (user, sessionId, expiresIn = "1d") => {
@@ -127,9 +129,20 @@ exports.register = async (req, res) => {
     // Send Email
     await emailService.sendVerificationEmail(email, otp);
 
+    await logAudit({
+      event_type: "User",
+      action: "Registration",
+      description: `New user registered: ${email}`,
+      user_id: user.id,
+      status: "Success",
+      ip_address: req.ip || req.connection.remoteAddress,
+      details: { role: user.role, provider: "local" },
+    });
+
     res.json({
       message: "Registration successful. Please check your email for OTP.",
     });
+
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Server error" });
@@ -156,7 +169,17 @@ exports.verifyEmail = async (req, res) => {
     // Delete used OTP
     await pool.query("DELETE FROM otps WHERE id = $1", [otpRecord.rows[0].id]);
 
+    await logAudit({
+      event_type: "User",
+      action: "Email Verified",
+      description: `Email verified for user: ${email}`,
+      user_id: otpRecord.rows[0].user_id || null, // Best effort if we can link it
+      status: "Success",
+      ip_address: req.ip || req.connection.remoteAddress,
+    });
+
     res.json({ message: "Email verified successfully. You can now log in." });
+
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Server error" });
@@ -275,8 +298,19 @@ exports.login = async (req, res) => {
     const token = generateToken(user, sessionId, timeout);
     setAuthCookie(res, token);
 
+    await logAudit({
+      event_type: "User",
+      action: "Login",
+      description: `User logged in: ${email}`,
+      user_id: user.id,
+      status: "Success",
+      ip_address: req.ip || req.connection.remoteAddress,
+      details: { session_id: sessionId },
+    });
+
     res.clearCookie("admin_token");
     res.json({ user, message: "Logged in successfully" });
+
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Server error" });
@@ -296,7 +330,18 @@ exports.googleCallback = async (req, res) => {
     const token = generateToken(req.user, sessionId, timeout);
     setAuthCookie(res, token);
 
+    await logAudit({
+      event_type: "User",
+      action: "Login",
+      description: `User logged in via ${req.user.provider || "social"}: ${req.user.email}`,
+      user_id: req.user.id,
+      status: "Success",
+      ip_address: req.ip || req.connection.remoteAddress,
+      details: { session_id: sessionId, provider: req.user.provider },
+    });
+
     // Update Session Login Method in background if needed, but 'local' default is okay for now or
+
     // we can refactor `createSession` to accept method. For now, it's fine.
 
     res.redirect(`${process.env.CLIENT_URL}/auth/success`);

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
 import { settingsService } from '../features/admin/settings/settingsService';
 
 const SettingsContext = createContext();
@@ -12,6 +12,10 @@ export const useSettings = () => {
 };
 
 export const SettingsProvider = ({ children }) => {
+    useEffect(() => {
+        console.log("[DEBUG] SettingsProvider: MOUNTED");
+        return () => console.log("[DEBUG] SettingsProvider: UNMOUNTED");
+    }, []);
     const [settings, setSettings] = useState({
         platform_name: 'Startup LaunchPad',
         support_email: 'support@launchpad.com',
@@ -41,7 +45,9 @@ export const SettingsProvider = ({ children }) => {
                 // so that the Login page can show the correct Platform Name.
                 // I will need to update the backend route to allow public access for GET.
                 
+                console.log("[DEBUG] SettingsProvider: Fetching settings...");
                 const data = await settingsService.getSettings();
+                console.log("[DEBUG] SettingsProvider: Settings received:", data);
                 if (data) {
                     setSettings(prev => ({ ...prev, ...data }));
                 }
@@ -77,8 +83,10 @@ export const SettingsProvider = ({ children }) => {
         }
     }, [settings.platform_name, settings.favicon_url]);
 
+    const value = useMemo(() => ({ settings, loading, updateLocalSettings }), [settings, loading]);
+
     return (
-        <SettingsContext.Provider value={{ settings, loading, updateLocalSettings }}>
+        <SettingsContext.Provider value={value}>
             {children}
         </SettingsContext.Provider>
     );

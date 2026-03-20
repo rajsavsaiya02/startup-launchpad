@@ -15,8 +15,8 @@ export const cmsService = {
   },
 
   // Admin Access
-  getPages: async () => {
-    const response = await axios.get(`${CMS_API}/pages`); // Check if this was public or admin in backend? It was listPages, public/mixed.
+  getPages: async (params = {}) => {
+    const response = await axios.get(`${CMS_API}/pages`, { params });
     return response.data;
   },
 

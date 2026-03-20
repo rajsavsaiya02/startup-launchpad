@@ -1,11 +1,13 @@
 import React from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { useSettings } from '../../context/SettingsContext';
 
 export function ProtectedRoute() {
     const { isAuthenticated, isLoading, user } = useAuth();
+    const { settings, loading: settingsLoading } = useSettings();
 
-    if (isLoading) {
+    if (isLoading || settingsLoading) {
         return (
             <div className="flex h-screen items-center justify-center">
                 <div className="text-gray-500">Verifying access...</div>
@@ -17,6 +19,12 @@ export function ProtectedRoute() {
         if (user?.role === 'admin' || user?.role === 'super_admin') {
             return <Navigate to="/admin/dashboard" replace />;
         }
+        
+        // Block normal users if maintenance mode is enabled
+        if (settings?.maintenance_mode) {
+            return <Navigate to="/upcoming" replace />;
+        }
+
         return <Outlet />;
     }
 

@@ -64,6 +64,7 @@ export function useCMSContent(slug) {
     return { 
         content: data?.published_content || data?.draft_content || {}, 
         raw: data,
+        pageData: data,
         loading, 
         error,
         SEO 

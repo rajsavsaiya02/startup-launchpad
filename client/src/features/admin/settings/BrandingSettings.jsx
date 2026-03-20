@@ -231,27 +231,35 @@ const BrandingSettings = () => {
                                     <h2 className="text-lg font-semibold text-text-primary dark:text-white">Visual Assets</h2>
                                 </div>
 
-                                <div className="grid grid-cols-1 gap-8">
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-medium text-text-primary dark:text-white">Platform Logo</label>
-                                        <p className="text-xs text-text-secondary mb-2">Displayed in the navigation bar. Recommended: 200x50px PNG/SVG.</p>
-                                        <ImageUpload 
-                                            value={settings.logo_url}
-                                            onChange={(file) => handleImageChange('logo_url', file)}
-                                            aspect={4/1}
-                                            className="w-full"
-                                        />
+                                <div className="grid grid-cols-1 gap-10">
+                                    <div className="space-y-3">
+                                        <div className="flex flex-col gap-1">
+                                            <label className="text-sm font-semibold text-text-primary dark:text-white">Platform Logo</label>
+                                            <p className="text-xs text-text-tertiary">Displayed in the navigation bar. Recommended: 200x50px PNG/SVG.</p>
+                                        </div>
+                                        <div className="max-w-md overflow-hidden bg-gray-50/50 dark:bg-gray-800/10 rounded-xl border border-border-light/50 dark:border-border-dark/50">
+                                            <ImageUpload 
+                                                value={settings.logo_url}
+                                                onChange={(file) => handleImageChange('logo_url', file)}
+                                                aspect={4/1}
+                                                className="w-full"
+                                            />
+                                        </div>
                                     </div>
 
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-medium text-text-primary dark:text-white">Favicon</label>
-                                        <p className="text-xs text-text-secondary mb-2">Browser tab icon. Recommended: 512x512px PNG (Transparent) or SVG for best SEO & Retina display support.</p>
-                                        <ImageUpload 
-                                            value={settings.favicon_url}
-                                            onChange={(file) => handleImageChange('favicon_url', file)}
-                                            aspect={1}
-                                            className="w-full"
-                                        />
+                                    <div className="space-y-3">
+                                        <div className="flex flex-col gap-1">
+                                            <label className="text-sm font-semibold text-text-primary dark:text-white">Favicon</label>
+                                            <p className="text-xs text-text-tertiary">Browser tab icon. Recommended: 512x512px PNG (Transparent) or SVG.</p>
+                                        </div>
+                                        <div className="w-24 h-24 overflow-hidden rounded-full border border-border-light/50 dark:border-border-dark/50">
+                                            <ImageUpload 
+                                                value={settings.favicon_url}
+                                                onChange={(file) => handleImageChange('favicon_url', file)}
+                                                aspect={1}
+                                                className="w-full h-full"
+                                            />
+                                        </div>
                                     </div>
                                 </div>
                              </section>

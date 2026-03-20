@@ -8,13 +8,19 @@ const maintenanceMiddleware = async (req, res, next) => {
             return next();
         }
 
+        // Only intercept API calls. Let frontend routing and static assets pass through.
+        if (!req.path.startsWith('/api/')) {
+            return next();
+        }
+
         // Allow essential routes
         const allowedPaths = [
             '/api/auth/login', 
             '/api/auth/admin-login', 
             '/api/auth/logout',
-            '/api/settings', // Needed for public to see it's in maintenance? Or admin to turn off
-            '/favicon.svg'
+            '/api/auth/check-session', // Needed for frontend session detection
+            '/api/settings',           // Needed for public info (Platform Name, Maintenance status)
+            '/api/cms'                 // Needed to serve CMS content to public pages
         ];
         
         if (allowedPaths.some(path => req.path.startsWith(path))) {

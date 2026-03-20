@@ -17,6 +17,7 @@ import { apiClient, SERVER_URL } from "../../lib/axios";
 import { Input } from "../../components/ui/Input";
 import { Button } from "../../components/ui/Button";
 import { OtpModal } from "../../components/auth/OtpModal";
+import { useSettings } from "../../context/SettingsContext";
 
 export function SignupPage() {
   const [formData, setFormData] = useState({
@@ -29,6 +30,7 @@ export function SignupPage() {
   const [loading, setLoading] = useState(false);
   const [showOtp, setShowOtp] = useState(false);
   const [error, setError] = useState("");
+  const { settings } = useSettings();
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -102,6 +104,29 @@ export function SignupPage() {
       </div>
 
       <form onSubmit={handleSignup} className="space-y-5">
+        {settings && (settings.registration_enabled === false || settings.maintenance_mode) && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="bg-white rounded-2xl shadow-xl w-full max-w-md p-8 text-center space-y-5"
+            >
+              <div className="w-16 h-16 bg-primary/10 text-primary rounded-full flex items-center justify-center mx-auto mb-4">
+                <Lock className="w-8 h-8" />
+              </div>
+              <h3 className="text-2xl font-bold text-gray-900 tracking-tight">Registrations Closed</h3>
+              <p className="text-gray-500 text-sm pb-4 leading-relaxed">
+                Thank you for your interest in Startup LaunchPad. We are currently at capacity and not accepting new registrations at this time. Please check back later.
+              </p>
+              <div className="space-y-3">
+                <Link to="/" className="block">
+                  <Button className="w-full h-11" type="button">Return to Homepage</Button>
+                </Link>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
         {error && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}

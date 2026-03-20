@@ -68,7 +68,7 @@ export function PublicPageManager() {
   const loadPages = useCallback(async () => {
     try {
       setLoading(true);
-      const data = await cmsService.getPages();
+      const data = await cmsService.getPages({ page_type: 'page' });
       setPages(data);
     } catch (err) {
       console.error(err);
@@ -84,7 +84,7 @@ export function PublicPageManager() {
 
   const handleCreate = async (values) => {
     try {
-      await cmsService.createPage(values);
+      await cmsService.createPage({ ...values, page_type: 'page' });
       addToast("Page created!", "success");
       loadPages();
     } catch (err) {
@@ -113,7 +113,7 @@ export function PublicPageManager() {
   const handleCreateSystemPage = async (slug, title) => {
     if (confirm(`Create ${title}?`)) {
       try {
-        await cmsService.createPage({ title, slug });
+        await cmsService.createPage({ title, slug, page_type: 'page' });
         addToast(`${title} created!`, "success");
         await loadPages();
       } catch (err) {

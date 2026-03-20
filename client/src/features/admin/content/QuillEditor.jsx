@@ -63,33 +63,71 @@ export function QuillEditor({ content, onChange, readOnly = false }) {
   }
 
   return (
-    <div className="quill-wrapper bg-white dark:bg-background-dark rounded-md overflow-hidden border border-border-light dark:border-border-dark">
+    <div className="quill-wrapper bg-transparent">
       <style>{`
-        .ql-container {
-            font-family: inherit;
-            min-height: 400px;
-            font-size: 1.125rem;
-        }
-        .ql-editor {
-            min-height: 400px;
-            padding: 1.5rem;
-        }
-        .ql-toolbar {
-            border-top: none !important;
-            border-left: none !important;
-            border-right: none !important;
+        .quill-wrapper .ql-toolbar.ql-snow {
+            border: none !important;
             border-bottom: 1px solid var(--border-light) !important;
-            background-color: var(--surface-light);
+            background-color: transparent !important;
+            padding: 1rem 0;
+            margin-bottom: 1.5rem;
+            position: sticky;
+            top: 0;
+            z-index: 10;
         }
-        .dark .ql-toolbar {
-             border-color: var(--border-dark) !important;
-             background-color: var(--surface-dark);
-             filter: invert(1) hue-rotate(180deg);
+        
+        .dark .quill-wrapper .ql-toolbar.ql-snow {
+            border-bottom-color: var(--border-dark) !important;
         }
-        /* Fix icon invert affecting colors badly, instead manually style if possible or use simpler dark mode fix */
-        .dark .ql-picker { color: black; }
-        .dark .ql-stroke { stroke: black; }
-        .dark .ql-fill { fill: black; }
+
+        .quill-wrapper .ql-container.ql-snow {
+            border: none !important;
+            font-family: inherit;
+            font-size: 1.25rem;
+            line-height: 1.8;
+            color: var(--text-primary);
+        }
+
+        .dark .quill-wrapper .ql-container.ql-snow {
+            color: #e5e7eb;
+        }
+
+        .quill-wrapper .ql-editor {
+            min-height: 500px;
+            padding: 0 !important;
+        }
+
+        .quill-wrapper .ql-editor.ql-blank::before {
+            left: 0 !important;
+            font-style: normal;
+            opacity: 0.3;
+            color: var(--text-tertiary);
+        }
+
+        /* Better Dark Mode Icons */
+        .dark .ql-snow .ql-stroke {
+            stroke: #9ca3af !important;
+        }
+        .dark .ql-snow .ql-fill {
+            fill: #9ca3af !important;
+        }
+        .dark .ql-snow .ql-picker {
+            color: #9ca3af !important;
+        }
+        .dark .ql-snow .ql-picker-options {
+            background-color: var(--surface-dark) !important;
+            border-color: var(--border-dark) !important;
+        }
+        
+        .ql-snow.ql-toolbar button:hover .ql-stroke,
+        .ql-snow.ql-toolbar button.ql-active .ql-stroke {
+            stroke: var(--primary) !important;
+        }
+        
+        .ql-snow.ql-toolbar button:hover .ql-fill,
+        .ql-snow.ql-toolbar button.ql-active .ql-fill {
+            fill: var(--primary) !important;
+        }
       `}</style>
       <ReactQuill
         ref={quillRef}

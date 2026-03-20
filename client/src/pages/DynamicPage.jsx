@@ -16,7 +16,7 @@ function PageRenderer({ content }) {
 
 export function DynamicPage() {
     const { slug } = useParams();
-    const { content, loading, error, SEO } = useCMSContent(slug);
+    const { content, loading, error, SEO, pageData } = useCMSContent(slug);
 
     if (loading) return (
         <div className="min-h-screen pt-20 flex items-center justify-center">
@@ -28,10 +28,12 @@ export function DynamicPage() {
     );
 
     if (error || !content) {
-        return <div className="min-h-screen pt-32 text-center">
-            <h1 className="text-4xl font-bold mb-4">404</h1>
-            <p>Page not found</p>
-        </div>;
+        return <Navigate to="/not-found" replace />;
+    }
+
+    // If this is a blog post (page_type === 'blog'), redirect to the blog route
+    if (pageData?.page_type === 'blog') {
+        return <Navigate to={`/blog/${slug}`} replace />;
     }
 
     return (

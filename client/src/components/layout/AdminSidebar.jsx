@@ -52,23 +52,35 @@ const MODULE_NAV_CONFIG = {
       icon: LayoutDashboard,
     },
     { name: "Analytics", path: "/admin/dashboard/analytics", icon: BarChart2 },
-    { name: "Financials", path: "/admin/dashboard/financials", icon: PieChart },
-    { name: "Real-time Feed", path: "/admin/dashboard/live", icon: Activity },
+    {
+      name: "Financials",
+      path: "/admin/dashboard/financials",
+      icon: PieChart,
+      hidden: true,
+    },
+    {
+      name: "Real-time Feed",
+      path: "/admin/dashboard/live",
+      icon: Activity,
+      hidden: true,
+    },
     { name: "System Health", path: "/admin/dashboard/health", icon: Server },
   ],
   management: [
-    { name: "Ventures", path: "/admin/management/ventures", icon: Briefcase },
+    { name: "Organizations", path: "/admin/management/organizations", icon: Briefcase },
     { name: "User Directory", path: "/admin/management/users", icon: Users },
     {
       name: "Verification",
       path: "/admin/management/verification",
       icon: CheckCircle,
+      hidden: true,
     }, // Queue
-    { name: "Fiscal", path: "/admin/management/fiscal", icon: CreditCard }, // Billing
+    { name: "Fiscal", path: "/admin/management/fiscal", icon: CreditCard, hidden: true }, // Billing
     {
       name: "Marketplace",
       path: "/admin/management/marketplace",
       icon: ShoppingBag,
+      hidden: true,
     },
   ],
   communication: [
@@ -76,6 +88,7 @@ const MODULE_NAV_CONFIG = {
       name: "Broadcasts",
       path: "/admin/communication/broadcasts",
       icon: Megaphone,
+      hidden: true,
     },
     {
       name: "Blog Posts",
@@ -91,23 +104,32 @@ const MODULE_NAV_CONFIG = {
       name: "Testimonials",
       path: "/admin/communication/cms/testimonials",
       icon: MessageSquare,
+      hidden: true,
     }, // Merged
     {
       name: "Resource Center",
       path: "/admin/communication/cms/resources",
       icon: Folder,
+      hidden: true,
     }, // Merged
     {
       name: "Banners & Highlights",
       path: "/admin/communication/cms/banners",
       icon: Megaphone,
+      hidden: true,
     }, // Merged
     {
       name: "Promotions",
       path: "/admin/communication/promos",
       icon: MessageSquare,
+      hidden: true,
     },
-    { name: "Support", path: "/admin/communication/support", icon: HelpCircle },
+    {
+      name: "Support",
+      path: "/admin/communication/support",
+      icon: HelpCircle,
+      hidden: true,
+    },
   ],
   settings: [
     { name: "General", path: "/admin/settings/general", icon: Settings },
@@ -118,6 +140,7 @@ const MODULE_NAV_CONFIG = {
       name: "Notifications",
       path: "/admin/settings/notifications",
       icon: Bell,
+      hidden: true,
     }, // Moved from internal
     { name: "Email Templates", path: "/admin/settings/email", icon: Mail }, // Moved from internal
     // { name: 'Feature Toggles', path: '/admin/settings/features', icon: ToggleLeft }, // Moved from internal
@@ -147,6 +170,7 @@ export function AdminSidebar({
   const activeModule = getActiveModule(location.pathname);
 
   const navItems = MODULE_NAV_CONFIG[activeModule].filter((item) => {
+    if (item.hidden) return false;
     if (item.path === "/admin/settings/access") {
       return user?.role === "super_admin";
     }

@@ -2,14 +2,19 @@ const express = require('express');
 const adminAuthController = require('../controllers/adminAuthController');
 const adminController = require('../controllers/adminController');
 const adminPlatformUserController = require('../controllers/adminPlatformUserController');
+const adminOrganizationController = require('../controllers/adminOrganizationController');
 const { verifyAdminToken, requireSuperAdmin } = require('../middleware/adminAuthMiddleware');
+
+const adminAnalyticsController = require('../controllers/adminAnalyticsController');
 
 const router = express.Router();
 
 router.post('/login', adminAuthController.login);
 router.post('/logout', adminAuthController.logout);
 router.get('/me', verifyAdminToken, adminAuthController.getMe);
+router.get('/analytics/summary', verifyAdminToken, adminAnalyticsController.getAnalyticsSummary);
 router.put('/profile', verifyAdminToken, adminAuthController.updateProfile);
+
 
 // Super Admin Management Routes
 router.get('/users', verifyAdminToken, requireSuperAdmin, adminController.getAllAdmins);
@@ -24,5 +29,9 @@ router.post('/platform-users', verifyAdminToken, adminPlatformUserController.cre
 router.put('/platform-users/:id/status', verifyAdminToken, adminPlatformUserController.updateUserStatus);
 router.put('/platform-users/:id/password', verifyAdminToken, adminPlatformUserController.resetUserPassword);
 router.delete('/platform-users/:id', verifyAdminToken, requireSuperAdmin, adminPlatformUserController.deleteUser); // Require super admin for deletion
+
+// Organization Management Routes (for Admins)
+router.get('/organizations', verifyAdminToken, adminOrganizationController.getAllOrganizations);
+router.put('/organizations/:id/status', verifyAdminToken, adminOrganizationController.updateOrganizationStatus);
 
 module.exports = router;

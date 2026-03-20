@@ -9,7 +9,7 @@ const darkGradientClasses = "bg-gradient-to-b from-[#0A071B] to-[#120D2B]";
 
 export function PublicFooter({ className }) {
   const { settings } = useSettings();
-  const contactEmail = settings?.support_email || 'support@launchpad.com';
+  const contactEmail = settings?.support_email || 'hello@startuplaunchpad.com';
   const linkClass = "text-sm text-gray-400 hover:text-white transition-colors duration-200";
   const iconClass = "h-6 w-6 text-gray-500 hover:text-white transition-colors duration-200";
 
@@ -68,8 +68,8 @@ export function PublicFooter({ className }) {
           <p className="text-xs font-normal text-gray-500">© {new Date().getFullYear()} {settings?.platform_name || 'Startup LaunchPad'}. All rights reserved.</p>
           <div className="flex items-center gap-2">
             <Mail className="h-4 w-4 text-gray-500" />
-            <a href={`mailto:${settings?.support_email || 'hello@startuplaunchpad.com'}`} className="text-xs text-gray-500 hover:text-white transition-colors">
-              {settings?.support_email || 'hello@startuplaunchpad.com'}
+            <a href={`mailto:${contactEmail}`} className="text-xs text-gray-500 hover:text-white transition-colors">
+              {contactEmail}
             </a>
           </div>
             <Link to="/legal/terms" className="text-xs text-gray-500 hover:text-white transition-colors duration-200">Terms of Use</Link>

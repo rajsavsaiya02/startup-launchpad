@@ -29,8 +29,8 @@ import { LandingPage } from "../pages/LandingPage";
 import { PricingPage } from "../pages/PricingPage";
 import { ContactPage } from "../pages/ContactPage";
 import { AboutPage } from "../pages/AboutPage";
-import { BlogListingPage } from "../pages/BlogListingPage";
-import { BlogArticlePage } from "../pages/BlogArticlePage";
+import BlogListingPage from "../pages/BlogListingPage";
+import BlogArticlePage from "../pages/BlogArticlePage";
 import { FeaturesPage } from "../pages/FeaturesPage";
 import { LegalHubPage } from "../pages/LegalHubPage";
 import { PolicyViewerPage } from "../pages/PolicyViewerPage";
@@ -55,7 +55,10 @@ import { MarketplaceModerationPage } from "../features/admin/marketplace/Marketp
 import { ContentManagementPage } from "../features/admin/content/ContentManagementPage";
 import { PublicPageManager } from "../features/admin/content/PublicPageManager";
 
+import { AdminAnalyticsPage } from "../features/admin/dashboard/AdminAnalyticsPage";
+
 import { SystemHealthPage } from "../features/admin/dashboard/SystemHealthPage";
+
 import { AdminSettingsPage } from "../features/admin/settings/AdminSettingsPage";
 import { EmailSettingsPage } from "../features/admin/settings/EmailSettingsPage";
 import { AccessControlPage } from "../features/admin/settings/AccessControlPage";
@@ -111,7 +114,7 @@ export function AppRoutes() {
         <Route path="/contact" element={<ContactPage />} />
         <Route path="/about" element={<AboutPage />} />
         <Route path="/blog" element={<BlogListingPage />} />
-        <Route path="/blog/:id" element={<BlogArticlePage />} />
+        <Route path="/blog/:slug" element={<BlogArticlePage />} />
         <Route path="/features" element={<FeaturesPage />} />
         <Route path="/product" element={<FeaturesPage />} />
         <Route path="/solutions" element={<FeaturesPage />} />
@@ -152,10 +155,10 @@ export function AppRoutes() {
           <Route path="dashboard/overview" element={<AdminDashboardPage />} />
           <Route
             path="dashboard/analytics"
-            element={
-              <AdminPlaceholderPage title="Analytics" module="Dashboard" />
-            }
+            element={<AdminAnalyticsPage />}
           />
+
+
           <Route
             path="dashboard/financials"
             element={
@@ -175,15 +178,12 @@ export function AppRoutes() {
           {/* 2. Management Module */}
           <Route
             path="management"
-            element={<Navigate to="ventures" replace />}
+            element={<Navigate to="organizations" replace />}
           />
           <Route
-            path="management/ventures"
-            element={
-              <AdminPlaceholderPage title="Ventures" module="Management" />
-            }
-          />{" "}
-          {/* Was ProjectsDashboard? */}
+            path="management/organizations"
+            element={<AdminOrganizationsPage />}
+          />
           <Route path="management/users" element={<UsersManagementPage />} />
           <Route
             path="management/verification"
@@ -194,25 +194,25 @@ export function AppRoutes() {
               />
             }
           />
-          <Route
+{/* <Route
             path="management/fiscal"
             element={<PlansSubscriptionsPage />}
-          />
-          <Route
+          /> */}
+{/* <Route
             path="management/marketplace"
             element={<MarketplaceModerationPage />}
-          />
+          /> */}
           {/* 3. Communication Module */}
           <Route
             path="communication"
-            element={<Navigate to="broadcasts" replace />}
+            element={<Navigate to="cms/blogs" replace />}
           />
-          <Route
+{/* <Route
             path="communication/broadcasts"
             element={
               <AdminPlaceholderPage title="Broadcasts" module="Communication" />
             }
-          />
+          /> */}
           <Route
             path="communication/cms"
             element={<Navigate to="homepage" replace />}
@@ -239,7 +239,7 @@ export function AppRoutes() {
             path="communication/cms/blogs"
             element={<ContentManagementPage />}
           />
-          <Route
+{/* <Route
             path="communication/cms/testimonials"
             element={
               <AdminPlaceholderPage
@@ -247,8 +247,8 @@ export function AppRoutes() {
                 module="Content CMS"
               />
             }
-          />
-          <Route
+          /> */}
+{/* <Route
             path="communication/cms/resources"
             element={
               <AdminPlaceholderPage
@@ -256,8 +256,8 @@ export function AppRoutes() {
                 module="Content CMS"
               />
             }
-          />
-          <Route
+          /> */}
+{/* <Route
             path="communication/cms/banners"
             element={
               <AdminPlaceholderPage
@@ -265,14 +265,14 @@ export function AppRoutes() {
                 module="Content CMS"
               />
             }
-          />
-          <Route
+          /> */}
+{/* <Route
             path="communication/promos"
             element={
               <AdminPlaceholderPage title="Promotions" module="Communication" />
             }
-          />
-          <Route
+          /> */}
+{/* <Route
             path="communication/support"
             element={
               <AdminPlaceholderPage
@@ -280,7 +280,7 @@ export function AppRoutes() {
                 module="Communication"
               />
             }
-          />
+          /> */}
           {/* 4. Settings Module */}
           <Route path="settings" element={<Navigate to="general" replace />} />
           <Route path="settings/general" element={<AdminSettingsPage />} />
@@ -478,7 +478,7 @@ export function AppRoutes() {
         <Route path="/:slug" element={<DynamicPage />} />
       </Route>
 
-      <Route path="*" element={<Navigate to="/" replace />} />
+      <Route path="*" element={<Navigate to="/not-found" replace />} />
     </Routes>
   );
 }

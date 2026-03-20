@@ -2,7 +2,15 @@ const { pool } = require("../database");
 
 /**
  * Middleware to verify a user is an active member of an organization.
- * It attaches the `req.org` and `req.org_member` objects to the request for downstream use.
+ * Enforces role-aware access control based on organization status:
+ *
+ *   Status         | FOUNDER | CO-FOUNDER | Others (ADMIN/MEMBER/GUEST)
+ *   ---------------+---------+------------+----------------------------
+ *   active         |   ✅    |    ✅      |         ✅
+ *   under_review   |   ✅    |    ✅      |         ❌ (403)
+ *   suspended      |   ✅    |    ❌      |         ❌ (403)
+ *
+ * All member data is preserved on status changes — access is only restricted.
  */
 const requireOrgMember = async (req, res, next) => {
   try {
@@ -34,11 +42,32 @@ const requireOrgMember = async (req, res, next) => {
     }
 
     const memberData = memberQuery.rows[0];
+    const orgStatus = memberData.organization_status;
+    const orgRole = memberData.org_role; // 'FOUNDER' | 'CO-FOUNDER' | 'ADMIN' | 'MEMBER' | 'GUEST'
 
-    if (memberData.organization_status !== "active") {
+    // --- Role-aware access control based on org status ---
+
+    if (orgStatus === 'suspended') {
+      // Only the true FOUNDER can access a suspended organization
+      if (orgRole !== 'FOUNDER') {
+        return res.status(403).json({
+          error:
+            "Access denied: This organization is currently suspended. Only the Founder can access it.",
+        });
+      }
+    } else if (orgStatus === 'under_review') {
+      // Only FOUNDER or CO-FOUNDER can access an organization under review
+      if (orgRole !== 'FOUNDER' && orgRole !== 'CO-FOUNDER') {
+        return res.status(403).json({
+          error:
+            "Access denied: This organization is currently under review. Only Founders and Co-Founders can access it.",
+        });
+      }
+    } else if (orgStatus !== 'active') {
+      // Any other unknown status — deny all
       return res.status(403).json({
         error:
-          "Access denied: Your organization is currently inactive or suspended.",
+          "Access denied: Your organization is currently inactive.",
       });
     }
 
@@ -47,12 +76,12 @@ const requireOrgMember = async (req, res, next) => {
       organization_id: memberData.organization_id,
       name: memberData.organization_name,
       timezone: memberData.organization_timezone,
-      status: memberData.organization_status,
+      status: orgStatus,
     };
 
     req.org_member = {
       member_id: memberData.organization_member_id,
-      role: memberData.org_role,
+      role: orgRole,
       designation_id: memberData.designation_id,
       is_team_lead: memberData.is_team_lead,
     };

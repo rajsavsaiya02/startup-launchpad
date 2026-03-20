@@ -4,12 +4,35 @@ const fs = require('fs');
 const path = require('path');
 
 const listPages = async (req, res) => {
+  const { status, category, page_type } = req.query;
   try {
-    const result = await pool.query(`
-      SELECT id, slug, title, is_system_page, status, updated_at, last_published_at
+    let query = `
+      SELECT id, slug, title, is_system_page, status, updated_at, last_published_at, category, author_name, author_image, read_time, excerpt, page_type
       FROM cms_pages
-      ORDER BY created_at DESC
-    `);
+    `;
+    const params = [];
+    const conditions = [];
+
+    if (status) {
+      conditions.push(`status = $${params.length + 1}`);
+      params.push(status);
+    }
+    if (category) {
+      conditions.push(`category = $${params.length + 1}`);
+      params.push(category);
+    }
+    if (page_type) {
+      conditions.push(`page_type = $${params.length + 1}`);
+      params.push(page_type);
+    }
+
+    if (conditions.length > 0) {
+      query += ` WHERE ` + conditions.join(' AND ');
+    }
+
+    query += ` ORDER BY created_at DESC`;
+
+    const result = await pool.query(query, params);
     res.json(result.rows);
   } catch (err) {
     console.error(err);
@@ -21,10 +44,10 @@ const listPages = async (req, res) => {
 const getPublicIndex = async (req, res) => {
   try {
     const result = await pool.query(`
-      SELECT title, slug, updated_at 
+      SELECT title, slug, updated_at, last_published_at AS published_at, category, author_name, author_image, read_time, excerpt, og_image_url, tags, page_type
       FROM cms_pages 
-      WHERE status = 'published' OR is_system_page = TRUE
-      ORDER BY title ASC
+      WHERE status = 'published' AND page_type = 'blog'
+      ORDER BY last_published_at DESC NULLS LAST, created_at DESC
     `);
     res.json(result.rows);
   } catch (err) {
@@ -34,7 +57,7 @@ const getPublicIndex = async (req, res) => {
 };
 
 const createPage = async (req, res) => {
-  const { title, slug } = req.body;
+  const { title, slug, page_type } = req.body;
   
   if (!title || !slug) {
     return res.status(400).json({ message: 'Title and slug are required' });
@@ -42,13 +65,14 @@ const createPage = async (req, res) => {
 
   // Basic slug validation
   const cleanSlug = slug.toLowerCase().replace(/[^a-z0-9-\/]/g, '-');
+  const contentType = page_type === 'blog' ? 'blog' : 'page';
 
   try {
     const result = await pool.query(
-      `INSERT INTO cms_pages (slug, title, is_system_page, status) 
-       VALUES ($1, $2, FALSE, 'draft') 
+      `INSERT INTO cms_pages (slug, title, is_system_page, status, page_type) 
+       VALUES ($1, $2, FALSE, 'draft', $3) 
        RETURNING *`,
-      [cleanSlug, title]
+      [cleanSlug, title, contentType]
     );
     res.status(201).json(result.rows[0]);
   } catch (err) {
@@ -64,7 +88,7 @@ const getPagePublic = async (req, res) => {
   const { slug } = req.params;
   try {
     const result = await pool.query(
-      `SELECT slug, title, published_content, seo_title, seo_description, seo_keywords, og_image_url 
+      `SELECT slug, title, published_content, seo_title, seo_description, seo_keywords, og_image_url, page_type 
        FROM cms_pages 
        WHERE slug = $1`, 
       [slug]
@@ -96,21 +120,35 @@ const getPageAdmin = async (req, res) => {
 
 const updateDraft = async (req, res) => {
   const { id } = req.params;
-  const { draft_content, title, seo_title, seo_description, seo_keywords, og_image_url } = req.body;
+  const { 
+    draft_content, title, subtitle, seo_title, seo_description, seo_keywords, og_image_url,
+    category, tags, excerpt, author_name, author_image, read_time
+  } = req.body;
 
   try {
     const result = await pool.query(
       `UPDATE cms_pages 
        SET draft_content = COALESCE($1, draft_content),
            title = COALESCE($2, title),
-           seo_title = COALESCE($3, seo_title),
-           seo_description = COALESCE($4, seo_description),
-           seo_keywords = COALESCE($5, seo_keywords),
-           og_image_url = COALESCE($6, og_image_url),
+           subtitle = COALESCE($3, subtitle),
+           seo_title = COALESCE($4, seo_title),
+           seo_description = COALESCE($5, seo_description),
+           seo_keywords = COALESCE($6, seo_keywords),
+           og_image_url = COALESCE($7, og_image_url),
+           category = COALESCE($8, category),
+           tags = COALESCE($9, tags),
+           excerpt = COALESCE($10, excerpt),
+           author_name = COALESCE($11, author_name),
+           author_image = COALESCE($12, author_image),
+           read_time = COALESCE($13, read_time),
            updated_at = CURRENT_TIMESTAMP
-       WHERE id = $7
+       WHERE id = $14
        RETURNING *`,
-      [draft_content, title, seo_title, seo_description, seo_keywords, og_image_url, id]
+      [
+        typeof draft_content === 'object' && draft_content !== null ? draft_content : JSON.stringify(draft_content || ''), 
+        title, subtitle || null, seo_title || null, seo_description || null, seo_keywords || null, og_image_url || null,
+        category || null, tags || [], excerpt || null, author_name || null, author_image || null, read_time || null, id
+      ]
     );
 
     if (result.rows.length === 0) {
@@ -149,12 +187,12 @@ const publishPage = async (req, res) => {
          VALUES ($1, $2, $3, $4, $5)`,
         [
             id, 
-            page.draft_content, 
+            typeof page.draft_content === 'object' && page.draft_content !== null ? page.draft_content : JSON.stringify(page.draft_content || ''), 
             { 
-                seo_title: page.seo_title, 
-                seo_description: page.seo_description, 
-                seo_keywords: page.seo_keywords, 
-                og_image_url: page.og_image_url 
+                seo_title: page.seo_title || null, 
+                seo_description: page.seo_description || null, 
+                seo_keywords: page.seo_keywords || null, 
+                og_image_url: page.og_image_url || null 
             },
             nextVersion,
             req.user?.id || null // Assuming auth middleware populates req.user
@@ -290,7 +328,6 @@ const uploadMedia = async (req, res) => {
 };
 
 module.exports = {
-  listPages,
   listPages,
   getPublicIndex,
   createPage,

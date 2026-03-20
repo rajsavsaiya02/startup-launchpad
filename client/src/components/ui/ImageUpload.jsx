@@ -72,10 +72,10 @@ export function ImageUpload({ value, onChange, aspect = 1, className }) {
 
   // Sync with external value changes (e.g., from DB) if no local file selected
   React.useEffect(() => {
-    if (!file && value) {
+    if (!file) {
       setPreviewUrl(value);
     }
-  }, [value, file]);
+  }, [value]);
 
   const onSelectFile = (e) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -141,16 +141,14 @@ export function ImageUpload({ value, onChange, aspect = 1, className }) {
   // ... (ImageUpload component code)
 
   return (
-    <div className={cn("relative", className)}>
+    <div className={cn("relative", className)} style={{ aspectRatio: aspect }}>
       {/* Upload Trigger / Preview */}
       <div
         className={cn(
-          "relative group overflow-visible transition-all duration-300",
-          "rounded-full flex items-center justify-center bg-gray-50 dark:bg-gray-800/50",
-          "ring-4 ring-white dark:ring-surface-dark shadow-sm",
-          previewUrl
-            ? "h-32 w-32"
-            : "h-32 w-32 border-2 border-dashed border-border-light dark:border-border-dark hover:border-primary/50 cursor-pointer",
+          "relative group overflow-hidden transition-all duration-300 w-full h-full",
+          "flex items-center justify-center bg-gray-50 dark:bg-gray-800/20",
+          aspect === 1 ? "rounded-full" : "rounded-xl",
+          !previewUrl && "border-2 border-dashed border-border-light dark:border-border-dark hover:border-primary/50 cursor-pointer",
         )}
         onClick={() => !previewUrl && inputRef.current?.click()}
       >
@@ -164,15 +162,21 @@ export function ImageUpload({ value, onChange, aspect = 1, className }) {
                 : `${SERVER_URL}${previewUrl}`
             }
             alt="Preview"
-            className="h-full w-full object-cover rounded-full"
+            className={cn(
+                "h-full w-full",
+                aspect === 1 ? "object-cover rounded-full" : "object-contain p-4 rounded-xl"
+            )}
           />
         ) : (
           <div className="text-center p-4">
-            <div className="mx-auto w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center mb-2 text-primary group-hover:scale-110 transition-transform">
+            <div className={cn(
+                "mx-auto w-10 h-10 flex items-center justify-center mb-2 text-primary group-hover:scale-110 transition-transform",
+                aspect === 1 ? "rounded-full bg-primary/10" : "rounded-lg bg-primary/5"
+            )}>
               <ImageIcon className="h-5 w-5" />
             </div>
-            <p className="text-xs text-text-secondary font-medium group-hover:text-primary transition-colors">
-              Upload
+            <p className="text-[10px] text-text-tertiary uppercase font-bold tracking-wider group-hover:text-primary transition-colors">
+              Upload {aspect === 1 ? 'Favicon' : 'Logo'}
             </p>
           </div>
         )}

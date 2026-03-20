@@ -1,15 +1,19 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiClient } from "../lib/axios";
 
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
+  useEffect(() => {
+    console.log("[DEBUG] AuthProvider: MOUNTED");
+    return () => console.log("[DEBUG] AuthProvider: UNMOUNTED");
+  }, []);
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
 
-  const checkAuth = async () => {
+  const checkAuth = useCallback(async () => {
     try {
       console.log("[DEBUG] AuthContext: Checking session (v2)...");
       const response = await apiClient.get("/auth/check-session");
@@ -38,17 +42,17 @@ export const AuthProvider = ({ children }) => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     checkAuth();
   }, []);
 
-  const login = (userData) => {
+  const login = useCallback((userData) => {
     setUser(userData);
-  };
+  }, []);
 
-  const logout = async () => {
+  const logout = useCallback(async () => {
     // Capture role before clearing user state
     const isAdmin = user && user.role === "admin";
 
@@ -69,9 +73,9 @@ export const AuthProvider = ({ children }) => {
         navigate("/auth/login");
       }
     }
-  };
+  }, [user, navigate]);
 
-  const value = {
+  const value = useMemo(() => ({
     user,
     isLoading,
     isAuthenticated: !!user,
@@ -79,7 +83,7 @@ export const AuthProvider = ({ children }) => {
     checkAuth,
     login,
     logout,
-  };
+  }), [user, isLoading, checkAuth, login, logout]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

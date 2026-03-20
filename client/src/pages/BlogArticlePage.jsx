@@ -1,70 +1,69 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Share2, Clock, Calendar, Tag, Twitter, Linkedin, Facebook } from 'lucide-react';
+import { 
+    Calendar, User, Clock, ChevronLeft, Share2, 
+    MessageSquare, Tag, Bookmark, Twitter, Linkedin, Facebook
+} from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Avatar } from '../components/ui/Avatar';
 import { Badge } from '../components/ui/Badge';
-import { TableOfContents } from '../components/ui/TableOfContents';
+import { cmsService } from '../services/cmsService';
+import { CMS_PLACEHOLDERS } from '../constants/placeholders';
+import { SERVER_URL } from '../lib/axios';
+import { useSettings } from '../context/SettingsContext';
 
-export function BlogArticlePage() {
-  // Mock Data (In real app, this comes from an API/CMS based on ID)
-  const article = {
-    id: 'financial-guide',
-    title: "The Founder’s Guide to Burn Rate, Runway & Smart Budgeting",
-    subtitle: "Mastering the financial lifelines of your startup before it's too late.",
-    category: "Finance",
-    date: "Nov 4, 2023",
-    readTime: "8 min read",
-    author: { 
-      name: "Sarah Lee", 
-      role: "Financial Advisor", 
-      img: "https://i.pravatar.cc/150?u=sarah",
-      bio: "Sarah is a former CFO for two unicorns and now advises early-stage startups on financial health and sustainable growth."
-    },
-    img: "https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?q=80&w=2340&auto=format&fit=crop",
-    // Content with IDs for TOC linking
-    content: `
-      <p class="lead text-xl text-text-secondary dark:text-gray-300 leading-relaxed mb-8">
-        Managing cash flow is the single most critical skill for an early-stage founder. Yet, many startups fail because they confuse revenue with runway. This guide breaks down the essentials without the jargon.
-      </p>
-      
-      <h2 id="Understanding-Burn-Rate" class="scroll-mt-24 text-2xl font-bold text-text-primary dark:text-white mt-12 mb-4">Understanding Burn Rate</h2>
-      <p class="text-text-secondary dark:text-gray-400 leading-relaxed mb-6">
-        Burn rate is simply the rate at which your company spends money in excess of income. It's the speed at which you are "burning" through your capital. There are two types you need to track religiously:
-      </p>
-      <ul class="list-disc pl-6 space-y-2 text-text-secondary dark:text-gray-400 mb-8">
-        <li><strong class="text-text-primary dark:text-white">Gross Burn:</strong> Your total monthly operating expenses (Salaries, Rent, Server costs).</li>
-        <li><strong class="text-text-primary dark:text-white">Net Burn:</strong> Your total expenses minus your total revenue. This is the truest measure of cash loss.</li>
-      </ul>
+export default function BlogArticlePage() {
+    const { slug } = useParams();
+    const { settings } = useSettings();
+    const [article, setArticle] = useState(null);
+    const [loading, setLoading] = useState(true);
 
-      <div class="bg-primary/5 border-l-4 border-primary p-6 rounded-r-lg my-8">
-        <p class="text-lg italic text-text-primary dark:text-white font-medium">
-          "Revenue is vanity, profit is sanity, but cash is king." — Unknown
-        </p>
-      </div>
+    useEffect(() => {
+        const fetchArticle = async () => {
+            try {
+                setLoading(true);
+                const data = await cmsService.getPagePublic(slug);
+                setArticle(data);
+            } catch (err) {
+                console.error('Error fetching article:', err);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchArticle();
+    }, [slug]);
 
-      <h2 id="Why-Runway-Matters" class="scroll-mt-24 text-2xl font-bold text-text-primary dark:text-white mt-12 mb-4">Why Runway Matters</h2>
-      <p class="text-text-secondary dark:text-gray-400 leading-relaxed mb-6">
-        Runway is the amount of time you have until you run out of cash. It is calculated by dividing your current cash balance by your net burn rate.
-      </p>
-      <p class="text-text-secondary dark:text-gray-400 leading-relaxed mb-6">
-        If you have <span class="font-mono text-primary bg-primary/10 px-1 rounded">$100,000</span> in the bank and your burn rate is <span class="font-mono text-error bg-error/10 px-1 rounded">$10,000/month</span>, you have exactly <strong>10 months of runway</strong> to either become profitable or raise more funds.
-      </p>
+    if (loading) return (
+        <div className="min-h-screen flex items-center justify-center bg-background-light dark:bg-background-dark">
+            <div className="animate-pulse flex flex-col items-center gap-4">
+               <div className="w-12 h-12 bg-primary/20 rounded-full" />
+               <p className="text-text-tertiary">Reading article...</p>
+            </div>
+        </div>
+    );
 
-      <h2 id="Smart-Budgeting-Tips" class="scroll-mt-24 text-2xl font-bold text-text-primary dark:text-white mt-12 mb-4">Smart Budgeting Tips</h2>
-      <p class="text-text-secondary dark:text-gray-400 leading-relaxed mb-6">
-        To extend your runway, focus on the "unsexy" parts of the business. Negotiate long-term contracts for software, use credits (like AWS Activate), and hire contractors before full-time employees.
-      </p>
-      
-      <h2 id="Conclusion" class="scroll-mt-24 text-2xl font-bold text-text-primary dark:text-white mt-12 mb-4">Conclusion</h2>
-      <p class="text-text-secondary dark:text-gray-400 leading-relaxed mb-6">
-        Don't wait until you have 2 months of cash left to panic. Build a financial model today and update it weekly.
-      </p>
-    `
-  };
+    if (!article) return (
+        <div className="min-h-screen flex flex-col items-center justify-center p-8 text-center bg-background-light dark:bg-background-dark">
+            <h1 className="text-4xl font-bold mb-4">Article Not Found</h1>
+            <p className="mb-8 text-text-secondary">The article you're looking for might have been moved or deleted.</p>
+            <Link to="/blog" className="text-primary font-bold flex items-center gap-2">
+                <ChevronLeft className="w-4 h-4" /> Back to Blog
+            </Link>
+        </div>
+    );
 
-  // IDs must match the HTML content IDs above
-  const tocHeadings = ['Understanding-Burn-Rate', 'Why-Runway-Matters', 'Smart-Budgeting-Tips', 'Conclusion'];
+    const getImageUrl = (url, placeholder) => {
+        if (!url) return placeholder;
+        if (url.startsWith('http') || url.startsWith('blob:') || url.startsWith('data:')) {
+            return url;
+        }
+        return `${SERVER_URL}${url}`;
+    };
+
+    const rawDate = article.last_published_at || article.updated_at;
+    const publishDate = rawDate && !isNaN(new Date(rawDate))
+        ? new Date(rawDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+        : 'Recently Published';
 
   return (
     <div className="bg-background-light dark:bg-background-dark min-h-screen font-sans text-text-primary transition-colors duration-300">
@@ -74,20 +73,24 @@ export function BlogArticlePage() {
       {/* Navigation Breadcrumb */}
       <div className="max-w-7xl mx-auto px-6 py-8">
         <Link to="/blog" className="inline-flex items-center gap-2 text-text-secondary hover:text-primary transition-colors group">
-          <ArrowLeft className="h-4 w-4 group-hover:-translate-x-1 transition-transform" /> 
+          <ChevronLeft className="h-4 w-4 group-hover:-translate-x-1 transition-transform" /> 
           <span className="font-medium">Back to Blog</span>
         </Link>
       </div>
 
       {/* Article Header */}
       <header className="max-w-4xl mx-auto px-6 mb-12 text-center">
-        <div className="flex flex-wrap justify-center gap-3 mb-6">
-          <Badge variant="primary" className="text-sm px-3 py-1">{article.category}</Badge>
-          <span className="flex items-center gap-1.5 text-sm text-text-tertiary px-3 py-1 bg-surface-light dark:bg-surface-dark rounded-full border border-border-light dark:border-border-dark">
-            <Clock className="h-3.5 w-3.5" /> {article.readTime}
+        <div className="flex flex-wrap justify-center gap-3 mb-6 min-h-[40px] items-center">
+          {article.category && (
+            <Badge variant="primary" className="text-sm px-4 py-1.5 font-bold shadow-sm bg-primary text-white border-none">
+              {article.category}
+            </Badge>
+          )}
+          <span className="flex items-center gap-1.5 text-sm font-medium text-text-tertiary px-4 py-1.5 bg-white dark:bg-surface-dark rounded-full border border-border-light dark:border-border-dark shadow-sm">
+            <Clock className="h-3.5 w-3.5 text-primary" /> {article.read_time || '5 min read'}
           </span>
-          <span className="flex items-center gap-1.5 text-sm text-text-tertiary px-3 py-1 bg-surface-light dark:bg-surface-dark rounded-full border border-border-light dark:border-border-dark">
-            <Calendar className="h-3.5 w-3.5" /> {article.date}
+          <span className="flex items-center gap-1.5 text-sm font-medium text-text-tertiary px-4 py-1.5 bg-white dark:bg-surface-dark rounded-full border border-border-light dark:border-border-dark shadow-sm">
+            <Calendar className="h-3.5 w-3.5 text-primary" /> {publishDate}
           </span>
         </div>
         
@@ -101,10 +104,21 @@ export function BlogArticlePage() {
       </header>
 
       {/* Feature Image */}
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 mb-16">
-        <div className="aspect-21/9 rounded-2xl overflow-hidden shadow-2xl ring-1 ring-border-light/50 dark:ring-white/10">
-          <img src={article.img} alt={article.title} className="w-full h-full object-cover" />
-        </div>
+      <div className="max-w-6xl mx-auto px-4 sm:px-6">
+                <div className="aspect-[21/9] rounded-3xl overflow-hidden mb-12 shadow-2xl relative">
+                    <img 
+                        src={getImageUrl(article.og_image_url, CMS_PLACEHOLDERS.ARTICLE_HERO)} 
+                        alt={article.title} 
+                        className="w-full h-full object-cover"
+                    />
+                    {article.category && (
+                        <div className="absolute top-6 left-6 z-10">
+                            <Badge variant="primary" className="px-4 py-1.5 text-sm backdrop-blur-md bg-primary/90 text-white border-none shadow-lg">
+                                {article.category}
+                            </Badge>
+                        </div>
+                    )}
+                </div>
       </div>
 
       {/* Main Layout: Content + Sidebar */}
@@ -114,7 +128,7 @@ export function BlogArticlePage() {
           {/* Sidebar (Desktop Only) */}
           <aside className="hidden lg:block lg:col-span-3">
              <div className="sticky top-28 space-y-8">
-                <TableOfContents headings={tocHeadings} />
+                {/* <TableOfContents headings={tocHeadings} /> */}
                 
                 <div className="border-t border-border-light dark:border-border-dark pt-6">
                   <p className="text-xs font-bold text-text-tertiary uppercase tracking-wider mb-4">Share</p>
@@ -129,34 +143,93 @@ export function BlogArticlePage() {
 
           {/* Article Content */}
           <div className="lg:col-span-7">
-             <div 
-               className="prose prose-lg dark:prose-invert prose-blue max-w-none"
-               dangerouslySetInnerHTML={{ __html: article.content }} 
-             />
-             
-             {/* Article Footer Tags */}
-             <div className="mt-12 pt-8 border-t border-border-light dark:border-border-dark flex flex-wrap gap-2">
-               {['Finance', 'Startups', 'Management', 'Growth'].map(tag => (
-                 <span key={tag} className="flex items-center gap-1 text-sm font-medium px-3 py-1 rounded-md bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark text-text-secondary dark:text-gray-300 hover:border-primary hover:text-primary cursor-pointer transition-colors">
-                   <Tag className="h-3 w-3" /> {tag}
-                 </span>
-               ))}
-             </div>
+             <div className="prose prose-lg dark:prose-invert max-w-none prose-headings:text-text-primary dark:prose-headings:text-white prose-p:text-text-secondary dark:prose-p:text-gray-300 prose-img:rounded-2xl prose-a:text-primary">
+                            {(() => {
+                                const content = article.published_content;
+                                if (!content) return <p className="text-text-tertiary italic">No content available.</p>;
+
+                                // Handle TipTap "doc" format
+                                if (content.type === 'doc' && Array.isArray(content.content)) {
+                                    return content.content.map((block, idx) => {
+                                        if (block.type === 'heading') {
+                                            const Level = `h${block.attrs?.level || 2}`;
+                                            return <Level key={idx}>{block.content?.[0]?.text}</Level>;
+                                        }
+                                        if (block.type === 'paragraph') {
+                                            return <p key={idx}>{block.content?.map(c => c.text).join('')}</p>;
+                                        }
+                                        return null;
+                                    });
+                                }
+
+                                // Handle plain string (HTML)
+                                if (typeof content === 'string') {
+                                    return <div dangerouslySetInnerHTML={{ __html: content }} />;
+                                }
+
+                                // Handle array of blocks (legacy)
+                                if (Array.isArray(content)) {
+                                    return content.map((block, idx) => {
+                                        if (block.type === 'heading') {
+                                            const Level = `h${block.attrs?.level || 2}`;
+                                            return <Level key={idx}>{block.content?.[0]?.text}</Level>;
+                                        }
+                                        if (block.type === 'paragraph') {
+                                            return <p key={idx}>{block.content?.map(c => c.text).join('')}</p>;
+                                        }
+                                        return null;
+                                    });
+                                }
+
+                                return <p className="text-text-tertiary italic">No content available.</p>;
+                            })()}
+                        </div>
+
+                        {/* Article Tags */}
+                        {article.tags && article.tags.length > 0 && (
+                            <div className="mt-16 pt-8 border-t border-border-light dark:border-border-dark">
+                                <p className="text-xs font-bold text-text-tertiary uppercase tracking-wider mb-4">Related Topics</p>
+                                <div className="flex flex-wrap gap-2">
+                                    {article.tags.map(tag => (
+                                        <span key={tag} className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 dark:bg-gray-800/50 rounded-lg text-sm font-medium text-text-secondary dark:text-gray-400 border border-transparent hover:border-primary/20 hover:text-primary transition-all cursor-default">
+                                            <Tag className="w-3.5 h-3.5 text-primary/50" />
+                                            {tag}
+                                        </span>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
           </div>
 
           {/* Author Sidebar (Right) */}
           <div className="lg:col-span-2 space-y-8">
              <div className="sticky top-28">
                <p className="text-xs font-bold text-text-tertiary uppercase tracking-wider mb-4">Author</p>
-               <div className="bg-surface-light dark:bg-surface-dark rounded-xl p-6 border border-border-light dark:border-border-dark text-center">
-                 <Avatar src={article.author.img} size="xl" className="mx-auto mb-4 ring-4 ring-background-light dark:ring-background-dark" />
-                 <h3 className="font-bold text-text-primary dark:text-white">{article.author.name}</h3>
-                 <p className="text-sm text-primary font-medium mb-4">{article.author.role}</p>
-                 <p className="text-sm text-text-tertiary leading-relaxed mb-6">
-                   {article.author.bio}
-                 </p>
-                 <Button variant="outline" size="sm" className="w-full">Follow</Button>
-               </div>
+                <div className="bg-surface-light dark:bg-surface-dark rounded-2xl p-6 border border-border-light dark:border-border-dark text-center shadow-sm">
+                  <Avatar 
+                    src={getImageUrl(article.author_image, CMS_PLACEHOLDERS.AUTHOR)} 
+                    size="xl" 
+                    className="mx-auto mb-4 ring-4 ring-white dark:ring-background-dark shadow-md" 
+                  />
+                  <h3 className="font-bold text-lg text-text-primary dark:text-white mb-1">
+                    {article.author_name || 'Anonymous Author'}
+                  </h3>
+                  <p className="text-xs text-primary font-bold uppercase tracking-widest mb-4">Article Author</p>
+                  
+                  {article.author_bio ? (
+                    <p className="text-sm text-text-secondary dark:text-gray-400 leading-relaxed mb-6 italic">
+                      "{article.author_bio}"
+                    </p>
+                  ) : (
+                    <p className="text-sm text-text-tertiary leading-relaxed mb-6">
+                      Contributing expert at {settings?.platform_name || 'Startup LaunchPad'}.
+                    </p>
+                  )}
+                  
+                  <Button variant="outline" size="sm" className="w-full font-bold hover:bg-primary hover:text-white transition-all">
+                    Follow
+                  </Button>
+                </div>
              </div>
           </div>
 
