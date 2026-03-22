@@ -122,7 +122,7 @@ export function OrganizationDrawer({ org, onClose, isOpen, onUpdate }) {
               <div className="min-w-0">
                 <h2 className="text-xl font-bold text-text-primary dark:text-white truncate">{org.name}</h2>
                 <a
-                  href={`/o/${org.workspace_url}`}
+                  href={`/community/${org.workspace_url}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-1 text-xs font-mono text-primary hover:underline mt-0.5"

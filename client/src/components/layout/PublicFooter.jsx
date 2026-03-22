@@ -33,7 +33,7 @@ export function PublicFooter({ className }) {
             {/* Column 2, 3, 4: Navigation Links */}
             <div className="grid grid-cols-2 gap-8 lg:col-span-5 lg:grid-cols-3">
               {[
-                { title: 'Product', links: ['Features', 'Integrations', 'API'] },
+                { title: 'Product', links: ['Features', 'Integrations', 'Community'] },
                 { title: 'Resources', links: ['Blog', 'Case Studies', 'Help Center'] },
                 { title: 'Company', links: ['About Us', 'Contact', 'Legal'] }
               ].map((section, idx) => (
@@ -66,15 +66,11 @@ export function PublicFooter({ className }) {
         {/* Copyright and Legal Links */}
         <div className="mt-8 border-t border-white/10 py-8 flex flex-col items-center justify-between gap-4 md:flex-row">
           <p className="text-xs font-normal text-gray-500">© {new Date().getFullYear()} {settings?.platform_name || 'Startup LaunchPad'}. All rights reserved.</p>
-          <div className="flex items-center gap-2">
-            <Mail className="h-4 w-4 text-gray-500" />
-            <a href={`mailto:${contactEmail}`} className="text-xs text-gray-500 hover:text-white transition-colors">
-              {contactEmail}
-            </a>
-          </div>
+          <div className="flex items-center gap-6">
             <Link to="/legal/terms" className="text-xs text-gray-500 hover:text-white transition-colors duration-200">Terms of Use</Link>
             <Link to="/legal/security" className="text-xs text-gray-500 hover:text-white transition-colors duration-200">Security</Link>
           </div>
+        </div>
       </div>
     </footer>
   );

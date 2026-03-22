@@ -471,7 +471,7 @@ export function FindTalentTab() {
                   </Motion.button>
 
                   <Link
-                    to={`/talent/profile/${person.username}`}
+                    to={`/community/${person.username}`}
                     className="w-full"
                   >
                     <Motion.button

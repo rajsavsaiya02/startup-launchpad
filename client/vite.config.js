@@ -42,6 +42,11 @@ export default defineConfig({
         changeOrigin: true,
         secure: false,
       },
+      "/public-assets": {
+        target: "http://localhost:5000",
+        changeOrigin: true,
+        secure: false,
+      },
     },
   },
   test: {

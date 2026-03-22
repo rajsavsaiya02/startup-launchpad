@@ -40,13 +40,33 @@ class FileAssetController {
     }
 
     if (contextType === "task") {
-      const result = await pool.query(
-        `SELECT 1 FROM project_members pm
-         JOIN tasks t ON pm.project_id = t.project_id
-         WHERE t.id = $1 AND pm.user_id = $2`,
-        [contextId, userId],
+      // Check if user is the creator, a project member, or an organization member
+      const taskResult = await pool.query(
+        "SELECT project_id, organization_id, created_by FROM tasks WHERE id = CAST($1 AS INTEGER)",
+        [contextId],
       );
-      return result.rows.length > 0;
+      if (taskResult.rows.length === 0) return false;
+      const task = taskResult.rows[0];
+
+      if (task.created_by === userId) return true;
+
+      if (task.project_id) {
+        const pmResult = await pool.query(
+          "SELECT 1 FROM project_members WHERE project_id = $1 AND user_id = $2",
+          [task.project_id, userId],
+        );
+        if (pmResult.rows.length > 0) return true;
+      }
+
+      if (task.organization_id) {
+        const omResult = await pool.query(
+          "SELECT 1 FROM organization_members WHERE organization_id = $1 AND user_id = $2",
+          [task.organization_id, userId],
+        );
+        if (omResult.rows.length > 0) return true;
+      }
+
+      return false;
     }
 
     if (contextType === "user") {
@@ -72,13 +92,38 @@ class FileAssetController {
       if (!hasAccess)
         return res.status(403).json({ error: "Access denied to this context" });
 
+      let queryLogic = `f.context_type = $1 AND f.context_id = CAST($2 AS INTEGER)`;
+      if (contextType === "project") {
+        queryLogic = `
+          (f.context_type = $1 AND f.context_id = CAST($2 AS INTEGER)) 
+          OR (f.context_type = 'task' AND f.context_id IN (
+            SELECT id FROM tasks WHERE project_id = CAST($2 AS INTEGER)
+          ))
+        `;
+      } else if (contextType === "organization") {
+        queryLogic = `
+          (f.context_type = $1 AND f.context_id = CAST($2 AS INTEGER)) 
+          OR (f.context_type = 'task' AND f.context_id IN (
+            SELECT id FROM tasks WHERE organization_id = CAST($2 AS INTEGER)
+          ))
+        `;
+      } else if (contextType === "user") {
+        queryLogic = `
+          (f.context_type = $1 AND f.context_id = CAST($2 AS INTEGER)) 
+          OR (f.context_type = 'task' AND f.context_id IN (
+            SELECT id FROM tasks WHERE created_by = CAST($2 AS INTEGER) AND project_id IS NULL AND organization_id IS NULL
+          ))
+        `;
+      }
+
       const query = `
         SELECT f.*, u.first_name, u.last_name, u.name as user_name 
         FROM file_assets f
         LEFT JOIN users u ON f.uploader_user_id = u.id
-        WHERE f.context_type = $1 AND f.context_id = $2
+        WHERE ${queryLogic}
         ORDER BY f.created_at DESC
       `;
+
       const result = await pool.query(query, [contextType, contextId]);
 
       const mapped = result.rows.map((row) => ({

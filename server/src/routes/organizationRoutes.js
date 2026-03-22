@@ -26,6 +26,9 @@ router.use(protect, requireOrgMember);
 // Get Organization Details
 router.get("/", organizationController.getOrganizationDetails);
 
+// Get Dashboard Aggregated Dynamic Metrics
+router.get("/dashboard", organizationController.getDashboardMetrics);
+
 // Update Workspace Settings
 router.put(
   "/",

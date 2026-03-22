@@ -23,6 +23,7 @@ import {
   Check,
   Clock,
   Search,
+  ExternalLink,
 } from "lucide-react";
 import { Button } from "../../../../components/ui/Button";
 import { Avatar } from "../../../../components/ui/Avatar";
@@ -34,6 +35,7 @@ import { useAuth } from "../../../../context/AuthContext";
 import orgProjectService from "../../../../services/organization/orgProjectService";
 import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
+import { ConfirmationModal } from "../../../../components/ui/ConfirmationModal";
 
 const CapsuleProgress = ({ completed, total }) => {
   const percentage = total === 0 ? 0 : (completed / total) * 100;
@@ -113,6 +115,7 @@ export function OrgTaskDrawer({
   const [newComment, setNewComment] = useState("");
   const [isPostingComment, setIsPostingComment] = useState(false);
   const [projectMembers, setProjectMembers] = useState([]);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
   const [isAssigneeDropdownOpen, setIsAssigneeDropdownOpen] = useState(false);
   const [assigneeSearchQuery, setAssigneeSearchQuery] = useState("");
@@ -135,7 +138,17 @@ export function OrgTaskDrawer({
 
   useEffect(() => {
     if (!task) return;
-    setLiveTotalTime(task.time_spent || 0);
+
+    // Calculate initial live time including current session if running
+    let initialLiveTime = task.time_spent || 0;
+    if (task.timer_started_at) {
+      const start = new Date(task.timer_started_at).getTime();
+      if (!isNaN(start) && start > 0) {
+        const elapsed = Math.floor((Date.now() - start) / 1000);
+        initialLiveTime += Math.max(0, elapsed);
+      }
+    }
+    setLiveTotalTime(initialLiveTime);
 
     // Fetch comments
     if (task.id && isOpen) {
@@ -228,9 +241,8 @@ export function OrgTaskDrawer({
         assignee_id: user?.id || "",
         subtasks: [],
       });
-      setAttachments([]);
     }
-  }, [task, isOpen]);
+  }, [task, isOpen, user?.id]);
 
   useEffect(() => {
     if (isOpen) {
@@ -345,8 +357,8 @@ export function OrgTaskDrawer({
         await taskService.updateTask(projectId, task.id, {
           subtasks: updatedSubtasks,
         });
-        if (onTaskSaved) {
-          onTaskSaved();
+        if (onRefresh) {
+          onRefresh();
         }
       } catch (err) {
         console.error("Failed to update subtask:", err);
@@ -515,14 +527,20 @@ export function OrgTaskDrawer({
 
   const handleDelete = async () => {
     if (!task?.id) return;
-    if (!window.confirm("Are you sure you want to delete this task?")) return;
+    setIsDeleteModalOpen(true);
+  };
 
+  const confirmDelete = async () => {
     try {
       await taskService.deleteTask(projectId, task.id);
+      setIsDeleteModalOpen(false);
       onRefresh?.();
       onClose();
     } catch (err) {
       console.error("Error deleting task:", err);
+      toast.error("Failed to delete task");
+    } finally {
+      setIsDeleteModalOpen(false);
     }
   };
   const currentUserMember = projectMembers.find((m) => m.user_id === user?.id);
@@ -1051,15 +1069,33 @@ export function OrgTaskDrawer({
                               </p>
                             </div>
                           </div>
-                          {!isReadOnly && (
+                          <div className="flex items-center gap-1 shrink-0">
                             <button
                               type="button"
-                              onClick={() => handleRemoveAttachment(index)}
-                              className="p-1.5 text-text-tertiary hover:text-error hover:bg-error/10 rounded-md transition-colors shrink-0"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleAttachmentClick(att);
+                              }}
+                              className="p-1.5 text-text-tertiary hover:text-primary hover:bg-primary/10 rounded-md transition-colors"
+                              title={att.type === "url" ? "Open Link" : "Download File"}
                             >
-                              <Trash2 className="h-4 w-4" />
+                              {att.type === "url" ? (
+                                <ExternalLink className="h-4 w-4" />
+                              ) : (
+                                <Download className="h-4 w-4" />
+                              )}
                             </button>
-                          )}
+                            {!isReadOnly && (
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveAttachment(index)}
+                                className="p-1.5 text-text-tertiary hover:text-error hover:bg-error/10 rounded-md transition-colors"
+                                title="Remove Attachment"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            )}
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -1289,6 +1325,14 @@ export function OrgTaskDrawer({
           </div>
         </div>
       </aside>
+
+      <ConfirmationModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={confirmDelete}
+        title="Delete Task"
+        message="Are you sure you want to delete this task? This action cannot be undone."
+      />
     </>
   );
 }

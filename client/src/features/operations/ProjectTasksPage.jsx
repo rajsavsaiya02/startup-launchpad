@@ -40,6 +40,7 @@ import { FileDetailModal } from "../../components/files/FileDetailModal";
 import { toast } from "react-toastify";
 import { motion, AnimatePresence } from "framer-motion";
 import { TasksAnalytics } from "./components/TasksAnalytics";
+import { ConfirmationModal } from "../../components/ui/ConfirmationModal";
 
 const MotionCard = motion.create(Card);
 
@@ -64,6 +65,11 @@ export function ProjectTasksPage() {
   const [isEditDrawerOpen, setIsEditDrawerOpen] = useState(false);
   const [assetToEdit, setAssetToEdit] = useState(null);
   const [selectedDetailAsset, setSelectedDetailAsset] = useState(null);
+  const [deleteConfirm, setDeleteConfirm] = useState({
+    isOpen: false,
+    type: null, // "task" | "file"
+    item: null,
+  });
 
   const fetchTasks = async () => {
     try {
@@ -146,6 +152,38 @@ export function ProjectTasksPage() {
     };
   }, []);
 
+  const handleDeleteTask = (task) => {
+    setDeleteConfirm({
+      isOpen: true,
+      type: "task",
+      item: task,
+    });
+  };
+
+  const confirmDelete = async () => {
+    const { type, item } = deleteConfirm;
+    if (!item) return;
+
+    try {
+      if (type === "task") {
+        await taskService.deleteTask(item.project_id, item.id);
+        toast.success("Task deleted successfully");
+        setTasks((prev) => prev.filter((t) => t.id !== item.id));
+        if (selectedTask?.id === item.id) setSelectedTask(null);
+      } else if (type === "file") {
+        await fileAssetService.deleteFileAsset(item.id);
+        toast.success(item.isExternal ? "Link removed" : "File deleted");
+        if (user?.id) fetchFileAssets(user.id);
+        setSelectedDetailAsset(null);
+      }
+    } catch (err) {
+      console.error(`Failed to delete ${type}:`, err);
+      toast.error(`Failed to delete ${type}`);
+    } finally {
+      setDeleteConfirm({ isOpen: false, type: null, item: null });
+    }
+  };
+
   const fetchFileAssets = async (userId) => {
     try {
       const data = await fileAssetService.getFileAssets("user", userId);
@@ -175,21 +213,11 @@ export function ProjectTasksPage() {
 
   const handleDeleteFile = async (e, asset) => {
     e.stopPropagation();
-    try {
-      if (asset.isExternal) {
-        if (!window.confirm("Remove this link?")) return;
-        await fileAssetService.deleteFileAsset(asset.id);
-        toast.success("Link removed");
-      } else {
-        if (!window.confirm("Delete this file permanently?")) return;
-        await fileAssetService.deleteFileAsset(asset.id);
-        toast.success("File deleted");
-      }
-      setSelectedDetailAsset(null);
-      if (user?.id) fetchFileAssets(user.id);
-    } catch {
-      toast.error("Failed to delete attachment");
-    }
+    setDeleteConfirm({
+      isOpen: true,
+      type: "file",
+      item: asset,
+    });
   };
 
   const handleDownloadFile = async (e, asset) => {
@@ -312,7 +340,7 @@ export function ProjectTasksPage() {
               }}
               className="group relative flex items-center gap-2.5 h-12 px-8 text-[12px] font-black tracking-[0.2em] text-white transition-all rounded-full shadow-lg shadow-primary/25 hover:shadow-primary/40 hover:-translate-y-0.5 active:scale-95 cursor-pointer"
             >
-              <div className="absolute rounded-2xl border inset-0 bg-gradient-to-br from-primary to-indigo-600 group-hover:from-primary-hover group-hover:to-indigo-700 transition-all duration-300" />
+              <div className="absolute rounded-2xl border inset-0 bg-linear-to-br from-primary to-indigo-600 group-hover:from-primary-hover group-hover:to-indigo-700 transition-all duration-300" />
               <div className="relative flex items-center gap-2.5">
                 <Plus className="h-5 w-5 stroke-[3.5px]" />
                 <span>NEW TASK</span>
@@ -418,6 +446,7 @@ export function ProjectTasksPage() {
                       onView={() => handleViewTask(task)}
                       onToggleSubtask={handleToggleSubtask}
                       onTaskUpdate={(props) => handleTaskUpdate(task.id, props)}
+                      onDelete={() => handleDeleteTask(task)}
                     />
                   ))}
                 </WorkColumn>
@@ -436,6 +465,7 @@ export function ProjectTasksPage() {
                       onView={() => handleViewTask(task)}
                       onToggleSubtask={handleToggleSubtask}
                       onTaskUpdate={(props) => handleTaskUpdate(task.id, props)}
+                      onDelete={() => handleDeleteTask(task)}
                     />
                   ))}
                 </WorkColumn>
@@ -454,6 +484,7 @@ export function ProjectTasksPage() {
                       onView={() => handleViewTask(task)}
                       onToggleSubtask={handleToggleSubtask}
                       onTaskUpdate={(props) => handleTaskUpdate(task.id, props)}
+                      onDelete={() => handleDeleteTask(task)}
                     />
                   ))}
                 </WorkColumn>
@@ -472,6 +503,7 @@ export function ProjectTasksPage() {
                       onView={() => handleViewTask(task)}
                       onToggleSubtask={handleToggleSubtask}
                       onTaskUpdate={(props) => handleTaskUpdate(task.id, props)}
+                      onDelete={() => handleDeleteTask(task)}
                     />
                   ))}
                 </WorkColumn>
@@ -689,6 +721,20 @@ export function ProjectTasksPage() {
         }}
         onDelete={handleDeleteFile}
       />
+
+      <ConfirmationModal
+        isOpen={deleteConfirm.isOpen}
+        onClose={() =>
+          setDeleteConfirm({ isOpen: false, type: null, item: null })
+        }
+        onConfirm={confirmDelete}
+        title={deleteConfirm.type === "task" ? "Delete Task" : "Delete File"}
+        message={
+          deleteConfirm.type === "task"
+            ? `Are you sure you want to delete the task "${deleteConfirm.item?.title}"? This action cannot be undone.`
+            : `Are you sure you want to delete "${deleteConfirm.item?.fileName}"? This action cannot be undone.`
+        }
+      />
     </div>
   );
 }
@@ -703,8 +749,8 @@ function WorkColumn({ id, title, count, color, children }) {
   if (bgDot.includes("purple")) bgDot = "bg-purple-500";
 
   return (
-    <div className="flex flex-1 min-w-[300px] flex-col bg-slate-50/50 dark:bg-slate-900/30 border border-border-light dark:border-border-dark rounded-[1.5rem] shadow-sm overflow-hidden backdrop-blur-sm">
-      <div className="bg-white/80 dark:bg-surface-dark/80 border-b border-border-light dark:border-border-dark px-5 py-4 flex justify-between items-center shrink-0 backdrop-blur-md">
+    <div className="flex flex-1 min-w-[300px] flex-col bg-slate-50/50 dark:bg-slate-900/30 border border-border-light dark:border-border-dark rounded-[1.5rem] shadow-sm overflow-visible">
+      <div className="bg-white/80 dark:bg-surface-dark/80 border-b border-border-light dark:border-border-dark px-5 py-4 flex justify-between items-center shrink-0 rounded-t-[1.5rem]">
         <div className="flex items-center gap-3">
           <div
             className={cn(
@@ -727,7 +773,7 @@ function WorkColumn({ id, title, count, color, children }) {
             {...provided.droppableProps}
             ref={provided.innerRef}
             className={cn(
-              "flex flex-1 flex-col gap-3 p-3 transition-colors rounded-b-2xl h-full min-h-[500px]",
+              "flex flex-1 flex-col gap-3 p-3 transition-colors rounded-b-[1.5rem] h-full min-h-[500px]",
               snapshot.isDraggingOver
                 ? "bg-gray-100/80 dark:bg-gray-800/40"
                 : "",
@@ -749,6 +795,7 @@ function TaskCard({
   onView,
   onToggleSubtask = () => {},
   onTaskUpdate,
+  onDelete,
 }) {
   const priorityColors = {
     Critical: "text-error",
@@ -772,53 +819,30 @@ function TaskCard({
   const completedSubtasks = subtasks.filter((s) => s.is_completed).length;
 
   // --- Timer & Time Tracking Logic ---
-  const [baseTimeSpent, setBaseTimeSpent] = useState(
-    parseInt(task.time_spent) || 0,
-  );
-  const [liveTimeSpent, setLiveTimeSpent] = useState(
-    parseInt(task.time_spent) || 0,
-  );
-  const [isTimerRunning, setIsTimerRunning] = useState(!!task.timer_started_at);
-  const [activeTimerStart, setActiveTimerStart] = useState(
-    task.timer_started_at,
-  );
+  const baseTimeSpent = parseInt(task.time_spent) || 0;
+  const isTimerRunning = !!task.timer_started_at;
+  const activeTimerStart = task.timer_started_at;
 
-  // Sync state if task prop changes (e.g. from parent re-fetch)
-  const [prevTaskTimer, setPrevTaskTimer] = useState({
-    ts: task.time_spent,
-    tsa: task.timer_started_at,
-  });
-
-  if (
-    task.time_spent !== prevTaskTimer.ts ||
-    task.timer_started_at !== prevTaskTimer.tsa
-  ) {
-    setPrevTaskTimer({
-      ts: task.time_spent,
-      tsa: task.timer_started_at,
-    });
-    setBaseTimeSpent(parseInt(task.time_spent) || 0);
-    setLiveTimeSpent(parseInt(task.time_spent) || 0);
-    setIsTimerRunning(!!task.timer_started_at);
-    setActiveTimerStart(task.timer_started_at);
-  }
+  const [tickNow, setTickNow] = useState(() => Date.now());
 
   useEffect(() => {
-    let interval = null;
-    if (isTimerRunning && activeTimerStart) {
-      const start = new Date(activeTimerStart).getTime();
-      if (!isNaN(start) && start > 0) {
-        interval = setInterval(() => {
-          const now = Date.now();
-          const elapsedSeconds = Math.floor((now - start) / 1000);
-          setLiveTimeSpent(baseTimeSpent + Math.max(0, elapsedSeconds));
-        }, 1000);
-      }
+    if (!isTimerRunning || !activeTimerStart) {
+      return;
     }
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [isTimerRunning, activeTimerStart, baseTimeSpent]);
+    const interval = setInterval(() => {
+      setTickNow(Date.now());
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [isTimerRunning, activeTimerStart]);
+
+  let liveTimeSpent = baseTimeSpent;
+  if (isTimerRunning && activeTimerStart && tickNow) {
+    const startTs = new Date(activeTimerStart).getTime();
+    if (!isNaN(startTs) && startTs > 0) {
+      const elapsed = Math.floor((tickNow - startTs) / 1000);
+      liveTimeSpent = baseTimeSpent + Math.max(0, elapsed);
+    }
+  }
 
   const handleToggleTimer = async (e) => {
     e.stopPropagation();
@@ -844,14 +868,16 @@ function TaskCard({
         const startTs = new Date(activeTimerStart).getTime();
         if (!isNaN(startTs) && startTs > 0) {
           const elapsed = Math.floor((Date.now() - startTs) / 1000);
-          if (elapsed > 0) {
+          const cappedElapsed = Math.min(Math.max(0, elapsed), 86400); // Max 24 hours
+          if (cappedElapsed > 0) {
+            const endTs = startTs + cappedElapsed * 1000;
             newTimeLogs.unshift({
               id: crypto.randomUUID(),
               start_time: activeTimerStart,
-              end_time: nowISO,
-              duration_seconds: elapsed,
+              end_time: new Date(endTs).toISOString(),
+              duration_seconds: cappedElapsed,
             });
-            newTimeSpent += elapsed;
+            newTimeSpent += cappedElapsed;
           }
         }
       }
@@ -859,12 +885,6 @@ function TaskCard({
       // Starting
       newTimerStartedAt = nowISO;
     }
-
-    // Update Local UI State
-    setBaseTimeSpent(newTimeSpent);
-    setLiveTimeSpent(newTimeSpent);
-    setIsTimerRunning(!isTimerRunning);
-    setActiveTimerStart(newTimerStartedAt);
 
     if (onTaskUpdate) {
       onTaskUpdate({
@@ -903,10 +923,10 @@ function TaskCard({
           onDoubleClick={onView}
           style={{ ...provided.draggableProps.style }}
           className={cn(
-            "group relative bg-white dark:bg-surface-dark rounded-2xl border border-border-light dark:border-border-dark shadow-sm hover:shadow-md transition-all p-4 cursor-default overflow-hidden shrink-0",
+            "group relative bg-white dark:bg-surface-dark rounded-2xl border border-border-light dark:border-border-dark shadow-sm p-4 cursor-default overflow-hidden shrink-0",
             snapshot.isDragging
-              ? "shadow-2xl ring-2 ring-primary/50 rotate-1 z-50"
-              : "",
+              ? "shadow-2xl ring-2 ring-primary/50 rotate-1 z-9999"
+              : "hover:shadow-md transition-all",
           )}
         >
           {/* Main content area */}
@@ -1086,13 +1106,21 @@ function TaskCard({
                   <ExternalLink className="h-4 w-4" />
                 </button>
                 <button
-                  onClick={onEdit}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (isTimerRunning) handleToggleTimer(e);
+                    onEdit();
+                  }}
                   className="p-1.5 text-text-tertiary hover:text-primary hover:bg-primary/5 rounded-lg transition-all"
                   title="Edit Task"
                 >
                   <Edit2 className="h-4 w-4" />
                 </button>
                 <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDelete();
+                  }}
                   className="p-1.5 text-text-tertiary hover:text-error hover:bg-error/5 rounded-lg transition-all"
                   title="Delete Task"
                 >

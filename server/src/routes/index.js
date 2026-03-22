@@ -12,6 +12,7 @@ const userRoutes = require("./userRoutes");
 const organizationRoutes = require("./organizationRoutes");
 const orgFinanceRoutes = require("./orgFinanceRoutes");
 const talentRoutes = require("./talentRoutes");
+const communityRoutes = require("./communityRoutes");
 
 router.use("/talent", talentRoutes);
 router.use("/users", userRoutes);
@@ -23,6 +24,7 @@ router.use("/admin/system", systemRoutes);
 router.use("/admin", adminRoutes);
 router.use("/configs", configRoutes);
 router.use("/cms", cmsRoutes);
+router.use("/community", communityRoutes);
 router.use("/", healthRoutes);
 
 module.exports = router;

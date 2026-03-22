@@ -75,6 +75,11 @@ const MENU_STRUCTURE = [
       { name: "Case Studies", icon: FileText, path: "/case-studies" },
     ],
   },
+  {
+    label: "Community",
+    type: "link",
+    path: "/community",
+  },
   /* 
   {
     label: 'Pricing',

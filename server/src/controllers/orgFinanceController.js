@@ -86,9 +86,10 @@ const orgFinanceController = {
 
     try {
       const queryStr = `
-        SELECT t.*, c.name as category_name, u.name as creator_name
+        SELECT t.*, c.name as category_name, cl.name as classification_name, cl.root_type, u.name as creator_name
         FROM financial_transactions t
         LEFT JOIN fin_coa_category c ON t.category_id = c.id
+        LEFT JOIN fin_coa_classification cl ON c.classification_id = cl.id
         LEFT JOIN users u ON t.created_by_id = u.id
         ${whereClause}
         ORDER BY t.expense_date DESC, t.created_at DESC
@@ -183,6 +184,89 @@ const orgFinanceController = {
   },
 
   /**
+   * 3a. Update Transaction
+   */
+  updateTransaction: async (req, res) => {
+    const orgId = req.org?.organization_id;
+    const txId = req.params.id;
+    const {
+      transaction_type,
+      category_id,
+      amount,
+      description,
+      vendor_name,
+      expense_date,
+      status,
+    } = req.body;
+
+    try {
+      const result = await pool.query(
+        `
+        UPDATE financial_transactions 
+        SET 
+          transaction_type = COALESCE($1, transaction_type),
+          category_id = $2,
+          amount = COALESCE($3, amount),
+          description = COALESCE($4, description),
+          vendor_name = COALESCE($5, vendor_name),
+          expense_date = COALESCE($6, expense_date),
+          status = COALESCE($7, status),
+          updated_at = CURRENT_TIMESTAMP
+        WHERE id = $8 AND organization_id = $9
+        RETURNING *
+      `,
+        [
+          transaction_type,
+          category_id || null,
+          amount ? parseFloat(amount) : null,
+          description,
+          vendor_name,
+          expense_date,
+          status,
+          txId,
+          orgId,
+        ],
+      );
+
+      if (result.rowCount === 0) {
+        return res.status(404).json({ error: "Transaction not found" });
+      }
+
+      res.status(200).json({
+        message: "Transaction updated successfully",
+        transaction: result.rows[0],
+      });
+    } catch (error) {
+      console.error("Error updating transaction:", error);
+      res.status(500).json({ error: "Failed to update transaction" });
+    }
+  },
+
+  /**
+   * 3b. Delete Transaction
+   */
+  deleteTransaction: async (req, res) => {
+    const orgId = req.org?.organization_id;
+    const txId = req.params.id;
+
+    try {
+      const result = await pool.query(
+        "DELETE FROM financial_transactions WHERE id = $1 AND organization_id = $2 RETURNING id",
+        [txId, orgId],
+      );
+
+      if (result.rowCount === 0) {
+        return res.status(404).json({ error: "Transaction not found" });
+      }
+
+      res.status(200).json({ message: "Transaction deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting transaction:", error);
+      res.status(500).json({ error: "Failed to delete transaction" });
+    }
+  },
+
+  /**
    * 4. Export Consolidated Financial Data (CSV)
    */
   exportFinancialData: async (req, res) => {
@@ -199,11 +283,13 @@ const orgFinanceController = {
           t.amount,
           t.currency,
           c.name as category,
+          cl.name as classification,
           t.description,
           t.vendor_name,
           t.status
         FROM financial_transactions t
         LEFT JOIN fin_coa_category c ON t.category_id = c.id
+        LEFT JOIN fin_coa_classification cl ON c.classification_id = cl.id
         WHERE t.organization_id = $1
       `,
         [orgId],
@@ -219,6 +305,7 @@ const orgFinanceController = {
           pe.amount,
           'USD' as currency,
           pe.category,
+          pe.category as classification,
           pe.description,
           pe.vendor_name,
           pe.status
@@ -241,6 +328,7 @@ const orgFinanceController = {
         "amount",
         "currency",
         "category",
+        "classification",
         "description",
         "vendor_name",
         "status",
@@ -268,8 +356,16 @@ const orgFinanceController = {
         "SELECT * FROM fin_config_profile WHERE organization_id = $1",
         [orgId],
       );
+      const classificationsRes = await pool.query(
+        "SELECT * FROM fin_coa_classification WHERE organization_id = $1 OR is_system = true ORDER BY name ASC",
+        [orgId],
+      );
       const categoriesRes = await pool.query(
-        "SELECT * FROM fin_coa_category WHERE organization_id = $1 OR is_system = true ORDER BY name ASC",
+        `SELECT c.*, cl.root_type 
+         FROM fin_coa_category c
+         LEFT JOIN fin_coa_classification cl ON c.classification_id = cl.id
+         WHERE c.organization_id = $1 OR c.is_system = true 
+         ORDER BY c.name ASC`,
         [orgId],
       );
 
@@ -277,7 +373,7 @@ const orgFinanceController = {
       if (!profile) {
         // Create default profile
         const newProfile = await pool.query(
-          "INSERT INTO fin_config_profile (organization_id, base_currency) VALUES ($1, 'INR') RETURNING *",
+          "INSERT INTO fin_config_profile (organization_id, base_currency, compliance_fields) VALUES ($1, 'INR', '[]'::jsonb) RETURNING *",
           [orgId],
         );
         profile = newProfile.rows[0];
@@ -285,6 +381,7 @@ const orgFinanceController = {
 
       res.status(200).json({
         profile,
+        classifications: classificationsRes.rows,
         categories: categoriesRes.rows,
       });
     } catch (error) {
@@ -298,7 +395,7 @@ const orgFinanceController = {
    */
   updateConfig: async (req, res) => {
     const orgId = req.org?.organization_id;
-    const { base_currency, gst_registered, gstin, financial_year_start_month } =
+    const { base_currency, gst_registered, gstin, financial_year_start_month, compliance_fields } =
       req.body;
 
     // RBAC: Assume middleware ensures requester has rights, but can enforce here if needed.
@@ -312,8 +409,9 @@ const orgFinanceController = {
           gst_registered = COALESCE($2, gst_registered),
           gstin = COALESCE($3, gstin),
           financial_year_start_month = COALESCE($4, financial_year_start_month),
+          compliance_fields = COALESCE($5, compliance_fields),
           updated_at = CURRENT_TIMESTAMP
-        WHERE organization_id = $5
+        WHERE organization_id = $6
         RETURNING *
       `,
         [
@@ -321,6 +419,7 @@ const orgFinanceController = {
           gst_registered,
           gstin,
           financial_year_start_month,
+          compliance_fields ? JSON.stringify(compliance_fields) : null,
           orgId,
         ],
       );
@@ -340,19 +439,24 @@ const orgFinanceController = {
    */
   addCategory: async (req, res) => {
     const orgId = req.org?.organization_id;
-    const { name, type, description } = req.body;
+    const { name, classification_id, description } = req.body;
 
-    if (!name || type === undefined)
-      return res.status(400).json({ error: "Name and type are required" });
+    if (!name || !classification_id)
+      return res.status(400).json({ error: "Name and classification are required" });
 
     try {
+      // Get the classification to copy the root_type to the category's type column
+      const classRes = await pool.query(`SELECT root_type FROM fin_coa_classification WHERE id = $1`, [classification_id]);
+      if (classRes.rowCount === 0) return res.status(404).json({ error: "Classification not found" });
+      const rootType = classRes.rows[0].root_type;
+
       const result = await pool.query(
         `
-        INSERT INTO fin_coa_category (organization_id, name, type, description)
-        VALUES ($1, $2, $3, $4)
+        INSERT INTO fin_coa_category (organization_id, name, type, classification_id, description)
+        VALUES ($1, $2, $3, $4, $5)
         RETURNING *
       `,
-        [orgId, name, type, description],
+        [orgId, name, rootType, classification_id, description],
       );
 
       res.status(201).json({
@@ -362,6 +466,101 @@ const orgFinanceController = {
     } catch (error) {
       console.error("Error adding category:", error);
       res.status(500).json({ error: "Failed to create category" });
+    }
+  },
+
+  deleteCategory: async (req, res) => {
+    const orgId = req.org?.organization_id;
+    const categoryId = req.params.id;
+
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+      // Check if it's a system category
+      const checkRes = await client.query("SELECT is_system FROM fin_coa_category WHERE id = $1 AND organization_id = $2", [categoryId, orgId]);
+      if (checkRes.rowCount === 0) return res.status(404).json({ error: "Category not found or unauthorized" });
+      if (checkRes.rows[0].is_system) return res.status(403).json({ error: "Cannot delete system categories" });
+
+      // Find the "General" category
+      const genCatRes = await client.query("SELECT id FROM fin_coa_category WHERE name = 'General' AND is_system = true LIMIT 1");
+      const generalId = genCatRes.rows[0]?.id;
+      if (!generalId) throw new Error("General category not found");
+
+      // Reassign transactions
+      await client.query("UPDATE financial_transactions SET category_id = $1 WHERE category_id = $2", [generalId, categoryId]);
+
+      // Delete the category
+      await client.query("DELETE FROM fin_coa_category WHERE id = $1 AND organization_id = $2", [categoryId, orgId]);
+
+      await client.query("COMMIT");
+      res.status(200).json({ message: "Category deleted and transactions reassigned" });
+    } catch (error) {
+      await client.query("ROLLBACK");
+      console.error("Error deleting category:", error);
+      res.status(500).json({ error: "Failed to delete category" });
+    } finally {
+      client.release();
+    }
+  },
+
+  addClassification: async (req, res) => {
+    const orgId = req.org?.organization_id;
+    const { name, root_type } = req.body;
+
+    if (!name || !root_type) return res.status(400).json({ error: "Name and root_type are required" });
+
+    try {
+      const result = await pool.query(
+        `INSERT INTO fin_coa_classification (organization_id, name, root_type) VALUES ($1, $2, $3) RETURNING *`,
+        [orgId, name, root_type]
+      );
+      res.status(201).json({ message: "Classification created", classification: result.rows[0] });
+    } catch (error) {
+      console.error("Error adding classification:", error);
+      res.status(500).json({ error: "Failed to create classification" });
+    }
+  },
+
+  deleteClassification: async (req, res) => {
+    const orgId = req.org?.organization_id;
+    const classificationId = req.params.id;
+
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+      
+      const checkRes = await client.query("SELECT is_system FROM fin_coa_classification WHERE id = $1 AND organization_id = $2", [classificationId, orgId]);
+      if (checkRes.rowCount === 0) return res.status(404).json({ error: "Classification not found or unauthorized" });
+      if (checkRes.rows[0].is_system) return res.status(403).json({ error: "Cannot delete system classifications" });
+
+      // First find all categories belonging to this classification
+      const catsRes = await client.query("SELECT id FROM fin_coa_category WHERE classification_id = $1", [classificationId]);
+      const catIds = catsRes.rows.map(r => r.id);
+
+      // Reassign transactions for all those categories to General
+      const genCatRes = await client.query("SELECT id FROM fin_coa_category WHERE name = 'General' AND is_system = true LIMIT 1");
+      const generalId = genCatRes.rows[0]?.id;
+
+      if (catIds.length > 0 && generalId) {
+        await client.query("UPDATE financial_transactions SET category_id = $1 WHERE category_id = ANY($2::int[])", [generalId, catIds]);
+      }
+
+      // Delete the categories
+      if (catIds.length > 0) {
+        await client.query("DELETE FROM fin_coa_category WHERE classification_id = $1", [classificationId]);
+      }
+
+      // Finally delete the classification itself
+      await client.query("DELETE FROM fin_coa_classification WHERE id = $1 AND organization_id = $2", [classificationId, orgId]);
+
+      await client.query("COMMIT");
+      res.status(200).json({ message: "Classification deleted" });
+    } catch (error) {
+      await client.query("ROLLBACK");
+      console.error("Error deleting classification:", error);
+      res.status(500).json({ error: "Failed to delete classification" });
+    } finally {
+      client.release();
     }
   },
 };

@@ -30,6 +30,7 @@ import { OrgExpenseDrawer } from "./OrgExpenseDrawer";
 import projectFinancialsService from "../../../../services/projectFinancialsService";
 import userService from "../../../../services/userService";
 import { toast } from "react-toastify";
+import { ConfirmationModal } from "../../../../components/ui/ConfirmationModal";
 
 export function OrgProjectFinancials({ projectId }) {
   const { user } = useAuth();
@@ -78,6 +79,10 @@ export function OrgProjectFinancials({ projectId }) {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [selectedExpense, setSelectedExpense] = useState(null);
   const [drawerMode, setDrawerMode] = useState("add");
+  const [deleteConfirm, setDeleteConfirm] = useState({
+    isOpen: false,
+    expenseId: null,
+  });
 
   // Loading States
   const [loadingSummary, setLoadingSummary] = useState(true);
@@ -259,19 +264,26 @@ export function OrgProjectFinancials({ projectId }) {
     }
   };
 
-  const handleDeleteExpense = async (expenseId) => {
-    if (
-      window.confirm("Are you sure you want to delete this expense record?")
-    ) {
-      try {
-        await projectFinancialsService.deleteExpense(projectId, expenseId);
-        toast.success("Expense deleted successfully");
-        loadSummary(); // It affects the total
-        loadExpenses();
-      } catch (error) {
-        console.error("Failed to delete expense", error);
-        toast.error("Failed to delete expense");
-      }
+  const handleDeleteExpense = (expenseId) => {
+    setDeleteConfirm({
+      isOpen: true,
+      expenseId,
+    });
+  };
+
+  const confirmDeleteExpense = async () => {
+    const { expenseId } = deleteConfirm;
+    if (!expenseId) return;
+    try {
+      await projectFinancialsService.deleteExpense(projectId, expenseId);
+      toast.success("Expense deleted successfully");
+      loadSummary();
+      loadExpenses();
+    } catch (error) {
+      console.error("Failed to delete expense", error);
+      toast.error("Failed to delete expense");
+    } finally {
+      setDeleteConfirm({ isOpen: false, expenseId: null });
     }
   };
 
@@ -790,6 +802,14 @@ export function OrgProjectFinancials({ projectId }) {
           loadSummary();
           loadExpenses();
         }}
+      />
+
+      <ConfirmationModal
+        isOpen={deleteConfirm.isOpen}
+        onClose={() => setDeleteConfirm({ isOpen: false, expenseId: null })}
+        onConfirm={confirmDeleteExpense}
+        title="Delete Expense"
+        message="Are you sure you want to delete this expense record? This action cannot be undone."
       />
     </div>
   );

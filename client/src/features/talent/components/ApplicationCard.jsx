@@ -69,7 +69,7 @@ export function ApplicationCard({ app, onUpdateStatus, isUpdating }) {
 
         <div className="flex flex-wrap gap-3 mt-auto pt-2">
           <Link
-            to={`/talent/profile/${app.applicant_username}`}
+            to={`/community/${app.applicant_username}`}
             className="flex-1"
           >
             <Button variant="secondary" className="w-full">

@@ -88,7 +88,7 @@ export function GigApplicationsPage() {
                   </div>
 
                   <div className="flex gap-3 mt-auto">
-                    <Link to={`/talent/profile/${app.id}`} className="flex-1">
+                    <Link to={`/community/${app.id}`} className="flex-1">
                       <Button className="w-full">View Profile</Button>
                     </Link>
                     <Button variant="secondary" className="flex-1">Shortlist</Button>

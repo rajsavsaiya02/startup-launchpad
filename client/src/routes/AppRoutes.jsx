@@ -25,6 +25,7 @@ import { OrgPublicProfilePage } from "../features/organization/public/OrgPublicP
 import { OrgFinanceDashboard } from "../features/organization/finance/OrgFinanceDashboard";
 import { FinancialOverview } from "../features/finance/FinancialOverview";
 import { TalentMarketplace } from "../features/talent/TalentMarketplace";
+import { CommunityDirectoryPage } from "../features/community/CommunityDirectoryPage";
 import { LandingPage } from "../pages/LandingPage";
 import { PricingPage } from "../pages/PricingPage";
 import { ContactPage } from "../pages/ContactPage";
@@ -38,6 +39,7 @@ import { HelpCenterPage } from "../pages/HelpCenterPage";
 import { CaseStudiesPage } from "../pages/CaseStudiesPage";
 import { CaseStudyDetailPage } from "../pages/CaseStudyDetailPage";
 import { GigDetailsPage } from "../features/talent/GigDetailsPage";
+import { CommunityProfilePage } from "../features/community/CommunityProfilePage";
 import { DesignSystemIntroPage } from "../features/admin/design-system/pages/DesignSystemIntroPage";
 import { AuditLogsPage } from "../features/admin/audit/AuditLogsPage";
 import { DesignSystemLayout } from "../features/admin/design-system/DesignSystemLayout";
@@ -54,11 +56,8 @@ import { PlansSubscriptionsPage } from "../features/admin/plans/PlansSubscriptio
 import { MarketplaceModerationPage } from "../features/admin/marketplace/MarketplaceModerationPage";
 import { ContentManagementPage } from "../features/admin/content/ContentManagementPage";
 import { PublicPageManager } from "../features/admin/content/PublicPageManager";
-
 import { AdminAnalyticsPage } from "../features/admin/dashboard/AdminAnalyticsPage";
-
 import { SystemHealthPage } from "../features/admin/dashboard/SystemHealthPage";
-
 import { AdminSettingsPage } from "../features/admin/settings/AdminSettingsPage";
 import { EmailSettingsPage } from "../features/admin/settings/EmailSettingsPage";
 import { AccessControlPage } from "../features/admin/settings/AccessControlPage";
@@ -90,9 +89,7 @@ import { DynamicPage } from "../pages/DynamicPage";
 import { MaintenancePage } from "../pages/MaintenancePage";
 import { NotFoundPage } from "../pages/NotFoundPage";
 import { SitemapPage } from "../pages/SitemapPage";
-
 import AdminLogin from "../pages/admin/AdminLogin";
-
 import { ProtectedRoute } from "../components/layout/ProtectedRoute";
 import { AdminGuard } from "../components/layout/AdminGuard";
 import { PublicAuthGuard } from "../components/layout/PublicAuthGuard";
@@ -101,12 +98,15 @@ import { OrgGuard } from "../components/layout/OrgGuard";
 import { TalentGuard } from "../components/layout/TalentGuard";
 import { OrgTalentDashboard } from "../features/organization/talent/OrgTalentDashboard";
 
+
 export function AppRoutes() {
   return (
     <Routes>
       {/* Public Routes (Landing, Pricing, etc.) */}
       <Route element={<PublicLayout />}>
         <Route path="/" element={<LandingPage />} />
+        <Route path="/community" element={<CommunityDirectoryPage />} />
+        <Route path="/community/:slug" element={<CommunityProfilePage />} />
         <Route path="/home" element={<Navigate to="/" replace />} />
         <Route path="/homepage" element={<Navigate to="/" replace />} />
         <Route path="/home-page" element={<Navigate to="/" replace />} />
@@ -360,9 +360,13 @@ export function AppRoutes() {
             element={<Navigate to="/org/talent/applications" replace />}
           />
 
-          <Route
+          {/* <Route
             path="/talent/profile/:username"
             element={<PublicProfilePage />}
+          /> */}
+          <Route
+            path="/talent/profile/:slug"
+            element={<Navigate to={(params) => `/community/${params.slug}`} replace />}
           />
           {/* Productivity Module (Renamed from Work) */}
           <Route
@@ -411,10 +415,11 @@ export function AppRoutes() {
           </Route>
           {/* Close OrgGuard */}
           <Route path="/talent" element={<TalentMarketplace />} />
-          <Route
+          <Route path="/community" element={<CommunityDirectoryPage />} />
+          {/* <Route
             path="/talent/profile/:id"
             element={<FreelancerProfilePage />}
-          />
+          /> */}
           {/* Financial Module (Legacy/Founder Only) - Keep at root or move to new module? 
               For now keeping at root /financials but it might not show in sidebar unless configured.
               Let's keep it accessible.
@@ -474,7 +479,7 @@ export function AppRoutes() {
         <Route path="/not-found" element={<NotFoundPage />} />
         <Route path="/404" element={<NotFoundPage />} />
         <Route path="/sitemap" element={<SitemapPage />} />
-        <Route path="/o/:slug" element={<OrgPublicProfilePage />} />
+        <Route path="/o/:slug" element={<Navigate to={(params) => `/community/${params.slug}`} replace />} />
         <Route path="/:slug" element={<DynamicPage />} />
       </Route>
 

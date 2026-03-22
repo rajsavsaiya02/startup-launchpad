@@ -164,15 +164,17 @@ export function UserSettingsPage({ section = "profile" }) {
           : "max-w-5xl",
       )}
     >
-      {/* Page Header */}
-      <div className="pt-6 pb-2 border-b border-border-light dark:border-border-dark mb-6">
-        <h1 className="text-3xl font-bold text-text-primary dark:text-white tracking-tight mb-2">
-          {title}
-        </h1>
-        <p className="text-lg text-text-secondary dark:text-gray-400">
-          Manage your {activeSection} preferences.
-        </p>
-      </div>
+      {/* Page Header - Only show for non-profile sections as PublicProfile has its own consolidated header */}
+      {activeSection !== "profile" && (
+        <div className="pt-6 pb-2 border-b border-border-light dark:border-border-dark mb-6">
+          <h1 className="text-3xl font-bold text-text-primary dark:text-white tracking-tight mb-2">
+            {title}
+          </h1>
+          <p className="text-lg text-text-secondary dark:text-gray-400">
+            Manage your {activeSection} preferences.
+          </p>
+        </div>
+      )}
 
       <div className="space-y-6">
         {/* PROFILE SETTINGS TAB */}

@@ -159,7 +159,7 @@ export function TalentMarketplace() {
               <Button variant="secondary" className="w-full">
                 Shortlist
               </Button>
-              <Link to={`/talent/profile/${person.id}`} className="w-full">
+              <Link to={`/community/${person.id}`} className="w-full">
                 <Button className="w-full">View Profile</Button>
               </Link>
             </div>

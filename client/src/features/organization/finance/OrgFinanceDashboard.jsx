@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import {
   useLocation,
   useNavigate,
@@ -9,11 +9,11 @@ import {
 import { Helmet } from "react-helmet-async";
 import {
   Wallet,
-  LineChart,
-  ListOrdered,
-  Settings as SettingsIcon,
+  Loader2,
 } from "lucide-react";
 import { cn } from "../../../utils/cn";
+import { toast } from "react-toastify";
+import organizationService from "../../../services/organization/organizationService";
 
 // Sub-components (to be implemented)
 import { FinanceOverviewTab } from "./components/FinanceOverviewTab";
@@ -43,6 +43,27 @@ const TABS = [
 export function OrgFinanceDashboard() {
   const navigate = useNavigate();
   const location = useLocation();
+  const [isAuthorized, setIsAuthorized] = useState(null);
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const orgRes = await organizationService.getDetails();
+        const role = orgRes.member?.role?.toUpperCase();
+        if (["FOUNDER", "CO-FOUNDER", "ADMIN"].includes(role)) {
+          setIsAuthorized(true);
+        } else {
+          setIsAuthorized(false);
+          toast.error("You are not authorized to access organization finances.");
+          navigate("/org/overview");
+        }
+      } catch {
+        setIsAuthorized(false);
+        navigate("/org/overview");
+      }
+    };
+    checkAuth();
+  }, [navigate]);
 
   // Extract active tab from URL, defaulting to 'overview'
   const currentPath = location.pathname.split("/").pop();
@@ -52,6 +73,18 @@ export function OrgFinanceDashboard() {
   const handleTabChange = (tab) => {
     navigate(`/org/finances/${tab.path}`);
   };
+
+  if (isAuthorized === null) {
+    return (
+      <div className="flex flex-col min-h-[calc(100vh-4rem)] items-center justify-center bg-background-light dark:bg-background-dark">
+        <Loader2 className="w-8 h-8 text-primary animate-spin" />
+      </div>
+    );
+  }
+
+  if (isAuthorized === false) {
+    return null;
+  }
 
   return (
     <div className="flex flex-col min-h-[calc(100vh-4rem)] bg-background-light dark:bg-background-dark overflow-y-auto custom-scrollbar">

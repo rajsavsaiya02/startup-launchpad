@@ -34,6 +34,14 @@ import { toast } from "react-toastify";
 import { useAuth } from "../../../context/AuthContext";
 import { ConfirmationModal } from "../../../components/ui/ConfirmationModal";
 
+// ─── Helper ──────────────────────────────────────────────────────────────────
+
+function cn(...classes) {
+  return classes.filter(Boolean).join(" ");
+}
+
+// ─── CapsuleProgress ─────────────────────────────────────────────────────────
+
 const CapsuleProgress = ({ completed, total }) => {
   const percentage = total === 0 ? 0 : (completed / total) * 100;
 
@@ -73,7 +81,9 @@ const CapsuleProgress = ({ completed, total }) => {
   );
 };
 
-export function TaskDrawer({
+// ─── OrgTaskDrawer ────────────────────────────────────────────────────────────
+
+export function OrgTaskDrawer({
   task,
   onClose,
   isOpen,
@@ -82,6 +92,10 @@ export function TaskDrawer({
 }) {
   const { id: projectId } = useParams();
   const { user } = useAuth();
+
+  // Derive org ID — now correctly populated by the backend in user.organization_id
+  const orgId = user?.organization_id;
+
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -98,8 +112,10 @@ export function TaskDrawer({
     "Development",
     "Design",
     "Marketing",
+    "Operations",
     "Research",
-    "Sales",
+    "HR",
+    "Finance",
   ]);
 
   const [attachments, setAttachments] = useState([]);
@@ -108,10 +124,10 @@ export function TaskDrawer({
   const [urlInput, setUrlInput] = useState("");
   const [urlTitleInput, setUrlTitleInput] = useState("");
   const [newSubtask, setNewSubtask] = useState("");
-
   const [liveTotalTime, setLiveTotalTime] = useState(0);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
+  // Live timer in drawer
   useEffect(() => {
     if (!task) return;
     
@@ -133,9 +149,7 @@ export function TaskDrawer({
         interval = setInterval(() => {
           const now = Date.now();
           let elapsedSeconds = Math.floor((now - start) / 1000);
-          if (elapsedSeconds > 86400) {
-            elapsedSeconds = 86400; // Cap visual timer at 24h
-          }
+          if (elapsedSeconds > 86400) elapsedSeconds = 86400;
           setLiveTotalTime((task.time_spent || 0) + elapsedSeconds);
         }, 1000);
       }
@@ -143,6 +157,7 @@ export function TaskDrawer({
     return () => clearInterval(interval);
   }, [task]);
 
+  // Populate form on open
   useEffect(() => {
     setUrlInput("");
     setUrlTitleInput("");
@@ -168,8 +183,7 @@ export function TaskDrawer({
           if (typeof task.subtasks === "string") {
             try {
               return JSON.parse(task.subtasks);
-            } catch (err) {
-              console.error("Failed to parse subtasks:", err);
+            } catch {
               return [];
             }
           }
@@ -177,8 +191,6 @@ export function TaskDrawer({
         })(),
       });
 
-      // Load existing attachments for the task (if backend starts returning them)
-      // For now, tasks might not return attachments array from API yet without a JOIN
       setAttachments(
         task.attachments
           ? task.attachments.map((att) => ({
@@ -211,17 +223,20 @@ export function TaskDrawer({
     }
   }, [task, isOpen]);
 
+  // Load org-specific categories from preferences
   useEffect(() => {
     if (isOpen) {
       const fetchInitialData = async () => {
         try {
           const prefs = await userService.getPreferences();
-
-          if (prefs.task_categories && prefs.task_categories.length > 0) {
-            setCategories(prefs.task_categories);
+          if (
+            prefs.org_task_categories &&
+            prefs.org_task_categories.length > 0
+          ) {
+            setCategories(prefs.org_task_categories);
           }
         } catch (err) {
-          console.error("Failed to fetch initial TaskDrawer data:", err);
+          console.error("Failed to fetch org TaskDrawer preferences:", err);
         }
       };
       fetchInitialData();
@@ -233,7 +248,9 @@ export function TaskDrawer({
     const newCategories = [...categories, newCategory];
     setCategories(newCategories);
     try {
-      await userService.updatePreferences({ task_categories: newCategories });
+      await userService.updatePreferences({
+        org_task_categories: newCategories,
+      });
     } catch {
       toast.error("Failed to save category preference");
     }
@@ -249,7 +266,9 @@ export function TaskDrawer({
       }));
     }
     try {
-      await userService.updatePreferences({ task_categories: newCategories });
+      await userService.updatePreferences({
+        org_task_categories: newCategories,
+      });
     } catch {
       toast.error("Failed to save category preference");
     }
@@ -257,10 +276,10 @@ export function TaskDrawer({
 
   if (!isOpen) return null;
 
-  const handleAddSubtask = (e) => {
-    // If it's a keydown event, only proceed if it's "Enter"
-    if (e && e.key && e.key !== "Enter") return;
+  // ── Subtask helpers ──
 
+  const handleAddSubtask = (e) => {
+    if (e && e.key && e.key !== "Enter") return;
     if (newSubtask.trim()) {
       if (e && e.preventDefault) e.preventDefault();
       setFormData((prev) => ({
@@ -294,6 +313,8 @@ export function TaskDrawer({
     }));
   };
 
+  // ── Form handlers ──
+
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     setFormData((prev) => ({
@@ -322,8 +343,9 @@ export function TaskDrawer({
       const title =
         urlTitleInput || urlInput.split("/").pop() || "External Link";
 
-      const contextType = projectId ? "project" : "user";
-      const contextId = projectId || user?.id;
+      // Org-scoped context
+      const contextType = projectId ? "project" : "organization";
+      const contextId = projectId || orgId;
 
       const newAsset = await fileAssetService.attachExternalLink(
         contextType,
@@ -362,7 +384,6 @@ export function TaskDrawer({
       }
       return;
     }
-
     if (att.type === "url") {
       window.open(att.url, "_blank", "noopener,noreferrer");
     } else {
@@ -376,6 +397,8 @@ export function TaskDrawer({
       link.parentNode.removeChild(link);
     }
   };
+
+  // ── Save ──
 
   const handleSave = async () => {
     if (!formData.title.trim()) return;
@@ -423,7 +446,7 @@ export function TaskDrawer({
             time_logs: newTimeLogs,
           });
         } catch (pauseErr) {
-          console.error("Failed to pause timer during update:", pauseErr);
+          console.error("Failed to pause org timer during update:", pauseErr);
           // Continue with main update regardless
         }
       }
@@ -437,8 +460,8 @@ export function TaskDrawer({
       if (filesToUpload.length > 0) {
         setUploadingAttachment(true);
         try {
-          const contextType = projectId ? "project" : "user";
-          const contextId = projectId || user?.id;
+          const contextType = projectId ? "project" : "organization";
+          const contextId = projectId || orgId;
 
           const uploadPromises = filesToUpload.map((att) =>
             fileAssetService.uploadFile(
@@ -472,6 +495,7 @@ export function TaskDrawer({
         ...formData,
         due_date: finalDueDate || null,
         attachment_ids: attachmentIds,
+        organization_id: projectId ? null : orgId, // Associate with org if no project
       };
       delete submissionData.due_time;
 
@@ -486,7 +510,7 @@ export function TaskDrawer({
               timer_started_at: new Date().toISOString(),
             });
           } catch (resumeErr) {
-            console.error("Failed to resume timer after update:", resumeErr);
+            console.error("Failed to resume org timer after update:", resumeErr);
           }
         }
       } else {
@@ -496,12 +520,14 @@ export function TaskDrawer({
       onRefresh?.();
       onClose();
     } catch (err) {
-      console.error("Error saving task:", err);
+      console.error("Error saving org task:", err);
       toast.error("Error saving task");
     } finally {
       setIsSaving(false);
     }
   };
+
+  // ── Delete ──
 
   const handleDelete = async () => {
     if (!task?.id) return;
@@ -515,10 +541,12 @@ export function TaskDrawer({
       onRefresh?.();
       onClose();
     } catch (err) {
-      console.error("Error deleting task:", err);
+      console.error("Error deleting org task:", err);
       toast.error("Failed to delete task");
     }
   };
+
+  // ── Render ──
 
   return (
     <>
@@ -533,7 +561,11 @@ export function TaskDrawer({
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-border-light dark:border-border-dark shrink-0">
           <h2 className="text-lg font-bold text-text-primary dark:text-white">
-            {isReadOnly ? "Task Details" : task?.id ? "Edit Task" : "Add Task"}
+            {isReadOnly
+              ? "Task Details"
+              : task?.id
+                ? "Edit Org Task"
+                : "New Org Task"}
           </h2>
           <div className="flex items-center gap-2">
             {!isReadOnly && task?.id && (
@@ -585,7 +617,7 @@ export function TaskDrawer({
                 value={formData.title}
                 onChange={handleChange}
                 disabled={isReadOnly}
-                placeholder="e.g., Fix memory leak in worker thread"
+                placeholder="e.g., Onboard new team members for Q2"
                 className="w-full px-4 py-2.5 text-sm bg-gray-50 dark:bg-gray-800/50 border border-border-light dark:border-border-dark rounded-lg focus:ring-2 focus:ring-primary/20 outline-none text-text-primary dark:text-white font-medium placeholder:font-normal placeholder:text-text-tertiary transition-all disabled:opacity-75"
                 required
               />
@@ -604,12 +636,12 @@ export function TaskDrawer({
                 value={formData.description}
                 onChange={handleChange}
                 disabled={isReadOnly}
-                placeholder="Provide task details or context..."
+                placeholder="Provide task details or context for your team..."
                 className="w-full px-4 py-2.5 text-sm bg-gray-50 dark:bg-gray-800/50 border border-border-light dark:border-border-dark rounded-lg focus:ring-2 focus:ring-primary/20 outline-none text-text-primary dark:text-white font-medium placeholder:font-normal placeholder:text-text-tertiary min-h-[80px] resize-y custom-scrollbar transition-all disabled:opacity-75"
               />
             </div>
 
-            {/* Grid for Category & Priority */}
+            {/* Category & Priority */}
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <CreatableSelect
@@ -649,42 +681,38 @@ export function TaskDrawer({
               </div>
             </div>
 
-            {/* Grid for Due Date & Time */}
+            {/* Due Date & Time */}
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-text-secondary dark:text-gray-300 mb-1.5">
                   Due Date
                 </label>
-                <div className="relative group">
-                  <input
-                    type="date"
-                    name="due_date"
-                    value={formData.due_date}
-                    onChange={handleChange}
-                    disabled={isReadOnly}
-                    className="w-full pl-4 pr-3 py-2.5 text-sm bg-gray-50 dark:bg-gray-800/50 border border-border-light dark:border-border-dark rounded-lg focus:ring-2 focus:ring-primary/20 outline-none text-text-primary dark:text-white font-medium transition-all disabled:opacity-75"
-                  />
-                </div>
+                <input
+                  type="date"
+                  name="due_date"
+                  value={formData.due_date}
+                  onChange={handleChange}
+                  disabled={isReadOnly}
+                  className="w-full pl-4 pr-3 py-2.5 text-sm bg-gray-50 dark:bg-gray-800/50 border border-border-light dark:border-border-dark rounded-lg focus:ring-2 focus:ring-primary/20 outline-none text-text-primary dark:text-white font-medium transition-all disabled:opacity-75"
+                />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-text-secondary dark:text-gray-300 mb-1.5">
                   Due Time
                 </label>
-                <div className="relative group">
-                  <input
-                    type="time"
-                    name="due_time"
-                    value={formData.due_time}
-                    onChange={handleChange}
-                    disabled={isReadOnly}
-                    className="w-full pl-4 pr-3 py-2.5 text-sm bg-gray-50 dark:bg-gray-800/50 border border-border-light dark:border-border-dark rounded-lg focus:ring-2 focus:ring-primary/20 outline-none text-text-primary dark:text-white font-medium transition-all disabled:opacity-75"
-                  />
-                </div>
+                <input
+                  type="time"
+                  name="due_time"
+                  value={formData.due_time}
+                  onChange={handleChange}
+                  disabled={isReadOnly}
+                  className="w-full pl-4 pr-3 py-2.5 text-sm bg-gray-50 dark:bg-gray-800/50 border border-border-light dark:border-border-dark rounded-lg focus:ring-2 focus:ring-primary/20 outline-none text-text-primary dark:text-white font-medium transition-all disabled:opacity-75"
+                />
               </div>
             </div>
 
-            {/* Status */}
+            {/* Status — includes "review" for the 4-column org board */}
             <div>
               <label className="block text-sm font-medium text-text-secondary dark:text-gray-300 mb-1.5">
                 Status
@@ -699,22 +727,11 @@ export function TaskDrawer({
                 >
                   <option value="todo">To Do</option>
                   <option value="progress">In Progress</option>
+                  <option value="review">In Review</option>
                   <option value="done">Done</option>
                 </select>
                 <div className="absolute right-3 top-1/2 -translate-y-1/2 text-text-tertiary pointer-events-none">
-                  <svg
-                    className="h-4 w-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M19 9l-7 7-7-7"
-                    ></path>
-                  </svg>
+                  <ChevronDown className="h-4 w-4" />
                 </div>
               </div>
             </div>
@@ -728,7 +745,7 @@ export function TaskDrawer({
                     (Optional)
                   </span>
                 </label>
-                {formData.subtasks.length > 0 && (
+                {formData.subtasks?.length > 0 && (
                   <CapsuleProgress
                     completed={
                       formData.subtasks.filter((s) => s.is_completed).length
@@ -740,7 +757,7 @@ export function TaskDrawer({
 
               <div className="border border-border-light dark:border-border-dark bg-gray-50 dark:bg-gray-800/50 rounded-lg p-2 min-h-[60px]">
                 <div className="space-y-1">
-                  {formData.subtasks.map((st) => (
+                  {(formData.subtasks || []).map((st) => (
                     <div
                       key={st.id}
                       className="group flex items-center justify-between gap-3 p-2 rounded-md hover:bg-white dark:hover:bg-surface-dark transition-colors border border-transparent hover:border-border-light dark:hover:border-border-dark hover:shadow-sm"
@@ -750,7 +767,9 @@ export function TaskDrawer({
                           <input
                             type="checkbox"
                             checked={st.is_completed}
-                            onChange={() => !isReadOnly && toggleSubtask(st.id)}
+                            onChange={() =>
+                              !isReadOnly && toggleSubtask(st.id)
+                            }
                             className="peer sr-only"
                             disabled={isReadOnly}
                           />
@@ -821,19 +840,19 @@ export function TaskDrawer({
               </div>
             </div>
 
+            {/* Time Tracking Log (read-only display) */}
             {(() => {
               if (!task?.id || !task?.time_logs) return null;
               let parsedLogs = [];
               if (typeof task.time_logs === "string") {
                 try {
                   parsedLogs = JSON.parse(task.time_logs);
-                } catch (err) {
-                  console.error("Failed to parse time_logs:", err);
+                } catch {
+                  parsedLogs = [];
                 }
               } else if (Array.isArray(task.time_logs)) {
                 parsedLogs = task.time_logs;
               }
-
               if (parsedLogs.length === 0) return null;
 
               return (
@@ -853,41 +872,37 @@ export function TaskDrawer({
                       })()}
                     </span>
                   </div>
-                  {/* Scrollable container: Max height allows ~3 items, then it scrolls */}
                   <div className="max-h-[200px] overflow-y-auto custom-scrollbar pr-2 space-y-2.5">
                     {parsedLogs.map((log, index) => {
                       const startDate = new Date(log.start_time);
                       const endDate = new Date(log.end_time);
-                      // Calculate exactly from timestamps for maximum precision
                       const diffInSeconds = Math.max(
                         0,
                         Math.floor(
                           (endDate.getTime() - startDate.getTime()) / 1000,
                         ),
                       );
-
                       const h = Math.floor(diffInSeconds / 3600);
                       const m = Math.floor((diffInSeconds % 3600) / 60);
                       const s = diffInSeconds % 60;
                       const durationStr = `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
 
-                      // Simple format helper to avoid undefined errors if import fails
-                      const simpleFormatTime = (d) => {
-                        if (isNaN(d.getTime())) return "Invalid Time";
-                        return d.toLocaleTimeString([], {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                          hour12: true,
-                        });
-                      };
-                      const simpleFormatDate = (d) => {
-                        if (isNaN(d.getTime())) return "Invalid Date";
-                        return d.toLocaleDateString("en-US", {
-                          month: "short",
-                          day: "2-digit",
-                          year: "numeric",
-                        });
-                      };
+                      const fmtTime = (d) =>
+                        isNaN(d.getTime())
+                          ? "—"
+                          : d.toLocaleTimeString([], {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                              hour12: true,
+                            });
+                      const fmtDate = (d) =>
+                        isNaN(d.getTime())
+                          ? "—"
+                          : d.toLocaleDateString("en-US", {
+                              month: "short",
+                              day: "2-digit",
+                              year: "numeric",
+                            });
 
                       return (
                         <div
@@ -895,26 +910,24 @@ export function TaskDrawer({
                           className="flex justify-between bg-gray-50/40 dark:bg-gray-800/20 rounded-2xl p-3.5 border border-border-light dark:border-border-dark transition-all hover:bg-white dark:hover:bg-surface-dark hover:shadow-sm"
                         >
                           <div className="flex flex-col gap-1">
-                            <span className="text-[13.5px] font-medium text-text-primary dark:text-gray-200 tracking-wide">
-                              {simpleFormatDate(startDate)}
+                            <span className="text-[13.5px] font-medium text-text-primary dark:text-gray-200">
+                              {fmtDate(startDate)}
                             </span>
-                            <span className="text-xs text-text-tertiary tracking-wide">
-                              {simpleFormatTime(startDate)}
+                            <span className="text-xs text-text-tertiary">
+                              {fmtTime(startDate)}
                             </span>
                           </div>
-
                           <div className="flex flex-col justify-end pb-0.5">
                             <span className="text-xs text-text-tertiary opacity-70">
                               →
                             </span>
                           </div>
-
                           <div className="flex flex-col gap-1 items-end">
-                            <span className="text-[13.5px] font-medium text-success tracking-wide">
+                            <span className="text-[13.5px] font-medium text-success">
                               {durationStr}
                             </span>
-                            <span className="text-xs text-text-tertiary tracking-wide">
-                              {simpleFormatTime(endDate)}
+                            <span className="text-xs text-text-tertiary">
+                              {fmtTime(endDate)}
                             </span>
                           </div>
                         </div>
@@ -1080,8 +1093,4 @@ export function TaskDrawer({
       />
     </>
   );
-}
-
-function cn(...classes) {
-  return classes.filter(Boolean).join(" ");
 }

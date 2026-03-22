@@ -6,6 +6,7 @@ import {
   Settings,
   HelpCircle,
   Building,
+  Users,
 } from "lucide-react";
 import { cn } from "../../utils/cn";
 import { Avatar } from "../ui/Avatar";
@@ -71,6 +72,22 @@ export function UserHeader({ onMobileMenuClick }) {
             <span className="text-xs font-bold leading-none mt-0.5">Org</span>
           </NavLink>
         </div>
+
+        {/* Community Nav Link */}
+        <NavLink
+          to="/community"
+          className={({ isActive }) =>
+            cn(
+              "hidden md:flex items-center gap-2 px-4 py-1.5 rounded-xl text-sm font-bold transition-all ml-2 border",
+              isActive 
+                ? "bg-primary text-white border-primary shadow-sm shadow-primary/20" 
+                : "bg-white dark:bg-gray-800 text-text-secondary dark:text-gray-300 border-border-light dark:border-border-dark hover:text-text-primary hover:border-gray-300 dark:hover:border-gray-600 shadow-sm"
+            )
+          }
+        >
+          <Users className="h-4 w-4" />
+          Community
+        </NavLink>
       </div>
 
       {/* Right: Actions & Profile */}

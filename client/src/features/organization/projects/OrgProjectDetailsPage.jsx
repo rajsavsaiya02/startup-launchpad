@@ -59,6 +59,7 @@ import orgProjectService from "../../../services/organization/orgProjectService"
 import { toast } from "react-toastify";
 import { motion, AnimatePresence } from "framer-motion";
 import { OrgCreateProjectModal } from "./components/OrgCreateProjectModal";
+import { ConfirmationModal } from "../../../components/ui/ConfirmationModal";
 import { Dropdown, DropdownItem } from "../../../components/ui/Dropdown";
 import { FileDetailModal } from "../../../components/files/FileDetailModal";
 import { useAuth } from "../../../context/AuthContext";
@@ -101,6 +102,10 @@ export function OrgProjectDetailsPage() {
 
   // --- Project Action States ---
   const [isEditProjectModalOpen, setIsEditProjectModalOpen] = useState(false);
+  const [deleteItemConfirm, setDeleteItemConfirm] = useState({
+    isOpen: false,
+    item: null,
+  });
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -403,6 +408,21 @@ export function OrgProjectDetailsPage() {
       fetchFileAssets(id);
     }
   }, [id, fetchProjectDetails, fetchTasks]);
+
+  const confirmDeleteTask = async () => {
+    const { item } = deleteItemConfirm;
+    if (!item) return;
+    try {
+      await taskService.deleteTask(id, item.id);
+      toast.success("Task deleted successfully");
+      fetchTasks();
+    } catch (err) {
+      console.error("Failed to delete org task:", err);
+      toast.error("Failed to delete task");
+    } finally {
+      setDeleteItemConfirm({ isOpen: false, item: null });
+    }
+  };
 
   const handleDeleteProject = async () => {
     try {
@@ -894,14 +914,11 @@ export function OrgProjectDetailsPage() {
                                     projectMembers={projectMembers}
                                     onEdit={() => handleEditTask(task)}
                                     onView={() => handleViewTask(task)}
-                                    onDelete={async () => {
-                                      if (window.confirm("Delete this task?")) {
-                                        await taskService.deleteTask(
-                                          id,
-                                          task.id,
-                                        );
-                                        fetchTasks();
-                                      }
+                                    onDelete={() => {
+                                      setDeleteItemConfirm({
+                                        isOpen: true,
+                                        item: task,
+                                      });
                                     }}
                                     onToggleComplete={async () => {
                                       const newStatus =
@@ -1247,6 +1264,14 @@ export function OrgProjectDetailsPage() {
           </div>
         )}
       </AnimatePresence>
+
+      <ConfirmationModal
+        isOpen={deleteItemConfirm.isOpen}
+        onClose={() => setDeleteItemConfirm({ isOpen: false, item: null })}
+        onConfirm={confirmDeleteTask}
+        title="Delete Task"
+        message={`Are you sure you want to delete the task "${deleteItemConfirm.item?.title}"? This action cannot be undone.`}
+      />
     </div>
   );
 }
@@ -1421,10 +1446,11 @@ function ProjectTaskListItem({
 
           if (elapsed >= 0) {
             // Append new session to the beginning of the log
+            const endTs = startTs + elapsed * 1000;
             const sessionLog = {
               id: `timer_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`, // Ensure a unique ID for React keys safely
               start_time: new Date(activeTimerStart).toISOString(),
-              end_time: nowISO,
+              end_time: new Date(endTs).toISOString(),
               duration_seconds: elapsed,
               user_id: user?.id,
               user_name: user

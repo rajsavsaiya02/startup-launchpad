@@ -47,12 +47,12 @@ const getCroppedImg = async (imageSrc, pixelCrop) => {
   });
 };
 
-export function ImageUpload({ value, onChange, aspect = 1, className }) {
+export function ImageUpload({ value, onChange, fallbackUrl, aspect = 1, className }) {
   const inputRef = useRef(null);
   const { addToast } = useToast();
 
   const [file, setFile] = useState(null); // File object
-  const [previewUrl, setPreviewUrl] = useState(value); // URL for display
+  const [previewUrl, setPreviewUrl] = useState(value || fallbackUrl); // URL for display
   const [cropModalOpen, setCropModalOpen] = useState(false);
   const [imageSrc, setImageSrc] = useState(null); // Source for cropper
 
@@ -73,9 +73,9 @@ export function ImageUpload({ value, onChange, aspect = 1, className }) {
   // Sync with external value changes (e.g., from DB) if no local file selected
   React.useEffect(() => {
     if (!file) {
-      setPreviewUrl(value);
+      setPreviewUrl(value || fallbackUrl);
     }
-  }, [value]);
+  }, [value, fallbackUrl, file]);
 
   const onSelectFile = (e) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -131,7 +131,7 @@ export function ImageUpload({ value, onChange, aspect = 1, className }) {
   const handleClear = (e) => {
     e.stopPropagation();
     setFile(null);
-    setPreviewUrl(null);
+    setPreviewUrl(fallbackUrl);
     onChange(null);
     if (inputRef.current) inputRef.current.value = "";
   };
@@ -148,30 +148,41 @@ export function ImageUpload({ value, onChange, aspect = 1, className }) {
           "relative group overflow-hidden transition-all duration-300 w-full h-full",
           "flex items-center justify-center bg-gray-50 dark:bg-gray-800/20",
           aspect === 1 ? "rounded-full" : "rounded-xl",
-          !previewUrl && "border-2 border-dashed border-border-light dark:border-border-dark hover:border-primary/50 cursor-pointer",
+          !previewUrl ? "border-2 border-dashed border-border-light dark:border-border-dark hover:border-primary/50 cursor-pointer" : "cursor-pointer",
         )}
-        onClick={() => !previewUrl && inputRef.current?.click()}
+        onClick={() => inputRef.current?.click()}
       >
         {previewUrl ? (
-          <img
-            src={
-              previewUrl.startsWith("http") ||
-              previewUrl.startsWith("blob:") ||
-              previewUrl.startsWith("data:")
-                ? previewUrl
-                : `${SERVER_URL}${previewUrl}`
-            }
-            alt="Preview"
-            className={cn(
+          <>
+            <img
+              src={
+                previewUrl.startsWith("http") ||
+                previewUrl.startsWith("blob:") ||
+                previewUrl.startsWith("data:")
+                  ? previewUrl
+                  : `${SERVER_URL}${previewUrl}`
+              }
+              alt="Preview"
+              className={cn(
                 "h-full w-full",
                 aspect === 1 ? "object-cover rounded-full" : "object-contain p-4 rounded-xl"
-            )}
-          />
+              )}
+            />
+            {/* Overlay on hover for better UX when preview exists */}
+            <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center justify-center z-10 backdrop-blur-[2px]">
+               <div className="flex flex-col items-center gap-2 text-white transform translate-y-2 group-hover:translate-y-0 transition-transform duration-300">
+                  <div className="p-2 bg-white/20 rounded-full backdrop-blur-md">
+                    <Upload className="h-5 w-5" />
+                  </div>
+                  <span className="text-[10px] font-black uppercase tracking-[0.2em]">Change</span>
+               </div>
+            </div>
+          </>
         ) : (
           <div className="text-center p-4">
             <div className={cn(
-                "mx-auto w-10 h-10 flex items-center justify-center mb-2 text-primary group-hover:scale-110 transition-transform",
-                aspect === 1 ? "rounded-full bg-primary/10" : "rounded-lg bg-primary/5"
+              "mx-auto w-10 h-10 flex items-center justify-center mb-2 text-primary group-hover:scale-110 transition-transform",
+              aspect === 1 ? "rounded-full bg-primary/10" : "rounded-lg bg-primary/5"
             )}>
               <ImageIcon className="h-5 w-5" />
             </div>
@@ -181,37 +192,22 @@ export function ImageUpload({ value, onChange, aspect = 1, className }) {
           </div>
         )}
 
-        {/* Actions Container - Ensure single render */}
-        {previewUrl && (
-          <div className="absolute inset-0 pointer-events-none">
-            {/* Edit (Bottom Right) */}
-            <div className="absolute bottom-1 right-1 pointer-events-auto">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  inputRef.current?.click();
-                }}
-                className="p-2 bg-white dark:bg-surface-dark border border-border-light dark:border-border-dark text-text-primary rounded-full hover:bg-gray-50 dark:hover:bg-gray-800 transition-all shadow-md hover:scale-105 hover:text-primary flex items-center justify-center"
-                title="Change Photo"
-              >
-                <Upload className="h-4 w-4" />
-              </button>
-            </div>
-
-            {/* Delete (Top Right) */}
-            <div className="absolute top-1 right-1 pointer-events-auto">
-              <button
-                onClick={handleClear}
-                className="p-1.5 bg-white dark:bg-surface-dark border border-gray-200 dark:border-gray-700 text-error rounded-full hover:bg-error hover:text-white transition-all shadow-md hover:scale-105 flex items-center justify-center"
-                title="Remove Photo"
-              >
-                <X className="h-3 w-3" />
-              </button>
-            </div>
-          </div>
-        )}
       </div>
 
+      {/* Action Buttons - Outside overflow-hidden to avoid clipping on circular profiles */}
+      {previewUrl && (
+        <div className="absolute inset-0 pointer-events-none z-30">
+          <div className="absolute top-1 right-1 pointer-events-auto">
+            <button
+              onClick={handleClear}
+              className="p-1.5 bg-white dark:bg-surface-dark border border-gray-200 dark:border-gray-700 text-error rounded-full hover:bg-error hover:text-white transition-all shadow-lg hover:scale-110 flex items-center justify-center ring-2 ring-white dark:ring-surface-dark"
+              title="Remove Photo"
+            >
+              <X className="h-3 w-3" />
+            </button>
+          </div>
+        </div>
+      )}
       <input
         type="file"
         accept="image/*"

@@ -2,25 +2,22 @@ import React, { useState, useEffect } from "react";
 import {
   Download,
   Search,
-  FileText,
-  ArrowUpRight,
-  ArrowDownRight,
-  ChevronLeft,
-  ChevronRight,
   Plus,
   Loader2,
-  MoreHorizontal,
+  Edit2,
+  Trash2,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
-import { Card } from "../../../../components/ui/Card";
-import { Button } from "../../../../components/ui/Button";
-import { Badge } from "../../../../components/ui/Badge";
 import { apiClient } from "../../../../lib/axios";
 import { toast } from "react-toastify";
 import { format } from "date-fns";
 import { cn } from "../../../../utils/cn";
+import { OrgTransactionDrawer } from "./OrgTransactionDrawer";
 
 export function FinanceTransactionsTab() {
   const [transactions, setTransactions] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
 
@@ -33,10 +30,30 @@ export function FinanceTransactionsTab() {
   // Filters
   const [typeFilter, setTypeFilter] = useState("ALL");
 
+  // Drawer State
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [selectedTx, setSelectedTx] = useState(null);
+  const [drawerMode, setDrawerMode] = useState("add"); // "add", "edit", "view"
+
+  useEffect(() => {
+    fetchConfigData();
+  }, []);
+
   useEffect(() => {
     fetchTransactions();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentPage, typeFilter]);
+
+  const fetchConfigData = async () => {
+    try {
+      const res = await apiClient.get("/org/finances/config");
+      if (res.data && res.data.categories) {
+        setCategories(res.data.categories);
+      }
+    } catch (error) {
+      console.error("Failed to fetch config data for drawer:", error);
+    }
+  };
 
   const fetchTransactions = async () => {
     try {
@@ -81,7 +98,24 @@ export function FinanceTransactionsTab() {
     }
   };
 
-  // Helper function for currency formatting
+  const handleOpenDrawer = (mode, tx = null) => {
+    setDrawerMode(mode);
+    setSelectedTx(tx);
+    setIsDrawerOpen(true);
+  };
+
+  const handleDeleteTransaction = async (txId) => {
+    if (!window.confirm("Are you sure you want to delete this transaction? This action cannot be undone.")) return;
+    try {
+      await apiClient.delete(`/org/finances/transactions/${txId}`);
+      toast.success("Transaction deleted successfully");
+      fetchTransactions();
+    } catch (error) {
+      console.error("Failed to delete transaction:", error);
+      toast.error("Failed to delete transaction");
+    }
+  };
+
   const formatCurrency = (amount) => {
     return parseFloat(amount).toLocaleString(undefined, {
       minimumFractionDigits: 2,
@@ -129,7 +163,10 @@ export function FinanceTransactionsTab() {
             )}
             Export CSV
           </button>
-          <button className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-1.5 bg-primary hover:bg-primary/90 text-white text-xs font-bold rounded-xl transition-all shadow-sm">
+          <button 
+            onClick={() => handleOpenDrawer("add")}
+            className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-1.5 bg-primary hover:bg-primary/90 text-white text-xs font-bold rounded-xl transition-all shadow-sm"
+          >
             <Plus className="w-3.5 h-3.5" />
             New Transaction
           </button>
@@ -196,7 +233,7 @@ export function FinanceTransactionsTab() {
                         {tx.category_name || "General"}
                       </span>
                     </td>
-                    <td className="px-5 py-4 text-xs font-medium text-text-tertiary truncate max-w-[200px]">
+                    <td className="px-5 py-4 text-xs font-medium text-text-tertiary truncate max-w-[200px]" title={tx.description}>
                       {tx.description}
                     </td>
                     <td
@@ -207,13 +244,27 @@ export function FinanceTransactionsTab() {
                           : "text-text-primary dark:text-white",
                       )}
                     >
-                      {tx.transaction_type === "EXPENSE" ? "-" : "+"}₹
-                      {formatCurrency(tx.amount)}
+                      <div className="flex gap-2 items-center justify-end">
+                        {tx.transaction_type === "EXPENSE" ? "-" : "+"}₹{formatCurrency(tx.amount)}
+                      </div>
                     </td>
                     <td className="px-5 py-4 text-right">
-                      <button className="p-1.5 rounded-lg text-text-tertiary hover:text-text-primary hover:bg-gray-100 dark:hover:bg-gray-800 opacity-0 group-hover:opacity-100 transition-all">
-                        <MoreHorizontal className="w-4 h-4" />
-                      </button>
+                      <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-all focus-within:opacity-100">
+                        <button 
+                          onClick={() => handleOpenDrawer("edit", tx)}
+                          className="p-1.5 rounded-lg text-text-tertiary hover:text-primary hover:bg-gray-100 dark:hover:bg-gray-800 transition-all"
+                          title="Edit Transaction"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                        <button 
+                          onClick={() => handleDeleteTransaction(tx.id)}
+                          className="p-1.5 rounded-lg text-text-tertiary hover:text-red-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all"
+                          title="Delete Transaction"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -278,6 +329,15 @@ export function FinanceTransactionsTab() {
           </div>
         </div>
       </div>
+
+      <OrgTransactionDrawer
+        isOpen={isDrawerOpen}
+        onClose={() => setIsDrawerOpen(false)}
+        transaction={selectedTx}
+        mode={drawerMode}
+        categories={categories}
+        onSuccess={fetchTransactions}
+      />
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import React from "react";
-import { Search, Menu } from "lucide-react";
+import { NavLink } from "react-router-dom";
+import { Search, Menu, Users } from "lucide-react";
 import { Button } from "../ui/Button";
 import { Input } from "../ui/Input";
 
@@ -13,6 +14,15 @@ export function Header({ onMenuClick }) {
         </Button>
         <span className="font-bold text-lg text-primary">LaunchPad</span>
       </div>
+
+      <nav className="hidden lg:flex items-center gap-6 text-sm font-semibold">
+        <NavLink 
+          to="/community" 
+          className={({ isActive }) => `flex items-center gap-2 transition-colors ${isActive ? 'text-primary' : 'text-text-secondary hover:text-primary'}`}
+        >
+          <Users className="h-4 w-4" /> Community
+        </NavLink>
+      </nav>
 
       {/* Desktop Search */}
       <div className="hidden lg:flex flex-1 max-w-md ml-4">

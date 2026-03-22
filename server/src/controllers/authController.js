@@ -237,7 +237,10 @@ exports.login = async (req, res) => {
     const { email, password } = req.body;
 
     const userResult = await pool.query(
-      "SELECT * FROM users WHERE email = $1",
+      `SELECT u.*, om.organization_id, om.org_role 
+       FROM users u 
+       LEFT JOIN organization_members om ON u.id = om.user_id 
+       WHERE u.email = $1`,
       [email],
     );
     if (userResult.rows.length === 0) {
@@ -497,7 +500,10 @@ exports.checkSession = async (req, res) => {
         }
 
         const userResult = await pool.query(
-          "SELECT * FROM users WHERE id = $1",
+          `SELECT u.*, om.organization_id, om.org_role 
+           FROM users u 
+           LEFT JOIN organization_members om ON u.id = om.user_id 
+           WHERE u.id = $1`,
           [decoded.id],
         );
         if (userResult.rows.length > 0) {

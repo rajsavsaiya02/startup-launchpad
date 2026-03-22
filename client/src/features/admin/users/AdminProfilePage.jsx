@@ -304,6 +304,9 @@ export function AdminProfilePage() {
            headers: { 'Content-Type': 'multipart/form-data' }
         });
         finalAvatarUrl = uploadRes.data.file.url;
+      } else if (avatarFile === null && data.avatar_url !== initialData.avatar_url) {
+        // avatarFile is null explicitly (from ImageUpload clear), and it differs from initial
+        finalAvatarUrl = null;
       }
 
       const res = await apiClient.put('/admin/profile', {
@@ -388,7 +391,12 @@ export function AdminProfilePage() {
                      <div className="bg-white dark:bg-surface-dark rounded-full p-1.5 shadow-2xl ring-4 ring-white/50 dark:ring-surface-dark/50">
                        <ImageUpload 
                          value={data.avatar_url}
-                         onChange={setAvatarFile}
+                         onChange={(file) => {
+                           setAvatarFile(file);
+                           if (file === null) {
+                             setData(prev => ({ ...prev, avatar_url: null }));
+                           }
+                         }}
                          className="mx-auto"
                        />
                      </div>

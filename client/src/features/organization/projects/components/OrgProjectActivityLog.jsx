@@ -9,6 +9,7 @@ import { Avatar } from "../../../../components/ui/Avatar";
 import { Button } from "../../../../components/ui/Button";
 import { Edit2, Trash2, Save, X, MessageSquareHeart, Plus } from "lucide-react";
 import { toast } from "react-toastify";
+import { ConfirmationModal } from "../../../../components/ui/ConfirmationModal";
 
 // React-Quill UI Config
 const modules = {
@@ -48,6 +49,10 @@ export function OrgProjectActivityLog({ projectId }) {
   // Editing State
   const [editingId, setEditingId] = useState(null);
   const [editContent, setEditContent] = useState("");
+  const [deleteConfirm, setDeleteConfirm] = useState({
+    isOpen: false,
+    activityId: null,
+  });
 
   const fetchActivities = useCallback(async () => {
     try {
@@ -110,13 +115,16 @@ export function OrgProjectActivityLog({ projectId }) {
     }
   };
 
-  const handleDelete = async (activityId) => {
-    if (
-      !window.confirm(
-        "Are you sure you want to delete this activity log permanently?",
-      )
-    )
-      return;
+  const handleDelete = (activityId) => {
+    setDeleteConfirm({
+      isOpen: true,
+      activityId,
+    });
+  };
+
+  const confirmDelete = async () => {
+    const { activityId } = deleteConfirm;
+    if (!activityId) return;
     try {
       await projectActivityService.deleteActivity(projectId, activityId);
       setActivities((prev) => prev.filter((act) => act.id !== activityId));
@@ -124,6 +132,8 @@ export function OrgProjectActivityLog({ projectId }) {
     } catch (error) {
       console.error(error);
       toast.error("Failed to delete note.");
+    } finally {
+      setDeleteConfirm({ isOpen: false, activityId: null });
     }
   };
 
@@ -327,6 +337,14 @@ export function OrgProjectActivityLog({ projectId }) {
           </div>
         </div>
       </Drawer>
+
+      <ConfirmationModal
+        isOpen={deleteConfirm.isOpen}
+        onClose={() => setDeleteConfirm({ isOpen: false, activityId: null })}
+        onConfirm={confirmDelete}
+        title="Delete Activity Log"
+        message="Are you sure you want to delete this activity log permanently? This action cannot be undone."
+      />
     </div>
   );
 }

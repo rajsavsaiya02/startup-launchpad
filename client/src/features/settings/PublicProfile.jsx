@@ -58,8 +58,8 @@ export function PublicProfile() {
     bio: "",
     location: "",
     website: "",
-    avatar_url: "", // This will be the effective avatar to show (public or main)
-    main_avatar_url: "", // Store main avatar for fallback
+    avatar_url: "", // The public profile avatar override (column: public_profile_avatar)
+    main_avatar_url: "", // Store main account avatar for fallback (column: avatar)
     isPublic: true,
     social_github: "",
     social_linkedin: "",
@@ -80,15 +80,12 @@ export function PublicProfile() {
         const response = await apiClient.get("/users/me");
         const userData = response.data;
 
-        // Parse public_profile JSON if it exists
+        // Sync with backend structure: 
+        // 1. userData.public_profile_avatar (The override)
+        // 2. userData.avatar_url / userData.avatar (The main account avatar)
         const publicProfile = userData.public_profile || {};
-
-        // Effective avatar: public_profile override → user.avatar → user.avatar_url
-        const effectiveAvatar =
-          publicProfile.avatar_url ||
-          userData.avatar ||
-          userData.avatar_url ||
-          "";
+        const publicAvatar = userData.public_profile_avatar || "";
+        const mainAvatar = userData.avatar_url || userData.avatar || "";
 
         // ── Normalise helpers ─────────────────────────────────────────────
         // Each item must have a stable unique `id` for React list keys.
@@ -146,8 +143,8 @@ export function PublicProfile() {
           bio: userData.bio || "",
           location: userData.location || "",
           website: userData.social_website || publicProfile.website || "",
-          avatar_url: effectiveAvatar,
-          main_avatar_url: userData.avatar || userData.avatar_url || "",
+          avatar_url: publicAvatar, // Specifically the override
+          main_avatar_url: mainAvatar, // Specifically the main account photo
           isPublic:
             publicProfile.isPublic !== undefined
               ? publicProfile.isPublic
@@ -250,17 +247,6 @@ export function PublicProfile() {
           },
         );
         finalAvatarUrl = uploadRes.data.file.url;
-      } else if (formData.avatar_url === formData.main_avatar_url) {
-        // If the current avatar matches the main one, we essentially "unset" the public override
-        // by sending an empty string or null for the public profile avatar.
-        // However, if we want to be explicit, we can just send null/empty if that's what the backend expects to fallback.
-        // For now, let's assume if it equals main, we can just save it as is (it's fine to duplicate) OR
-        // better yet, if we want "fallback" behavior in the future, we might want to save '' if it matches main.
-        // But the requirements say "default to... if not set".
-        // Let's keep it simple: we save whatever `finalAvatarUrl` is.
-        // If the user "removed" the custom avatar, `handleAvatarRemove` should have set `avatar_url` to `main_avatar_url`
-        // and `publicAvatarFile` to null.
-        // So `finalAvatarUrl` is already correct.
       }
 
       // Construct the payload matching the backend expectation
@@ -273,6 +259,7 @@ export function PublicProfile() {
         social_website: formData.website,
         job_title: formData.headline, // sync headline to job_title
         skills: formData.skills,
+        public_profile_avatar: finalAvatarUrl, // TOP LEVEL COLUMN
 
         // This object goes into the JSONB column
         public_profile: {
@@ -283,8 +270,7 @@ export function PublicProfile() {
           achievements: formData.achievements,
           socialLinks: formData.socialLinks,
           isPublic: formData.isPublic,
-          avatar_url:
-            finalAvatarUrl === formData.main_avatar_url ? "" : finalAvatarUrl, // Save empty if it matches main to treat as "not set"
+          // avatar_url is NO LONGER inside the JSONB, it's a top level column
         },
       };
 
@@ -379,23 +365,20 @@ export function PublicProfile() {
             </div>
             <div className="space-y-6 relative z-10">
               <div className="flex flex-col items-center mb-8">
-                <div className="relative group/avatar">
+                <div className="relative group/avatar w-40 h-40">
                   <ImageUpload
                     value={formData.avatar_url}
+                    fallbackUrl={formData.main_avatar_url}
                     onChange={(file) => {
                       if (file) {
-                        // User selected a new file
                         setPublicAvatarFile(file);
-                        // We rely on ImageUpload's internal preview or we could create a blob URL here if needed for other parts
-                        // But ImageUpload handles showing the file.
-                        // However, we also need to update formData.avatar_url so that if they pass `null` (clear), we revert.
-                        // Wait, ImageUpload component passes `null` on clear.
+                        // No need to manually update avatar_url here as ImageUpload 
+                        // handles the preview and we set it on save.
                       } else {
-                        // User cleared the custom image
                         setPublicAvatarFile(null);
                         setFormData((prev) => ({
                           ...prev,
-                          avatar_url: prev.main_avatar_url, // Revert to main avatar
+                          avatar_url: null, // Clear the override
                         }));
                       }
                     }}
@@ -405,14 +388,20 @@ export function PublicProfile() {
                       Maybe not needed as the ImageUpload itself shows what's there. 
                   */}
                 </div>
-                {formData.avatar_url &&
-                  formData.avatar_url === formData.main_avatar_url && (
-                    <p className="text-xs text-text-tertiary mt-2 text-center">
-                      Using main profile photo.
-                      <br />
-                      Upload to override.
-                    </p>
-                  )}
+                {!formData.avatar_url && formData.main_avatar_url && (
+                  <p className="text-xs text-text-tertiary mt-2 text-center">
+                    Using main profile photo.
+                    <br />
+                    Upload to override.
+                  </p>
+                )}
+                {formData.avatar_url && (
+                  <p className="text-xs text-primary mt-2 text-center font-bold">
+                    Custom public photo active.
+                    <br />
+                    <span className="font-normal text-text-tertiary">Visible only on your public profile.</span>
+                  </p>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -1072,7 +1061,7 @@ export function PublicProfile() {
           <div className="flex flex-col md:flex-row gap-10 items-start md:items-center justify-between">
             <div className="flex flex-col md:flex-row gap-8 items-start md:items-center">
               <Avatar
-                src={formData.avatar_url}
+                src={formData.avatar_url || formData.main_avatar_url}
                 fallback={formData.firstName?.[0]}
                 size="2xl"
                 className="h-32 w-32 ring-4 ring-gray-50 dark:ring-gray-800"
@@ -1329,48 +1318,58 @@ export function PublicProfile() {
         <div className="absolute bottom-[10%] right-[-5%] w-[30%] h-[30%] bg-blue-500/5 rounded-full blur-[100px]" />
       </div>
 
-      <div className="sticky top-0 z-50 bg-white/80 dark:bg-surface-dark/80 backdrop-blur-2xl border-b border-gray-100/50 dark:border-gray-800/50 transition-all duration-300 mb-12">
-        <div className="max-w-[1920px] mx-auto px-6 h-16 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-text-primary dark:text-white flex items-center gap-2">
-            <Globe className="h-5 w-5 text-primary" />
+      {/* Optimized Header & Controls */}
+      <div className="flex flex-col md:flex-row justify-between items-end gap-6 border-b border-border-light dark:border-border-dark pb-8 mb-10 pt-6">
+        <div>
+          <h1 className="text-3xl font-bold text-text-primary dark:text-white tracking-tight">
             Public Profile
-          </h2>
-          <div className="flex items-center gap-4">
-            <div className="flex bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
-              <button
-                onClick={() => setMode("edit")}
-                className={cn(
-                  "px-4 py-1.5 rounded-md text-sm font-medium transition-all",
-                  mode === "edit"
-                    ? "bg-white dark:bg-gray-700 shadow-sm text-primary"
-                    : "text-gray-500 hover:text-gray-700",
-                )}
-              >
-                Editor
-              </button>
-              <button
-                onClick={() => setMode("preview")}
-                className={cn(
-                  "px-4 py-1.5 rounded-md text-sm font-medium transition-all",
-                  mode === "preview"
-                    ? "bg-white dark:bg-gray-700 shadow-sm text-primary"
-                    : "text-gray-500 hover:text-gray-700",
-                )}
-              >
-                Preview
-              </button>
-            </div>
-            {mode === "edit" && (
-              <Button onClick={handleSave} disabled={saving} className="gap-2">
-                {saving ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Save className="h-4 w-4" />
-                )}
-                Save Changes
-              </Button>
-            )}
+          </h1>
+          <p className="text-text-secondary dark:text-gray-400 mt-1 text-lg">
+            Manage how the world sees you on the platform.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-4 h-10">
+          <div className="flex bg-gray-100 dark:bg-gray-800/50 rounded-full p-1 border border-border-light dark:border-border-dark h-full">
+            <button
+              onClick={() => setMode("edit")}
+              className={cn(
+                "px-5 rounded-full text-xs font-bold transition-all duration-300 h-full",
+                mode === "edit"
+                  ? "bg-white dark:bg-gray-700 shadow-sm text-primary"
+                  : "text-text-tertiary hover:text-text-primary"
+              )}
+            >
+              Editor
+            </button>
+            <button
+              onClick={() => setMode("preview")}
+              className={cn(
+                "px-5 rounded-full text-xs font-bold transition-all duration-300 h-full",
+                mode === "preview"
+                  ? "bg-white dark:bg-gray-700 shadow-sm text-primary"
+                  : "text-text-tertiary hover:text-text-primary"
+              )}
+            >
+              Preview
+            </button>
           </div>
+
+          {mode === "edit" && (
+            <Button 
+              onClick={handleSave} 
+              disabled={saving} 
+              size="md"
+              className="px-6 rounded-full gap-2 shadow-lg shadow-primary/20 hover:scale-105 transition-all text-xs font-bold h-full"
+            >
+              {saving ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Save className="h-3.5 w-3.5" />
+              )}
+              Save Changes
+            </Button>
+          )}
         </div>
       </div>
 

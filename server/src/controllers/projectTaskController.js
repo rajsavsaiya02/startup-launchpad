@@ -100,10 +100,20 @@ const getAllTasksForUser = async (req, res) => {
   const userId = req.user.id;
   const { scope } = req.query; // 'organization' or default/null
   try {
+    // Fetch user's organization_id if scope is organization
+    let userOrgId = null;
+    if (scope === "organization") {
+      const orgMemberResult = await pool.query(
+        "SELECT organization_id FROM organization_members WHERE user_id = $1",
+        [userId],
+      );
+      userOrgId = orgMemberResult.rows[0]?.organization_id;
+    }
+
     let tasksQuery = `
       SELECT t.*, 
              p.title as project_title,
-             p.owner_org_id,
+             COALESCE(p.owner_org_id, t.organization_id) as owner_org_id,
              COALESCE(json_agg(ta.user_id) FILTER (WHERE ta.user_id IS NOT NULL), '[]') as assignee_ids,
              COALESCE(
                (
@@ -123,18 +133,22 @@ const getAllTasksForUser = async (req, res) => {
       LEFT JOIN projects p ON t.project_id = p.id
       LEFT JOIN project_members pm ON p.id = pm.project_id
       LEFT JOIN task_assignees ta ON t.id = ta.task_id
-      WHERE (pm.user_id = $1 OR (t.project_id IS NULL AND t.created_by = $1))
+      WHERE (
+        pm.user_id = $1 
+        OR (t.project_id IS NULL AND t.created_by = $1 AND t.organization_id IS NULL)
+        OR (t.organization_id IS NOT NULL AND t.organization_id = $2)
+        OR (p.owner_org_id IS NOT NULL AND p.owner_org_id = $2)
+      )
     `;
-    const params = [userId];
+    const params = [userId, userOrgId];
 
     if (scope === "organization") {
-      tasksQuery += " AND p.owner_org_id IS NOT NULL";
+      // Logic handled in WHERE clause above ($2)
     } else if (scope === "personal") {
-      tasksQuery += " AND (p.owner_org_id IS NULL OR t.project_id IS NULL)";
+      tasksQuery += " AND p.owner_org_id IS NULL AND t.organization_id IS NULL";
     } else {
-      // Default: exclude organization tasks if not explicitly requested?
-      // Actually, if it's "My Tasks", maybe we show everything personal + independent?
-      tasksQuery += " AND (p.owner_org_id IS NULL OR t.project_id IS NULL)";
+      // Default: exclude organization tasks if not explicitly requested
+      tasksQuery += " AND p.owner_org_id IS NULL AND t.organization_id IS NULL";
     }
 
     tasksQuery += `
@@ -168,6 +182,7 @@ const createTask = async (req, res) => {
     timer_started_at,
     time_logs,
     attachment_ids,
+    organization_id,
   } = req.body;
   const created_by = req.user.id;
 
@@ -182,9 +197,9 @@ const createTask = async (req, res) => {
       INSERT INTO tasks (
         project_id, title, description, kanban_status, 
         priority, due_date, is_milestone, parent_task_id, created_by, subtasks,
-        category, time_spent, timer_started_at, time_logs
+        category, time_spent, timer_started_at, time_logs, organization_id
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
       RETURNING *
     `;
     const taskResult = await client.query(insertTaskQuery, [
@@ -202,6 +217,7 @@ const createTask = async (req, res) => {
       parseInt(time_spent) || 0,
       timer_started_at || null,
       time_logs ? JSON.stringify(time_logs) : JSON.stringify([]),
+      organization_id || null,
     ]);
     const newTask = taskResult.rows[0];
 
@@ -253,6 +269,7 @@ const updateTask = async (req, res) => {
     timer_started_at,
     time_logs,
     attachment_ids,
+    organization_id,
   } = req.body;
 
   const client = await pool.connect();
@@ -284,6 +301,7 @@ const updateTask = async (req, res) => {
           time_spent = CASE WHEN $16 = true THEN $10 ELSE time_spent END,
           timer_started_at = CASE WHEN $15 = true THEN $11 ELSE timer_started_at END,
           time_logs = CASE WHEN $17 = true THEN $12 ELSE time_logs END,
+          organization_id = COALESCE($18, organization_id),
           updated_at = CURRENT_TIMESTAMP
       WHERE id = $13
       RETURNING *
@@ -306,6 +324,7 @@ const updateTask = async (req, res) => {
       timer_started_at !== undefined, // $15: was timer_started_at provided?
       time_spent !== undefined, // $16: was time_spent provided?
       time_logs !== undefined, // $17: was time_logs provided?
+      organization_id !== undefined ? organization_id : null, // $18
     ]);
 
     if (result.rows.length === 0) {
