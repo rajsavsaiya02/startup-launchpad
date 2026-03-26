@@ -20,6 +20,7 @@ import {
   useUpdateApplicationStatus,
 } from "../../hooks/useTalent";
 import { ApplicationCard } from "./components/ApplicationCard";
+import { cn } from "../../utils/cn";
 
 export function ApplicationReviewPage() {
   const { id } = useParams();
@@ -35,7 +36,7 @@ export function ApplicationReviewPage() {
   const applications = appsData?.applications || [];
 
   const handleUpdateStatus = (appId, newStatus) => {
-    updateStatusMutation.mutate({ applicationId: appId, status: newStatus });
+    updateStatusMutation.mutate({ id: appId, statusData: { status: newStatus } });
   };
 
   const filteredApps = applications.filter((app) => {
@@ -68,7 +69,7 @@ export function ApplicationReviewPage() {
       {/* Header */}
       <div className="flex flex-col gap-4 border-b border-border-light dark:border-border-dark pb-6">
         <Link
-          to="/dashboard/opportunities/manage"
+          to="/org/talent/postings"
           className="flex items-center gap-2 text-sm text-text-tertiary hover:text-primary transition-colors w-fit"
         >
           <ArrowLeft className="h-4 w-4" /> Back to Manage Postings
@@ -83,7 +84,11 @@ export function ApplicationReviewPage() {
             </p>
           </div>
           <div className="flex gap-3">
-            <Link to={`/dashboard/opportunities/${id}`}>
+            <Link 
+              to={`/org/gigs/${id}`}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
               <Button variant="secondary" className="gap-2">
                 <ExternalLink className="h-4 w-4" /> View Posting
               </Button>
@@ -143,41 +148,40 @@ export function ApplicationReviewPage() {
         {/* Sidebar */}
         <div className="lg:col-span-1">
           <div className="sticky top-24 space-y-6">
-            <Card className="p-5 bg-white dark:bg-surface-dark border-border-light dark:border-border-dark">
-              <h3 className="font-bold text-lg mb-4 text-text-primary dark:text-white">
+            <Card className="p-5 bg-white dark:bg-surface-dark border-border-light dark:border-border-dark overflow-hidden relative">
+              <div className="absolute top-0 left-0 w-1 h-full bg-primary" />
+              <h3 className="font-black text-xs uppercase tracking-widest mb-6 px-1 text-text-tertiary">
                 Pipeline Summary
               </h3>
-              <div className="space-y-3 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-text-secondary">Total Candidates</span>
-                  <span className="font-bold text-text-primary dark:text-white">
+              <div className="space-y-4">
+                <div className="flex justify-between items-center group">
+                  <span className="text-text-secondary font-medium">Total Candidates</span>
+                  <Badge variant="neutral" className="font-black px-2.5">
                     {applications.length}
-                  </span>
+                  </Badge>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-text-secondary">Shortlisted</span>
-                  <span className="font-bold text-text-primary dark:text-white">
-                    {
-                      applications.filter((a) => a.status === "Shortlisted")
-                        .length
-                    }
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-text-secondary">Interviewing</span>
-                  <span className="font-bold text-text-primary dark:text-white">
-                    {
-                      applications.filter((a) => a.status === "Interviewing")
-                        .length
-                    }
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-text-secondary">Selected</span>
-                  <span className="font-bold text-success">
-                    {applications.filter((a) => a.status === "Accepted").length}
-                  </span>
-                </div>
+                
+                <div className="h-px bg-border-light/50 dark:bg-border-dark/50 my-2" />
+
+                {[
+                  { label: "Pending", status: "Pending", color: "text-text-tertiary", bg: "bg-gray-100" },
+                  { label: "Under Review", status: "Under Review", color: "text-blue-500", bg: "bg-blue-50" },
+                  { label: "Shortlisted", status: "Shortlisted", color: "text-indigo-500", bg: "bg-indigo-50" },
+                  { label: "Interviewing", status: "Interviewing", color: "text-warning", bg: "bg-warning/10" },
+                  { label: "Selected", status: "Accepted", color: "text-success", bg: "bg-success/10" },
+                  { label: "Rejected", status: "Rejected", color: "text-error", bg: "bg-error/10" },
+                ].map((item) => (
+                  <div key={item.status} className="flex justify-between items-center px-1">
+                    <span className="text-sm font-bold text-text-secondary">{item.label}</span>
+                    <span className={cn(
+                      "text-xs font-black min-w-6 h-6 flex items-center justify-center rounded-full",
+                      item.bg,
+                      item.color
+                    )}>
+                      {applications.filter((a) => a.status === item.status).length}
+                    </span>
+                  </div>
+                ))}
               </div>
             </Card>
           </div>

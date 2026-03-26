@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "react-toastify";
 import talentApi from "../services/talentApi";
 
 // 1. Opportunities Queries & Mutations
@@ -23,6 +24,32 @@ export const useCreateOpportunity = () => {
     mutationFn: talentApi.createOpportunity,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["opportunities"] });
+    },
+  });
+};
+
+export const useDeleteOpportunity = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id) => talentApi.deleteOpportunity(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["opportunities"] });
+      toast.success("Opportunity deleted successfully");
+    },
+    onError: () => {
+      toast.error("Failed to delete opportunity");
+    },
+  });
+};
+
+export const useUpdateOpportunity = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, opportunityData }) =>
+      talentApi.updateOpportunity(id, opportunityData),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["opportunities"] });
+      queryClient.invalidateQueries({ queryKey: ["opportunity"] });
     },
   });
 };
@@ -62,10 +89,13 @@ export const useUpdateApplicationStatus = () => {
   return useMutation({
     mutationFn: ({ id, statusData }) =>
       talentApi.updateApplicationStatus(id, statusData),
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["applications"] });
-      // Might also want to invalidate archives
       queryClient.invalidateQueries({ queryKey: ["archives"] });
+      toast.success(data.message || "Application status updated");
+    },
+    onError: (error) => {
+      toast.error(error?.response?.data?.message || "Failed to update status");
     },
   });
 };
@@ -158,6 +188,17 @@ export const useDeleteConversation = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (userId) => talentApi.deleteConversation(userId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["orgConversations"] });
+    },
+  });
+};
+
+export const useDeleteApplicationConversation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (applicationId) =>
+      talentApi.deleteApplicationConversation(applicationId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["orgConversations"] });
     },

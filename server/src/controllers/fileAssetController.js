@@ -32,11 +32,36 @@ class FileAssetController {
     }
 
     if (contextType === "project") {
-      const result = await pool.query(
+      // 1. Check project membership
+      const memberResult = await pool.query(
         "SELECT 1 FROM project_members WHERE project_id = $1 AND user_id = $2",
         [contextId, userId],
       );
-      return result.rows.length > 0;
+      if (memberResult.rows.length > 0) return true;
+
+      // 2. Check organization membership if the project is org-owned
+      const projectResult = await pool.query(
+        "SELECT owner_org_id FROM projects WHERE id = $1",
+        [contextId]
+      );
+      
+      if (projectResult.rows.length > 0 && projectResult.rows[0].owner_org_id) {
+        const orgId = projectResult.rows[0].owner_org_id;
+        const orgMemberResult = await pool.query(
+          "SELECT org_role FROM organization_members WHERE organization_id = $1 AND user_id = $2 AND is_active = true",
+          [orgId, userId]
+        );
+        
+        if (orgMemberResult.rows.length > 0) {
+          const orgRole = orgMemberResult.rows[0].org_role;
+          // Privileged org roles can view files
+          if (["FOUNDER", "CO-FOUNDER", "ADMIN", "MEMBER"].includes(orgRole)) {
+            return true;
+          }
+        }
+      }
+
+      return false;
     }
 
     if (contextType === "task") {

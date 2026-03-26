@@ -1,17 +1,19 @@
 import React, { useState, useEffect } from "react";
 import { Plus } from "lucide-react";
 import { Button } from "../../../../components/ui/Button";
-import { useOpportunities } from "../../../../hooks/useTalent";
+import { useOpportunities, useUpdateOpportunity, useDeleteOpportunity } from "../../../../hooks/useTalent";
 import { useAuth } from "../../../../context/AuthContext";
 import { OpportunityCard } from "../../../talent/components/OpportunityCard";
 import { CreateOpportunityDrawer } from "../../../talent/components/CreateOpportunityDrawer";
 import { apiClient } from "../../../../lib/axios";
+import { toast } from "react-toastify";
 
 export function TalentPostingsTab() {
   const { user } = useAuth();
   const [organizationId, setOrganizationId] = useState(null);
   const [activeFilter, setActiveFilter] = useState("all");
   const [isCreateDrawerOpen, setIsCreateDrawerOpen] = useState(false);
+  const [editingOpportunity, setEditingOpportunity] = useState(null);
 
   useEffect(() => {
     async function fetchOrg() {
@@ -28,14 +30,65 @@ export function TalentPostingsTab() {
   }, []);
 
   const { data, isLoading, isError, refetch } = useOpportunities({
-    owner_id: user?.id,
-    status:
-      activeFilter === "all"
-        ? undefined
-        : activeFilter === "open"
-          ? "Open"
-          : "Closed",
+    organization_id: organizationId,
+    status: activeFilter,
   });
+
+  const { mutateAsync: updateOpportunity } = useUpdateOpportunity();
+  const { mutateAsync: deleteOpportunity } = useDeleteOpportunity();
+
+  const handleEdit = (opp) => {
+    setEditingOpportunity(opp);
+    setIsCreateDrawerOpen(true);
+  };
+
+  const handleClose = async (opp) => {
+    try {
+      if (confirm(`Are you sure you want to close "${opp.title}"?`)) {
+        console.log("Closing opportunity:", opp.id);
+        await updateOpportunity({
+          id: opp.id,
+          opportunityData: { status: "Closed" },
+        });
+        toast.success("Opportunity closed successfully");
+        // Adding a small delay to ensure DB propagation and cache invalidation consistency
+        setTimeout(() => refetch(), 500);
+      }
+    } catch (error) {
+      console.error("Error closing opportunity:", error);
+      toast.error("Failed to close opportunity");
+    }
+  };
+
+  const handleReopen = async (opp) => {
+    try {
+      if (confirm(`Are you sure you want to reopen "${opp.title}"?`)) {
+        await updateOpportunity({
+          id: opp.id,
+          opportunityData: { status: "Open" },
+        });
+        toast.success("Opportunity reopened successfully");
+        setTimeout(() => refetch(), 500);
+      }
+    } catch (error) {
+      toast.error("Failed to reopen opportunity");
+    }
+  };
+
+  const handleDelete = async (opp) => {
+    try {
+      if (
+        confirm(
+          `Are you sure you want to PERMANENTLY DELETE "${opp.title}"? This action cannot be undone.`,
+        )
+      ) {
+        await deleteOpportunity(opp.id);
+        setTimeout(() => refetch(), 500);
+      }
+    } catch (error) {
+      // Error handled by hook
+    }
+  };
 
   const opportunities = data?.opportunities || [];
 
@@ -93,9 +146,17 @@ export function TalentPostingsTab() {
           </Button>
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {opportunities.map((opp) => (
-            <OpportunityCard key={opp.id} opp={opp} />
+            <OpportunityCard
+              key={opp.id}
+              opp={opp}
+              onEdit={handleEdit}
+              onClose={handleClose}
+              onReopen={handleReopen}
+              onDelete={handleDelete}
+              isOrgView={true}
+            />
           ))}
         </div>
       )}
@@ -104,9 +165,11 @@ export function TalentPostingsTab() {
         isOpen={isCreateDrawerOpen}
         onClose={() => {
           setIsCreateDrawerOpen(false);
-          refetch();
+          setEditingOpportunity(null);
+          setTimeout(() => refetch(), 300);
         }}
         organizationId={organizationId}
+        opportunity={editingOpportunity}
       />
     </div>
   );

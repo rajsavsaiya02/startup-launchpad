@@ -10,6 +10,11 @@ const talentApi = {
     return response.data;
   },
 
+  deleteOpportunity: async (id) => {
+    const response = await apiClient.delete(`/talent/opportunities/${id}`);
+    return response.data;
+  },
+
   getAllOpportunities: async (params) => {
     const response = await apiClient.get("/talent/opportunities", { params });
     return response.data;
@@ -17,6 +22,14 @@ const talentApi = {
 
   getOpportunityById: async (id) => {
     const response = await apiClient.get(`/talent/opportunities/${id}`);
+    return response.data;
+  },
+
+  updateOpportunity: async (id, opportunityData) => {
+    const response = await apiClient.put(
+      `/talent/opportunities/${id}`,
+      opportunityData,
+    );
     return response.data;
   },
 
@@ -103,6 +116,13 @@ const talentApi = {
   deleteConversation: async (userId) => {
     const response = await apiClient.delete(
       `/talent/messages/conversation/${userId}`,
+    );
+    return response.data;
+  },
+
+  deleteApplicationConversation: async (applicationId) => {
+    const response = await apiClient.delete(
+      `/talent/applications/${applicationId}/conversation`,
     );
     return response.data;
   },

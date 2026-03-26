@@ -108,7 +108,7 @@ export function OrgTalentDashboard() {
             <Route path="find" element={<FindTalentTab />} />
             <Route path="applications" element={<TalentApplicationsTab />} />
             <Route
-              path="messages/:freelancerId"
+              path="messages/:candidateId"
               element={<TalentMessagesTab />}
             />
             <Route path="messages" element={<TalentMessagesTab />} />

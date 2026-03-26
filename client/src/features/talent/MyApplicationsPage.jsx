@@ -1,6 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { Briefcase, Building2, MapPin, Search, Calendar, DollarSign, ExternalLink, MessageSquare } from "lucide-react";
+import { Briefcase, Building2, MapPin, Search, Calendar, IndianRupee, ExternalLink, MessageSquare } from "lucide-react";
 import { Button } from "../../components/ui/Button";
 import { Badge } from "../../components/ui/Badge";
 import { Card } from "../../components/ui/Card";
@@ -140,14 +140,16 @@ export function MyApplicationsPage() {
                     <span>Applied {formatDistanceToNow(new Date(app.created_at), { addSuffix: true })}</span>
                   </div>
                   <div className="flex items-center gap-3">
-                    <DollarSign className="w-4 h-4 text-text-tertiary" />
-                    <span>Rate: {app.proposed_rate ? app.proposed_rate : "Negotiable"}</span>
+                    <IndianRupee className="w-4 h-4 text-text-tertiary" />
+                    <span>Rate: {app.proposed_rate ? "₹" + app.proposed_rate : "Negotiable"}</span>
                   </div>
                 </div>
               </div>
 
               <div className="pt-4 border-t border-border-light dark:border-border-dark mt-auto flex gap-3 relative z-10">
-                {['Shortlisted', 'Interviewing', 'Accepted'].includes(app.status) ? (
+                {['Pending', 'Under Review', 'Shortlisted', 'Interviewing', 'Accepted'].includes(
+                  app.status,
+                ) ? (
                   <Link to={`/dashboard/applications/${app.id}/messages`} className="flex-1">
                     <Button className="w-full font-bold shadow-md shadow-primary/20 bg-primary hover:bg-primary-dark">
                       <MessageSquare className="w-4 h-4 mr-2" /> Message Org

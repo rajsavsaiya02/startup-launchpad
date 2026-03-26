@@ -7,7 +7,7 @@ import {
   MapPin,
   Star,
   Clock,
-  DollarSign,
+  IndianRupee,
   Briefcase,
 } from "lucide-react";
 import { Button } from "../../components/ui/Button";
@@ -24,7 +24,7 @@ export function FreelancerProfilePage() {
     role: "Senior Product Designer",
     location: "Remote, Spain",
     rating: 4.9,
-    rate: "$80 - $100 / hour",
+    rate: "₹80 - ₹100 / hour",
     availability: "20-30 hours/week",
     img: "https://i.pravatar.cc/150?u=elena",
     about:
@@ -249,7 +249,7 @@ export function FreelancerProfilePage() {
               </div>
               <div className="flex justify-between">
                 <span className="text-text-tertiary flex items-center gap-2">
-                  <DollarSign className="h-4 w-4" /> Rate
+                  <IndianRupee className="h-4 w-4" /> Rate
                 </span>
                 <span className="font-medium text-text-primary dark:text-white">
                   {freelancer.rate}

@@ -62,32 +62,81 @@ const sanitizeTasksTimers = (tasks) => {
 };
 
 const getTasksByProject = async (req, res) => {
-  const { id } = req.params;
+  const { id } = req.params; // project_id
+  const userId = req.user.id;
   try {
-    const tasksQuery = `
-      SELECT t.*, 
-             COALESCE(json_agg(ta.user_id) FILTER (WHERE ta.user_id IS NOT NULL), '[]') as assignee_ids,
-             COALESCE(
-               (
-                 SELECT json_agg(json_build_object(
-                   'file_asset_id', fa.file_asset_id,
-                   'file_name', fa.file_name,
-                   'storage_url', fa.storage_url,
-                   'mime_type', fa.mime_type,
-                   'is_external', fa.is_external
-                 ))
-                 FROM file_assets fa
-                 WHERE fa.context_type = 'task' AND fa.context_id = t.id
-               ),
-               '[]'::json
-             ) as attachments
-      FROM tasks t
-      LEFT JOIN task_assignees ta ON t.id = ta.task_id
-      WHERE t.project_id = $1
-      GROUP BY t.id
-      ORDER BY t.created_at DESC
-    `;
-    const result = await pool.query(tasksQuery, [id]);
+    // Determine the user's org role for this project's organization
+    const orgMemberResult = await pool.query(
+      `SELECT om.org_role
+       FROM organization_members om
+       JOIN projects p ON p.owner_org_id = om.organization_id
+       WHERE om.user_id = $1 AND om.is_active = true AND p.id = $2
+       LIMIT 1`,
+      [userId, id],
+    );
+
+    const orgRole = orgMemberResult.rows[0]?.org_role;
+    const isGuest = !orgRole || !['FOUNDER', 'CO-FOUNDER', 'ADMIN', 'MEMBER'].includes(orgRole);
+
+    let tasksQuery;
+    let params;
+
+    if (isGuest) {
+      // GUESTs only see tasks they are explicitly assigned to
+      tasksQuery = `
+        SELECT t.*,
+               COALESCE(json_agg(ta.user_id) FILTER (WHERE ta.user_id IS NOT NULL), '[]') as assignee_ids,
+               COALESCE(
+                 (
+                   SELECT json_agg(json_build_object(
+                     'file_asset_id', fa.file_asset_id,
+                     'file_name', fa.file_name,
+                     'storage_url', fa.storage_url,
+                     'mime_type', fa.mime_type,
+                     'is_external', fa.is_external
+                   ))
+                   FROM file_assets fa
+                   WHERE fa.context_type = 'task' AND fa.context_id = t.id
+                 ),
+                 '[]'::json
+               ) as attachments
+        FROM tasks t
+        JOIN task_assignees ta_filter ON t.id = ta_filter.task_id AND ta_filter.user_id = $2
+        LEFT JOIN task_assignees ta ON t.id = ta.task_id
+        WHERE t.project_id = $1
+        GROUP BY t.id
+        ORDER BY t.created_at DESC
+      `;
+      params = [id, userId];
+    } else {
+      // Founders, Co-Founders, Admins, Members see all project tasks
+      tasksQuery = `
+        SELECT t.*,
+               COALESCE(json_agg(ta.user_id) FILTER (WHERE ta.user_id IS NOT NULL), '[]') as assignee_ids,
+               COALESCE(
+                 (
+                   SELECT json_agg(json_build_object(
+                     'file_asset_id', fa.file_asset_id,
+                     'file_name', fa.file_name,
+                     'storage_url', fa.storage_url,
+                     'mime_type', fa.mime_type,
+                     'is_external', fa.is_external
+                   ))
+                   FROM file_assets fa
+                   WHERE fa.context_type = 'task' AND fa.context_id = t.id
+                 ),
+                 '[]'::json
+               ) as attachments
+        FROM tasks t
+        LEFT JOIN task_assignees ta ON t.id = ta.task_id
+        WHERE t.project_id = $1
+        GROUP BY t.id
+        ORDER BY t.created_at DESC
+      `;
+      params = [id];
+    }
+
+    const result = await pool.query(tasksQuery, params);
     const safeTasks = sanitizeTasksTimers(result.rows);
     res.json(safeTasks);
   } catch (err) {
@@ -95,6 +144,7 @@ const getTasksByProject = async (req, res) => {
     res.status(500).json({ message: "Internal Server Error" });
   }
 };
+
 
 const getAllTasksForUser = async (req, res) => {
   const userId = req.user.id;

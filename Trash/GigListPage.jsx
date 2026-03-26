@@ -81,7 +81,7 @@ export function GigListPage() {
             </>
           )}
           {!isOrgMember && (
-            <Link to="/dashboard/applications/me">
+            <Link to="/dashboard/applications">
               <Button variant="secondary">My Applications</Button>
             </Link>
           )}

@@ -107,7 +107,7 @@ exports.createOpportunity = async (req, res) => {
 
 exports.getAllOpportunities = async (req, res) => {
   try {
-    const { type, status, search, owner_id } = req.query;
+    const { type, status, search, owner_id, organization_id } = req.query;
 
     let query = `
       SELECT o.*, org.name as organization_name, org.logo_url as organization_logo 
@@ -122,12 +122,13 @@ exports.getAllOpportunities = async (req, res) => {
       query += ` AND o.type = $${params.length}`;
     }
 
-    if (status) {
+    if (status && status !== "all") {
       params.push(status);
-      query += ` AND o.status = $${params.length}`;
-    } else {
-      query += ` AND o.status = 'Open'`; // default to Open
+      query += ` AND o.status ILIKE $${params.length}`;
+    } else if (!status) {
+      query += ` AND o.status ILIKE 'Open'`; // default to Open if no status provided
     }
+    // if status === 'all', we don't add the status filter
 
     if (search) {
       params.push(`%${search}%`);
@@ -137,6 +138,11 @@ exports.getAllOpportunities = async (req, res) => {
     if (owner_id) {
       params.push(owner_id);
       query += ` AND o.owner_id = $${params.length}`;
+    }
+
+    if (organization_id) {
+      params.push(organization_id);
+      query += ` AND o.organization_id = $${params.length}`;
     }
 
     query += ` ORDER BY o.created_at DESC`;
@@ -180,6 +186,107 @@ exports.getOpportunityById = async (req, res) => {
       success: false,
       message: "Server error fetching opportunity details",
     });
+  }
+};
+
+exports.updateOpportunity = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      title,
+      description,
+      type,
+      status,
+      skills,
+      compensation_type,
+      budget_min,
+      budget_max,
+      duration,
+      media_urls,
+      external_links,
+    } = req.body;
+
+    const orgId = req.org?.organization_id;
+    
+    console.log(`[DEBUG] updateOpportunity: id=${id}, orgId=${orgId}, status=${status}`);
+
+    const result = await pool.query(
+      `UPDATE opportunities SET 
+        title = COALESCE($1, title),
+        description = COALESCE($2, description),
+        type = COALESCE($3, type),
+        status = COALESCE($4, status),
+        skills = COALESCE($5, skills),
+        compensation_type = COALESCE($6, compensation_type),
+        budget_min = COALESCE($7, budget_min),
+        budget_max = COALESCE($8, budget_max),
+        duration = COALESCE($9, duration),
+        media_urls = COALESCE($10, media_urls),
+        external_links = COALESCE($11, external_links),
+        updated_at = NOW()
+      WHERE id = $12 AND organization_id = $13 RETURNING *`,
+      [
+        title || null,
+        description || null,
+        type || null,
+        status || null,
+        skills || null,
+        compensation_type || null,
+        budget_min || null,
+        budget_max || null,
+        duration || null,
+        media_urls || null,
+        external_links || null,
+        id,
+        orgId,
+      ],
+    );
+
+    if (result.rows.length === 0) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Opportunity not found" });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Opportunity updated successfully",
+      opportunity: result.rows[0],
+    });
+  } catch (error) {
+    console.error("Error updating opportunity:", error);
+    res
+      .status(500)
+      .json({ success: false, message: "Server error updating opportunity" });
+  }
+};
+
+exports.deleteOpportunity = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const orgId = req.org?.organization_id;
+
+    const result = await pool.query(
+      "DELETE FROM opportunities WHERE id = $1 AND organization_id = $2 RETURNING *",
+      [id, orgId],
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Opportunity not found or access denied",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Opportunity deleted successfully",
+    });
+  } catch (error) {
+    console.error("Error deleting opportunity:", error);
+    res
+      .status(500)
+      .json({ success: false, message: "Server error deleting opportunity" });
   }
 };
 
@@ -336,21 +443,38 @@ exports.updateApplicationStatus = async (req, res) => {
   try {
     const { id: application_id } = req.params;
     const { status } = req.body;
+    const orgId = req.org?.organization_id;
 
+    if (!orgId) {
+      return res.status(403).json({ success: false, message: "Organization context missing" });
+    }
+
+    // 1. Verify application exists and belongs to the user's organization
+    const appCheck = await pool.query(
+      `SELECT app.id, opp.organization_id 
+       FROM opportunity_applications app
+       JOIN opportunities opp ON app.opportunity_id = opp.id
+       WHERE app.id = $1`,
+      [application_id]
+    );
+
+    if (appCheck.rows.length === 0) {
+      return res.status(404).json({ success: false, message: "Application not found" });
+    }
+
+    if (appCheck.rows[0].organization_id !== orgId) {
+      return res.status(403).json({ success: false, message: "Unauthorized to update this application" });
+    }
+
+    // 2. Perform update
     const result = await pool.query(
       `UPDATE opportunity_applications SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING *`,
       [status, application_id],
     );
 
-    if (result.rows.length === 0) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Application not found" });
-    }
-
     const application = result.rows[0];
 
-    // Auto-archive if accepted
+    // 3. Auto-archive logic
     if (status === "Accepted") {
       await pool.query(
         `INSERT INTO opportunity_archives (application_id) VALUES ($1) ON CONFLICT DO NOTHING`,
@@ -360,7 +484,7 @@ exports.updateApplicationStatus = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: "Application status updated",
+      message: "Application status updated successfully",
       application,
     });
   } catch (error) {
@@ -683,12 +807,16 @@ exports.getTalentUsers = async (req, res) => {
          u.bio,
          u.public_profile->>'headline'     AS headline,
          u.public_profile->>'rate'         AS rate,
-         u.public_profile->>'availability' AS availability
+         u.public_profile->>'availability' AS availability,
+         (SELECT app.id FROM opportunity_applications app 
+          JOIN opportunities opp ON app.opportunity_id = opp.id
+          WHERE app.freelancer_id = u.id AND opp.organization_id = $${params.length + 1}
+          ORDER BY app.created_at DESC LIMIT 1) as application_id
        FROM users u
        WHERE ${whereClause}
        ORDER BY u.id
        LIMIT $${limitIdx} OFFSET $${offsetIdx}`,
-      params,
+      [...params, orgId],
     );
 
     res.status(200).json({
@@ -854,13 +982,10 @@ exports.sendDirectMessage = async (req, res) => {
       });
     }
 
-    const talent_id =
-      req.user.role === "founder" || req.user.role === "admin"
-        ? recipientId
-        : sender_id;
-
     const isOrgSender =
-      req.user.role === "founder" || req.user.role === "admin";
+      ["FOUNDER", "CO-FOUNDER", "ADMIN"].includes(req.user.role?.toUpperCase());
+
+    const talent_id = isOrgSender ? recipientId : sender_id;
 
     // 1. Verify user is not banned/deleted
     const userCheck = await pool.query(
@@ -907,7 +1032,7 @@ exports.sendDirectMessage = async (req, res) => {
     }
 
     // Enforce 3-message consecutive limit for organizations
-    if (req.user.role === "founder" || req.user.role === "admin") {
+    if (isOrgSender) {
       const messageHistory = await pool.query(
         `SELECT sender_id FROM organization_talent_messages
          WHERE organization_id = $1 AND user_id = $2
@@ -935,13 +1060,21 @@ exports.sendDirectMessage = async (req, res) => {
        VALUES ($1, $2, $3, $4) RETURNING *`,
       [
         organizationId,
-        req.user.role === "founder" || req.user.role === "admin"
+        isOrgSender
           ? recipientId
           : sender_id,
         sender_id,
         content,
       ],
     );
+
+    // Undelete whole conversation for org if they are sending
+    if (isOrgSender) {
+      await pool.query(
+        "UPDATE organization_talent_messages SET is_deleted_by_org = FALSE WHERE organization_id = $1 AND user_id = $2",
+        [organizationId, recipientId]
+      );
+    }
 
     const fullMsgParams = [result.rows[0].id];
     const fullMessage = await pool.query(
@@ -973,13 +1106,19 @@ exports.getDirectMessages = async (req, res) => {
     }
 
     // Identify who is the talent
-    const talentId =
-      req.user.role === "founder" || req.user.role === "admin"
-        ? otherPartyId
-        : req.user.id;
+    const isOrgQuerying = ["FOUNDER", "CO-FOUNDER", "ADMIN"].includes(
+      req.user.role?.toUpperCase(),
+    );
 
-    const isOrgQuerying =
-      req.user.role === "founder" || req.user.role === "admin";
+    const talentId = isOrgQuerying ? otherPartyId : req.user.id;
+
+    // If org is querying, undelete all messages for them (restore conversation)
+    if (isOrgQuerying) {
+      await pool.query(
+        "UPDATE organization_talent_messages SET is_deleted_by_org = FALSE WHERE organization_id = $1 AND user_id = $2",
+        [organizationId, talentId]
+      );
+    }
 
     const result = await pool.query(
       `SELECT m.*, u.name AS sender_name, u.avatar AS sender_avatar
@@ -1003,6 +1142,18 @@ exports.getDirectMessages = async (req, res) => {
 exports.getApplicationMessages = async (req, res) => {
   try {
     const { id: application_id } = req.params;
+
+    // Auto-undelete if accessed by an org member
+    const orgResult = await pool.query(
+      "SELECT organization_id FROM organization_members WHERE user_id = $1",
+      [req.user.id]
+    );
+    if (orgResult.rows.length > 0) {
+      await pool.query(
+        "UPDATE opportunity_applications SET is_deleted_by_org = FALSE WHERE id = $1 AND opportunity_id IN (SELECT id FROM opportunities WHERE organization_id = $2)",
+        [application_id, orgResult.rows[0].organization_id]
+      );
+    }
 
     const result = await pool.query(
       `
@@ -1040,6 +1191,18 @@ exports.sendMessage = async (req, res) => {
       `INSERT INTO opportunity_messages (application_id, sender_id, content) VALUES ($1, $2, $3) RETURNING *`,
       [application_id, sender_id, content],
     );
+
+    // Ensure conversation is NOT deleted for org
+    const orgRes = await pool.query(
+      "SELECT organization_id FROM organization_members WHERE user_id = $1",
+      [sender_id]
+    );
+    if (orgRes.rows.length > 0) {
+      await pool.query(
+        "UPDATE opportunity_applications SET is_deleted_by_org = FALSE WHERE id = $1 AND opportunity_id IN (SELECT id FROM opportunities WHERE organization_id = $2)",
+        [application_id, orgRes.rows[0].organization_id]
+      );
+    }
 
     const fullMessage = await pool.query(
       `
@@ -1090,17 +1253,19 @@ exports.getOrgConversations = async (req, res) => {
           app.status as application_status,
           opp.title as opportunity_title,
           opp.id as opportunity_id,
-          u.name as freelancer_name,
-          u.avatar as freelancer_avatar,
-          u.id as freelancer_id,
+          u.name as candidate_name,
+          u.avatar as candidate_avatar,
+          u.id as candidate_id,
+          u.role as candidate_role,
           (SELECT content FROM opportunity_messages WHERE application_id = app.id ORDER BY created_at DESC LIMIT 1) as last_message,
           (SELECT created_at FROM opportunity_messages WHERE application_id = app.id ORDER BY created_at DESC LIMIT 1) as last_message_at,
           'application' as type,
+          app.is_deleted_by_org as is_deleted_by_org,
           FALSE as is_disabled
         FROM opportunity_applications app
         JOIN opportunities opp ON app.opportunity_id = opp.id
         JOIN users u ON app.freelancer_id = u.id
-        WHERE opp.organization_id = $1
+        WHERE opp.organization_id = $1 AND app.is_deleted_by_org = FALSE
       ),
       direct_convs AS (
         SELECT 
@@ -1108,14 +1273,17 @@ exports.getOrgConversations = async (req, res) => {
           NULL::varchar as application_status,
           'Direct Message'::varchar as opportunity_title,
           NULL::integer as opportunity_id,
-          u.name as freelancer_name,
-          u.avatar as freelancer_avatar,
-          u.id as freelancer_id,
+          u.name as candidate_name,
+          u.avatar as candidate_avatar,
+          u.id as candidate_id,
+          u.role as candidate_role,
           (SELECT content FROM organization_talent_messages WHERE organization_id = $1 AND user_id = u.id AND is_deleted_by_org = FALSE ORDER BY created_at DESC LIMIT 1) as last_message,
           (SELECT created_at FROM organization_talent_messages WHERE organization_id = $1 AND user_id = u.id AND is_deleted_by_org = FALSE ORDER BY created_at DESC LIMIT 1) as last_message_at,
           'direct' as type,
+          FALSE as is_deleted_by_org,
           CASE WHEN 
-             NOT EXISTS (SELECT 1 FROM organization_shortlisted_talent WHERE organization_id = $1 AND user_id = u.id)
+             (NOT EXISTS (SELECT 1 FROM organization_shortlisted_talent WHERE organization_id = $1 AND user_id = u.id)
+              AND NOT EXISTS (SELECT 1 FROM organization_talent_messages WHERE organization_id = $1 AND user_id = u.id AND sender_id IN (SELECT user_id FROM organization_members WHERE organization_id = $1)))
              OR EXISTS (SELECT 1 FROM talent_blocked_organizations WHERE organization_id = $1 AND user_id = u.id)
              OR COALESCE(u.status, 'active') != 'active'
           THEN TRUE ELSE FALSE END as is_disabled
@@ -1309,5 +1477,52 @@ exports.deleteFromArchive = async (req, res) => {
     res
       .status(500)
       .json({ success: false, message: "Server error deleting archive" });
+  }
+};
+
+exports.deleteApplicationConversation = async (req, res) => {
+  try {
+    const { id: application_id } = req.params;
+    const { id: user_id } = req.user;
+
+    // Verify user is part of the organization that owns the opportunity
+    const orgResult = await pool.query(
+      "SELECT organization_id FROM organization_members WHERE user_id = $1",
+      [user_id],
+    );
+
+    if (orgResult.rows.length === 0) {
+      return res.status(403).json({ success: false, message: "Unauthorized" });
+    }
+    const organization_id = orgResult.rows[0].organization_id;
+
+    const appCheck = await pool.query(
+      `
+      SELECT app.id FROM opportunity_applications app
+      JOIN opportunities opp ON app.opportunity_id = opp.id
+      WHERE app.id = $1 AND opp.organization_id = $2
+      `,
+      [application_id, organization_id],
+    );
+
+    if (appCheck.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Application not found or access denied",
+      });
+    }
+
+    await pool.query(
+      "UPDATE opportunity_applications SET is_deleted_by_org = TRUE WHERE id = $1",
+      [application_id],
+    );
+
+    res.status(200).json({ success: true, message: "Conversation hidden" });
+  } catch (error) {
+    console.error("Error hiding application conversation:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error hiding conversation",
+    });
   }
 };

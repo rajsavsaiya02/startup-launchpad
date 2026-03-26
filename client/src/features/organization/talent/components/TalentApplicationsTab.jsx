@@ -122,7 +122,7 @@ export function TalentApplicationsTab() {
                   </Button>
                 </Link>
                 <Link
-                  to={`/org/talent/messages/${app.freelancer_id}`}
+                  to={`/org/talent/messages/${app.freelancer_id}?appId=${app.id}`}
                   className="md:ml-0"
                 >
                   <Button

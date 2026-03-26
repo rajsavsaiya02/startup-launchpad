@@ -18,6 +18,7 @@ import { Badge } from "../../components/ui/Badge";
 import { Avatar } from "../../components/ui/Avatar";
 import { Card } from "../../components/ui/Card";
 import opportunityService from "../../services/opportunityService";
+import { useMyApplications } from "../../hooks/useTalent";
 import { formatDistanceToNow, format } from "date-fns";
 import { useAuth } from "../../context/AuthContext";
 
@@ -38,6 +39,10 @@ export function GigDetailsPage() {
     success: false,
     error: null,
   });
+
+  const { data: myAppsData } = useMyApplications();
+  const myApp = myAppsData?.applications?.find(app => String(app.opportunity_id) === String(id));
+  const isApplied = !!myApp;
 
   useEffect(() => {
     const fetchGigDetails = async () => {
@@ -246,20 +251,46 @@ export function GigDetailsPage() {
               
               <div className="relative z-10">
                 <h3 className="text-xl font-bold text-text-primary dark:text-white mb-2">
-                  Interested?
+                  {isApplied ? "Application Status" : "Interested?"}
                 </h3>
                 <p className="text-sm text-text-secondary dark:text-gray-400 mb-6 leading-relaxed">
-                  Submit your proposal early to increase your chances of being noticed by the organization.
+                  {isApplied
+                    ? "Track your application status or communicate with the organization directly."
+                    : "Submit your proposal early to increase your chances of being noticed by the organization."}
                 </p>
 
                 {!isOrgMember ? (
-                  <Button 
-                    className="w-full font-bold text-base py-6 shadow-md shadow-primary/20"
-                    onClick={() => setIsApplyModalOpen(true)}
-                    disabled={gig.status !== 'Open'}
-                  >
-                    {gig.status === 'Open' ? "Apply Now" : "Currently Closed"}
-                  </Button>
+                  isApplied ? (
+                    <div className="space-y-3 mt-4">
+                      <div className="p-4 rounded-xl bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-800 flex justify-between items-center">
+                        <span className="text-sm font-bold text-gray-500 dark:text-gray-400">Status</span>
+                        <Badge variant="neutral" className="capitalize text-primary bg-primary/10 border-transparent">
+                          {myApp.status}
+                        </Badge>
+                      </div>
+                      {['Shortlisted', 'Interviewing', 'Accepted'].includes(myApp.status) ? (
+                        <Link to={`/dashboard/applications/${myApp.id}/messages`} className="w-full block mt-4">
+                          <Button className="w-full font-bold text-base py-6 bg-primary hover:bg-primary-dark shadow-md shadow-primary/20">
+                            <MessageSquare className="w-5 h-5 mr-2" /> Message Org
+                          </Button>
+                        </Link>
+                      ) : (
+                        <Link to="/dashboard/applications" className="w-full block mt-4">
+                          <Button variant="secondary" className="w-full font-bold text-base py-6">
+                            Manage Applications
+                          </Button>
+                        </Link>
+                      )}
+                    </div>
+                  ) : (
+                    <Button 
+                      className="w-full font-bold text-base py-6 shadow-md shadow-primary/20"
+                      onClick={() => setIsApplyModalOpen(true)}
+                      disabled={gig.status !== 'Open'}
+                    >
+                      {gig.status === 'Open' ? "Apply Now" : "Currently Closed"}
+                    </Button>
+                  )
                 ) : (
                   <Link to={`/dashboard/opportunities/manage`}>
                     <Button variant="secondary" className="w-full font-bold text-base py-6">
@@ -325,7 +356,7 @@ export function GigDetailsPage() {
                   Your proposal has been sent to {gig.organization_name}. You can track its status in your applications dashboard.
                 </p>
                 <div className="pt-6">
-                  <Link to="/dashboard/applications/me" className="w-full">
+                  <Link to="/dashboard/applications" className="w-full">
                     <Button className="w-full py-6 text-base">View My Applications</Button>
                   </Link>
                 </div>

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   MessageSquare,
   Send,
@@ -17,12 +18,25 @@ import {
   useDirectMessages,
   useSendDirectMessage,
   useDeleteConversation,
+  useDeleteApplicationConversation,
 } from "../../../../hooks/useTalent";
 import { useAuth } from "../../../../context/AuthContext";
 import { Avatar } from "../../../../components/ui/Avatar";
-import { Button } from "../../../../components/ui/Button";
 import { Badge } from "../../../../components/ui/Badge";
+import { Button } from "../../../../components/ui/Button";
 import { cn } from "../../../../utils/cn";
+const ROLE_BADGE = {
+  freelancer: "bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
+  student:
+    "bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300",
+  normal_user: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300",
+};
+
+const ROLE_LABEL = {
+  freelancer: "Freelancer",
+  student: "Student",
+  normal_user: "Member",
+};
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const TYPE_LABEL = {
@@ -43,7 +57,7 @@ function MessagesPanel({ conv, orgId, user }) {
     useApplicationMessages(isApplication ? conv?.application_id : null);
 
   const { data: dirMsgData, isLoading: isLoadingDirMsgs } = useDirectMessages(
-    !isApplication ? conv?.freelancer_id : null,
+    !isApplication ? conv?.candidate_id : null,
     !isApplication ? orgId : null,
   );
 
@@ -75,7 +89,7 @@ function MessagesPanel({ conv, orgId, user }) {
     } else {
       sendDirMsg.mutate(
         {
-          userId: conv.freelancer_id,
+          userId: conv.candidate_id,
           content: text.trim(),
           organizationId: orgId,
         },
@@ -88,6 +102,18 @@ function MessagesPanel({ conv, orgId, user }) {
       );
     }
   };
+
+  const queryClient = useQueryClient();
+  const messagesLoaded = messages.length > 0;
+  const isStub = conv?.candidate_name === "Loading...";
+
+  useEffect(() => {
+    if (messagesLoaded && isStub) {
+      // If we loaded messages for a stub, it means it's now revived in backend.
+      // Refresh the sidebar to show it properly.
+      queryClient.invalidateQueries({ queryKey: ["orgConversations"] });
+    }
+  }, [messagesLoaded, isStub, queryClient]);
 
   if (!conv) {
     return (
@@ -107,13 +133,22 @@ function MessagesPanel({ conv, orgId, user }) {
       <div className="p-4 border-b border-border-light dark:border-border-dark flex justify-between items-center bg-gray-50/30 dark:bg-gray-900/10 z-10">
         <div className="flex items-center gap-3">
           <Avatar
-            src={conv.freelancer_avatar}
-            name={conv.freelancer_name}
+            src={conv.candidate_avatar}
+            name={conv.candidate_name}
             className="h-9 w-9 border border-primary/20"
           />
           <div>
-            <h3 className="font-bold text-sm text-text-primary dark:text-white leading-tight">
-              {conv.freelancer_name}
+            <h3 className="font-bold text-sm text-text-primary dark:text-white leading-tight flex items-center gap-2">
+              {conv.candidate_name}
+              <span
+                className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wider ${
+                  ROLE_BADGE[conv.candidate_role] || ROLE_BADGE.normal_user
+                }`}
+              >
+                {ROLE_LABEL[conv.candidate_role] ||
+                  conv.candidate_role ||
+                  "Member"}
+              </span>
             </h3>
             <div className="flex items-center gap-1.5 mt-0.5">
               <span className="flex h-1.5 w-1.5 rounded-full bg-success" />
@@ -151,8 +186,8 @@ function MessagesPanel({ conv, orgId, user }) {
             </h4>
             <p className="text-xs text-text-secondary max-w-xs">
               {conv.type === "application"
-                ? `Ask a question or follow up with ${conv.freelancer_name} regarding their application.`
-                : `Send a direct message to ${conv.freelancer_name} — they've been shortlisted and can respond here.`}
+                ? `Ask a question or follow up with ${conv.candidate_name} regarding their application.`
+                : `Send a direct message to ${conv.candidate_name} — they've been shortlisted and can respond here.`}
             </p>
           </div>
         ) : (
@@ -262,11 +297,15 @@ function MessagesPanel({ conv, orgId, user }) {
 // ── Main Component ────────────────────────────────────────────────────────────
 export function TalentMessagesTab() {
   const { user } = useAuth();
-  const { freelancerId } = useParams(); // For deep linking via /messages/:freelancerId
+  const { candidateId } = useParams(); // For deep linking via /messages/:candidateId
+  const [searchParams] = useSearchParams();
+  const appId = searchParams.get("appId");
+
   const [selectedKey, setSelectedKey] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
 
   const deleteMutation = useDeleteConversation();
+  const deleteAppMutation = useDeleteApplicationConversation();
 
   const { data: convData, isLoading: isLoadingConvs } = useOrgConversations();
   const conversations = useMemo(
@@ -278,31 +317,63 @@ export function TalentMessagesTab() {
   const convKey = (c) =>
     c.type === "application"
       ? `app-${c.application_id}`
-      : `dir-${c.freelancer_id}`;
+      : `dir-${c.candidate_id}`;
 
   const activeKey = useMemo(() => {
     if (selectedKey) return selectedKey;
-    // Attempt to auto-select from URL param
-    if (freelancerId && conversations.length > 0) {
+
+    // 1. Prioritize application-specific deep link (?appId=xxx)
+    if (appId && conversations.length > 0) {
+      const target = `app-${appId}`;
+      if (conversations.some((c) => convKey(c) === target)) return target;
+    }
+
+    // 2. Attempt to auto-select from candidate ID URL param
+    if (candidateId && conversations.length > 0) {
       const match = conversations.find(
-        (c) => String(c.freelancer_id) === String(freelancerId),
+        (c) => String(c.candidate_id) === String(candidateId),
       );
       if (match) return convKey(match);
     }
-    // Default to first
-    return conversations.length > 0 ? convKey(conversations[0]) : null;
-  }, [selectedKey, conversations, freelancerId]);
 
-  const selectedConv = useMemo(
-    () => conversations.find((c) => convKey(c) === activeKey),
-    [conversations, activeKey],
-  );
+    // 3. Default to first
+    return conversations.length > 0 ? convKey(conversations[0]) : null;
+  }, [selectedKey, conversations, candidateId, appId]);
+
+  const selectedConv = useMemo(() => {
+    const found = conversations.find((c) => convKey(c) === activeKey);
+    if (found) return found;
+
+    // If not found but we have appId or candidateId in activeKey, create a "stub"
+    // so the MessagesPanel can still load and trigger backend revival.
+    if (activeKey?.startsWith("app-") && appId) {
+      return {
+        type: "application",
+        application_id: appId,
+        candidate_name: "Loading...",
+        candidate_avatar: null,
+        candidate_role: "normal_user",
+        opportunity_title: "Application Chat",
+      };
+    }
+    if (activeKey?.startsWith("dir-") && candidateId) {
+      return {
+        type: "direct",
+        candidate_id: candidateId,
+        candidate_name: "Loading...",
+        candidate_avatar: null,
+        candidate_role: "normal_user",
+      };
+    }
+
+    return null;
+  }, [conversations, activeKey, appId, candidateId]);
 
   const filtered = useMemo(() => {
     return conversations.filter(
       (c) =>
         !searchQuery ||
-        c.freelancer_name?.toLowerCase().includes(searchQuery.toLowerCase()),
+        c.candidate_name?.toLowerCase().includes(searchQuery.toLowerCase()),
     );
   }, [conversations, searchQuery]);
 
@@ -361,6 +432,11 @@ export function TalentMessagesTab() {
                 conv={conv}
                 isActive={activeKey === convKey(conv)}
                 onClick={() => setSelectedKey(convKey(conv))}
+                onDelete={(e) => {
+                  e.stopPropagation();
+                  deleteAppMutation.mutate(conv.application_id);
+                  if (activeKey === convKey(conv)) setSelectedKey(null);
+                }}
               />
             ))}
           {filtered.some((c) => c.type === "direct") && (
@@ -376,15 +452,11 @@ export function TalentMessagesTab() {
                 conv={conv}
                 isActive={activeKey === convKey(conv)}
                 onClick={() => setSelectedKey(convKey(conv))}
-                onDelete={
-                  conv.is_disabled
-                    ? (e) => {
-                        e.stopPropagation();
-                        deleteMutation.mutate(conv.freelancer_id);
-                        if (activeKey === convKey(conv)) setSelectedKey(null);
-                      }
-                    : undefined
-                }
+                onDelete={(e) => {
+                  e.stopPropagation();
+                  deleteMutation.mutate(conv.candidate_id);
+                  if (activeKey === convKey(conv)) setSelectedKey(null);
+                }}
               />
             ))}
         </div>
@@ -410,8 +482,8 @@ function ConvButton({ conv, isActive, onClick, onDelete }) {
     >
       <div className="relative">
         <Avatar
-          src={conv.freelancer_avatar}
-          name={conv.freelancer_name}
+          src={conv.candidate_avatar}
+          name={conv.candidate_name}
           className="h-10 w-10 border border-primary/10 shadow-sm transition-transform group-hover:scale-105"
         />
         <div className="absolute -bottom-0.5 -right-0.5 bg-success h-3 w-3 rounded-full border-2 border-white dark:border-surface-dark" />
@@ -420,13 +492,20 @@ function ConvButton({ conv, isActive, onClick, onDelete }) {
         <div className="flex justify-between items-start mb-0.5">
           <h4
             className={cn(
-              "font-bold truncate text-sm transition-colors",
+              "font-bold truncate text-sm transition-colors flex items-center justify-between gap-2 w-full",
               isActive
                 ? "text-primary"
                 : "text-text-primary dark:text-gray-200",
             )}
           >
-            {conv.freelancer_name}
+            <span className="truncate">{conv.candidate_name}</span>
+            <span
+              className={`text-[8px] px-1.5 py-0.5 rounded-full font-black uppercase tracking-tighter shrink-0 ${
+                ROLE_BADGE[conv.candidate_role] || ROLE_BADGE.normal_user
+              }`}
+            >
+              {ROLE_LABEL[conv.candidate_role]?.[0] || "M"}
+            </span>
           </h4>
           {conv.last_message_at && (
             <span className="text-[10px] text-text-tertiary whitespace-nowrap pt-0.5">

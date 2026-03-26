@@ -9,6 +9,7 @@ import {
   AlertCircle,
   Users,
   Bookmark,
+  IndianRupee,
   MessageSquare,
 } from "lucide-react";
 import { motion as Motion, AnimatePresence } from "framer-motion";
@@ -238,7 +239,11 @@ export function FindTalentTab() {
         return;
       }
     }
-    navigate(`/org/talent/messages/${person.id}`);
+    if (person.application_id) {
+      navigate(`/org/talent/messages/${person.id}?appId=${person.application_id}`);
+    } else {
+      navigate(`/org/talent/messages/${person.id}`);
+    }
   };
 
   // Prepare active list
@@ -439,7 +444,7 @@ export function FindTalentTab() {
                       </span>
                     </span>
                     <span className="font-black text-primary bg-primary/5 px-2 py-0.5 rounded leading-none shrink-0">
-                      {person.rate || "Open"}
+                      {person.rate && !isNaN(person.rate) ? `₹${person.rate}` : (person.rate || "Open")}
                     </span>
                   </div>
                   <div className="flex justify-between items-center">

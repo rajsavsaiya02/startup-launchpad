@@ -10,7 +10,7 @@ import {
   Github,
   Briefcase,
   Clock,
-  DollarSign,
+  IndianRupee,
   UserX,
   ChevronLeft,
   Loader2,
@@ -22,6 +22,7 @@ import { Card } from "../../components/ui/Card";
 import { usePublicProfile } from "../../hooks/useTalent";
 import { useAuth } from "../../context/AuthContext";
 import { cn } from "../../utils/cn";
+import { SERVER_URL } from "../../lib/axios";
 
 const fadeUp = {
   initial: { opacity: 0, y: 20 },
@@ -122,7 +123,7 @@ export function PublicProfilePage({ overrideUsername }) {
                           {profile.name}
                         </h1>
                         <p className="text-lg font-medium text-primary/80 dark:text-primary mt-1">
-                          {profile.job_title || "Professional"}
+                          {publicData.headline || profile.job_title || "Professional"}
                         </p>
                       </div>
                       
@@ -198,7 +199,7 @@ export function PublicProfilePage({ overrideUsername }) {
                           {job.company} • {job.dates}
                         </p>
                         <p className="text-sm text-text-secondary dark:text-gray-400 mt-3 leading-relaxed">
-                          {job.desc}
+                          {job.description || job.desc}
                         </p>
                       </div>
                     ))}
@@ -268,21 +269,34 @@ export function PublicProfilePage({ overrideUsername }) {
                     Portfolio
                   </h2>
                   <div className="grid grid-cols-2 gap-3">
-                    {portfolio.map((img, i) => (
-                      <a
-                        key={i}
-                        href={img.url || "#"}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="aspect-square rounded-2xl overflow-hidden bg-gray-50 dark:bg-gray-800 border border-border-light dark:border-border-dark group"
-                      >
-                        <img
-                          src={img.image || img}
-                          alt="Portfolio item"
-                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                        />
-                      </a>
-                    ))}
+                    {portfolio.map((img, i) => {
+                      let itemUrl = typeof img === "object" ? img.url || img.storage_url || "#" : img;
+                      let imgSrc = typeof img === "object" ? img.image || img.storage_url || img.url : img;
+                      
+                      const displayImgSrc = imgSrc && !imgSrc.startsWith("http") && !imgSrc.startsWith("data:") 
+                        ? `${SERVER_URL}${imgSrc}` 
+                        : imgSrc;
+                        
+                      const displayLinkUrl = itemUrl && !itemUrl.startsWith("http") && itemUrl !== "#"
+                        ? `${SERVER_URL}${itemUrl}`
+                        : itemUrl;
+
+                      return (
+                        <a
+                          key={i}
+                          href={displayLinkUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="aspect-square rounded-2xl overflow-hidden bg-gray-50 dark:bg-gray-800 border border-border-light dark:border-border-dark group"
+                        >
+                          <img
+                            src={displayImgSrc}
+                            alt="Portfolio item"
+                            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                          />
+                        </a>
+                      );
+                    })}
                   </div>
                 </div>
               </Motion.div>
@@ -292,7 +306,7 @@ export function PublicProfilePage({ overrideUsername }) {
             <Motion.div {...fadeUp} transition={{ delay: 0.35 }}>
               <div className="bg-gradient-to-br from-gray-900 to-gray-800 dark:from-gray-800 dark:to-gray-950 rounded-3xl p-6 text-white shadow-xl shadow-gray-900/20">
                 <h2 className="text-lg font-bold mb-5 flex items-center gap-2">
-                  <Clock className="h-5 w-5 text-primary" />
+                  <IndianRupee className="h-5 w-5 text-primary" />
                   Availability
                 </h2>
                 <div className="space-y-4">
@@ -302,7 +316,9 @@ export function PublicProfilePage({ overrideUsername }) {
                   </div>
                   <div className="flex justify-between items-center p-3 rounded-xl bg-white/5 border border-white/10">
                     <span className="text-gray-400 text-xs font-medium uppercase tracking-wider">Rate</span>
-                    <span className="font-bold text-sm text-primary">{rate}</span>
+                    <span className="font-bold text-sm text-primary">
+                      {typeof rate === 'number' || (!isNaN(rate) && !rate.toString().startsWith('₹')) ? `₹${rate}` : rate}
+                    </span>
                   </div>
                 </div>
               </div>

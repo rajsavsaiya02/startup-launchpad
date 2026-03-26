@@ -71,11 +71,76 @@ exports.getProjects = async (req, res) => {
     const userId = req.user.id;
     const { scope } = req.query;
 
-    let query = `
+    if (scope === "organization") {
+      // Determine the user's org role to decide visibility
+      const orgMemberQuery = await pool.query(
+        `SELECT om.org_role, om.organization_id, om.organization_member_id
+         FROM organization_members om
+         WHERE om.user_id = $1 AND om.is_active = true
+         LIMIT 1`,
+        [userId],
+      );
+
+      const orgMember = orgMemberQuery.rows[0];
+      const orgRole = orgMember?.org_role;
+      const orgId = orgMember?.organization_id;
+      const orgMemberId = orgMember?.organization_member_id;
+
+      const isPrivileged = ["FOUNDER", "CO-FOUNDER", "ADMIN", "MEMBER"].includes(orgRole);
+
+      let query;
+      let params;
+
+      if (isPrivileged) {
+        // Founders, Co-Founders, Admins, Members see all org projects
+        query = `
+          SELECT p.*,
+            pm.role as project_role,
+            $2 as org_role,
+            (SELECT COUNT(*) FROM organization_teams ot WHERE ot.team_lead_member_id = $3) > 0 as is_team_lead,
+            CASE
+              WHEN COUNT(t.id) = 0 THEN 0
+              ELSE ROUND((COUNT(CASE WHEN t.kanban_status = 'done' THEN 1 END)::numeric / COUNT(t.id)) * 100)
+            END AS progress
+          FROM projects p
+          LEFT JOIN project_members pm ON p.id = pm.project_id AND pm.user_id = $1
+          LEFT JOIN tasks t ON t.project_id = p.id
+          WHERE p.owner_org_id = $4
+          GROUP BY p.id, pm.role
+          ORDER BY p.updated_at DESC
+        `;
+        params = [userId, orgRole, orgMemberId, orgId];
+      } else {
+        // GUESTs can only see projects they are explicitly added to
+        query = `
+          SELECT p.*,
+            pm.role as project_role,
+            $2 as org_role,
+            false as is_team_lead,
+            CASE
+              WHEN COUNT(t.id) = 0 THEN 0
+              ELSE ROUND((COUNT(CASE WHEN t.kanban_status = 'done' THEN 1 END)::numeric / COUNT(t.id)) * 100)
+            END AS progress
+          FROM projects p
+          JOIN project_members pm ON p.id = pm.project_id AND pm.user_id = $1
+          LEFT JOIN tasks t ON t.project_id = p.id
+          WHERE p.owner_org_id IS NOT NULL
+          GROUP BY p.id, pm.role
+          ORDER BY p.updated_at DESC
+        `;
+        params = [userId, orgRole || "GUEST"];
+      }
+
+      const result = await pool.query(query, params);
+      return res.json(result.rows);
+    }
+
+    // Personal (non-org) projects — user must be a project member
+    const query = `
       SELECT p.*, pm.role as project_role,
         om.org_role,
         (SELECT COUNT(*) FROM organization_teams ot WHERE ot.team_lead_member_id = om.organization_member_id) > 0 as is_team_lead,
-        CASE 
+        CASE
           WHEN COUNT(t.id) = 0 THEN 0
           ELSE ROUND((COUNT(CASE WHEN t.kanban_status = 'done' THEN 1 END)::numeric / COUNT(t.id)) * 100)
         END AS progress
@@ -83,20 +148,11 @@ exports.getProjects = async (req, res) => {
       JOIN project_members pm ON p.id = pm.project_id
       LEFT JOIN tasks t ON t.project_id = p.id
       LEFT JOIN organization_members om ON p.owner_org_id = om.organization_id AND om.user_id = $1
-      WHERE pm.user_id = $1
+      WHERE pm.user_id = $1 AND p.owner_org_id IS NULL
+      GROUP BY p.id, pm.role, om.org_role, om.organization_member_id
+      ORDER BY p.updated_at DESC
     `;
-    const params = [userId];
-
-    if (scope === "organization") {
-      query += " AND p.owner_org_id IS NOT NULL";
-    } else {
-      query += " AND p.owner_org_id IS NULL";
-    }
-
-    query +=
-      " GROUP BY p.id, pm.role, om.org_role, om.organization_member_id ORDER BY p.updated_at DESC";
-
-    const result = await pool.query(query, params);
+    const result = await pool.query(query, [userId]);
     res.json(result.rows);
   } catch (error) {
     console.error("Error fetching projects:", error);
@@ -104,14 +160,15 @@ exports.getProjects = async (req, res) => {
   }
 };
 
+
 // Get a single project by ID
 exports.getProjectById = async (req, res) => {
   try {
     const { id } = req.params;
     const userId = req.user.id;
 
-    // Check if user is a member of the project
-    const result = await pool.query(
+    // 1. Check if user is a direct member of the project
+    const memberResult = await pool.query(
       `SELECT p.*, pm.role as user_role 
        FROM projects p
        JOIN project_members pm ON p.id = pm.project_id
@@ -119,13 +176,44 @@ exports.getProjectById = async (req, res) => {
       [id, userId],
     );
 
-    if (result.rows.length === 0) {
-      return res
-        .status(404)
-        .json({ message: "Project not found or access denied" });
+    if (memberResult.rows.length > 0) {
+      return res.json(memberResult.rows[0]);
     }
 
-    res.json(result.rows[0]);
+    // 2. If not a direct member, check if it's an organization project and user has org-level access
+    const projectResult = await pool.query(
+      `SELECT p.* FROM projects p WHERE p.id = $1`,
+      [id]
+    );
+
+    if (projectResult.rows.length === 0) {
+      return res.status(404).json({ message: "Project not found" });
+    }
+
+    const project = projectResult.rows[0];
+
+    if (project.owner_org_id) {
+      const orgMemberResult = await pool.query(
+        `SELECT org_role FROM organization_members 
+         WHERE organization_id = $1 AND user_id = $2 AND is_active = true`,
+        [project.owner_org_id, userId]
+      );
+
+      if (orgMemberResult.rows.length > 0) {
+        const orgRole = orgMemberResult.rows[0].org_role;
+        // Founders, Co-Founders, Admins, and Members have full view access to org projects
+        if (["FOUNDER", "CO-FOUNDER", "ADMIN", "MEMBER"].includes(orgRole)) {
+           return res.json({
+             ...project,
+             user_role: 'org_member',
+             org_role: orgRole
+           });
+        }
+      }
+    }
+
+    // 3. If neither, return 404/403
+    return res.status(404).json({ message: "Project not found or access denied" });
   } catch (error) {
     console.error("Error fetching project:", error);
     res.status(500).json({ message: "Server error fetching project" });

@@ -1,9 +1,9 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Building2,
   MapPin,
   Briefcase,
-  DollarSign,
+  IndianRupee,
   AlignLeft,
   ListChecks,
   Plus,
@@ -14,11 +14,13 @@ import {
 } from "lucide-react";
 import { Drawer } from "../../../components/ui/Drawer";
 import { Button } from "../../../components/ui/Button";
-import { useCreateOpportunity } from "../../../hooks/useTalent";
+import { useCreateOpportunity, useUpdateOpportunity } from "../../../hooks/useTalent";
 import { toast } from "react-toastify";
 import fileAssetService from "../../../services/fileAssetService";
 
-export function CreateOpportunityDrawer({ isOpen, onClose, organizationId }) {
+export function CreateOpportunityDrawer({ isOpen, onClose, organizationId, opportunity }) {
+  const isEditing = !!opportunity;
+
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -29,6 +31,7 @@ export function CreateOpportunityDrawer({ isOpen, onClose, organizationId }) {
     budget_min: "",
     budget_max: "",
     duration: "",
+    status: "Open",
   });
 
   const [mediaUrls, setMediaUrls] = useState([]);
@@ -39,8 +42,46 @@ export function CreateOpportunityDrawer({ isOpen, onClose, organizationId }) {
   const [linkUrl, setLinkUrl] = useState("");
   const [linkTitle, setLinkTitle] = useState("");
 
-  const { mutateAsync: createOpportunity, isPending } = useCreateOpportunity();
+  const { mutateAsync: createOpportunity, isPending: isCreating } = useCreateOpportunity();
+  const { mutateAsync: updateOpportunity, isPending: isUpdating } = useUpdateOpportunity();
+  const isPending = isCreating || isUpdating;
+
   const [isUploading, setIsUploading] = useState(false);
+
+  useEffect(() => {
+    if (opportunity) {
+      setFormData({
+        title: opportunity.title || "",
+        description: opportunity.description || "",
+        type: opportunity.type || "job",
+        compensation_type: opportunity.compensation_type || "Salary",
+        requirements: Array.isArray(opportunity.skills) ? opportunity.skills.join(", ") : (opportunity.skills || ""),
+        location: opportunity.location || "Remote",
+        budget_min: opportunity.budget_min || "",
+        budget_max: opportunity.budget_max || "",
+        duration: opportunity.duration || "",
+        status: opportunity.status || "Open",
+      });
+      setMediaUrls(opportunity.media_urls || []);
+      setExternalLinks(opportunity.external_links || []);
+    } else {
+      // Reset for create mode
+      setFormData({
+        title: "",
+        description: "",
+        type: "job",
+        compensation_type: "Salary",
+        requirements: "",
+        location: "Remote",
+        budget_min: "",
+        budget_max: "",
+        duration: "",
+        status: "Open",
+      });
+      setMediaUrls([]);
+      setExternalLinks([]);
+    }
+  }, [opportunity, isOpen]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -119,7 +160,7 @@ export function CreateOpportunityDrawer({ isOpen, onClose, organizationId }) {
         title: formData.title,
         description: formData.description,
         skills: formData.requirements
-          ? formData.requirements.split(",").map((s) => s.trim())
+          ? (typeof formData.requirements === 'string' ? formData.requirements.split(",").map((s) => s.trim()) : formData.requirements)
           : [],
         compensation_type: formData.compensation_type,
         budget_min: formData.budget_min
@@ -131,29 +172,21 @@ export function CreateOpportunityDrawer({ isOpen, onClose, organizationId }) {
         duration: formData.duration,
         media_urls: mediaUrls,
         external_links: externalLinks,
+        status: formData.status,
       };
 
-      await createOpportunity(payload);
-      toast.success("Opportunity posted successfully!");
+      if (isEditing) {
+        await updateOpportunity({ id: opportunity.id, opportunityData: payload });
+        toast.success("Opportunity updated successfully!");
+      } else {
+        await createOpportunity(payload);
+        toast.success("Opportunity posted successfully!");
+      }
 
-      // Reset form
-      setFormData({
-        title: "",
-        description: "",
-        type: "job",
-        compensation_type: "Salary",
-        requirements: "",
-        location: "Remote",
-        budget_min: "",
-        budget_max: "",
-        duration: "",
-      });
-      setMediaUrls([]);
-      setExternalLinks([]);
       onClose();
     } catch (error) {
       toast.error(
-        error?.response?.data?.message || "Failed to post opportunity",
+        error?.response?.data?.message || `Failed to ${isEditing ? 'update' : 'post'} opportunity`,
       );
     }
   };
@@ -162,8 +195,8 @@ export function CreateOpportunityDrawer({ isOpen, onClose, organizationId }) {
     <Drawer
       isOpen={isOpen}
       onClose={onClose}
-      title="Post New Opportunity"
-      description="Create a rigorous posting to attract top talent. Connected resources will automatically sync with your organization's files."
+      title={isEditing ? "Edit Opportunity" : "Post New Opportunity"}
+      description={isEditing ? "Update the details of your opportunity posting." : "Create a rigorous posting to attract top talent. Connected resources will automatically sync with your organization's files."}
       className="max-w-3xl"
     >
       <form
@@ -225,6 +258,23 @@ export function CreateOpportunityDrawer({ isOpen, onClose, organizationId }) {
                 </div>
               </div>
             </div>
+
+            {isEditing && (
+              <div>
+                <label className="block text-sm font-medium text-text-secondary dark:text-gray-300 mb-1">
+                  Status
+                </label>
+                <select
+                  name="status"
+                  value={formData.status}
+                  onChange={handleChange}
+                  className="w-full h-11 px-4 rounded-lg border border-border-light dark:border-border-dark bg-gray-50 dark:bg-background-dark focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors cursor-pointer"
+                >
+                  <option value="Open">Open</option>
+                  <option value="Closed">Closed</option>
+                </select>
+              </div>
+            )}
           </div>
         </section>
 
@@ -289,7 +339,7 @@ export function CreateOpportunityDrawer({ isOpen, onClose, organizationId }) {
         {/* Budget & Resources section */}
         <section className="bg-white dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-xl p-6 shadow-sm">
           <h3 className="text-sm font-bold text-text-primary dark:text-white uppercase tracking-wider mb-5 flex items-center gap-2">
-            <DollarSign className="w-4 h-4 text-primary" /> Logistics &
+            <IndianRupee className="w-4 h-4 text-primary" /> Logistics &
             Resources
           </h3>
           <div className="space-y-6">
@@ -494,7 +544,9 @@ export function CreateOpportunityDrawer({ isOpen, onClose, organizationId }) {
           disabled={isPending || isUploading}
           className="min-w-[140px] shadow-lg shadow-primary/20"
         >
-          {isPending ? "Publishing..." : "Publish Opportuntity"}
+          {isPending 
+            ? (isEditing ? "Updating..." : "Publishing...") 
+            : (isEditing ? "Update Opportuntity" : "Publish Opportuntity")}
         </Button>
       </div>
     </Drawer>

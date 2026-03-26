@@ -1,33 +1,24 @@
-import React, { useState } from "react";
+import React from "react";
 import { useParams, Link } from "react-router-dom";
 import {
   ArrowLeft,
   Clock,
   IndianRupee,
-  Calendar,
-  Users,
   Building2,
-  MapPin,
-  Globe,
-  Share2,
-  Bookmark,
+  Eye,
 } from "lucide-react";
-import { Button } from "../../components/ui/Button";
-import { Badge } from "../../components/ui/Badge";
-import { Avatar } from "../../components/ui/Avatar";
-import { Card } from "../../components/ui/Card";
-import { useOpportunity, useApplyForOpportunity } from "../../hooks/useTalent";
-import { useAuth } from "../../context/AuthContext";
+import { Button } from "../../../components/ui/Button";
+import { Badge } from "../../../components/ui/Badge";
+import { Avatar } from "../../../components/ui/Avatar";
+import { Card } from "../../../components/ui/Card";
+import { useOpportunity } from "../../../hooks/useTalent";
+import { useAuth } from "../../../context/AuthContext";
+import { Helmet } from "react-helmet-async";
 
-export function OpportunityDetailsPage() {
+export function OrganizationOpportunityDetailsPage() {
   const { id } = useParams();
   const { user } = useAuth();
   const { data, isLoading, isError } = useOpportunity(id);
-  const applyMutation = useApplyForOpportunity(id);
-
-  const [showApplyModal, setShowApplyModal] = useState(false);
-  const [coverLetter, setCoverLetter] = useState("");
-  const [proposedRate, setProposedRate] = useState("");
 
   if (isLoading) {
     return (
@@ -45,8 +36,8 @@ export function OpportunityDetailsPage() {
           The opportunity you are looking for does not exist or has been
           removed.
         </p>
-        <Link to="/dashboard/opportunities">
-          <Button className="mt-6">Back to Board</Button>
+        <Link to="/org/talent/postings">
+          <Button className="mt-6">Back to Manage Postings</Button>
         </Link>
       </div>
     );
@@ -54,42 +45,27 @@ export function OpportunityDetailsPage() {
 
   const opp = data.opportunity;
 
-  const handleApply = (e) => {
-    e.preventDefault();
-    applyMutation.mutate(
-      {
-        cover_letter: coverLetter,
-        proposed_rate: proposedRate ? parseFloat(proposedRate) : null,
-      },
-      {
-        onSuccess: () => {
-          setShowApplyModal(false);
-          alert("Application submitted successfully!");
-        },
-        onError: (err) => {
-          alert(err.response?.data?.message || "Failed to apply.");
-        },
-      },
-    );
-  };
-
   return (
     <div className="space-y-8 animate-in fade-in duration-500 pb-20">
+      <Helmet>
+        <title>{opp.title} | Preview | Startup LaunchPad</title>
+      </Helmet>
+
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 text-sm text-text-tertiary">
         <Link
-          to={user?.role === "freelancer" ? "/dashboard/opportunities" : "/org/talent/postings"}
+          to="/org/talent/postings"
           className="hover:text-primary flex items-center gap-1"
         >
-          <ArrowLeft className="h-4 w-4" /> Back to {user?.role === "freelancer" ? "Opportunities" : "Manage Postings"}
+          <ArrowLeft className="h-4 w-4" /> Back to Manage Postings
         </Link>
         <span>/</span>
-        <span className="capitalize">{opp.type} Details</span>
+        <span className="capitalize">{opp.type} Details (Preview)</span>
       </div>
 
       {/* Header */}
       <div className="border-b border-border-light dark:border-border-dark pb-8">
-        <div className="flex flex-col md:flex-row justify-between items-start gap-4">
+        <div className="flex flex-col md:flex-row justify-between items-center gap-4">
           <div>
             <div className="flex items-center gap-3 mb-2">
               <h1 className="text-3xl font-bold text-text-primary dark:text-white">
@@ -109,17 +85,28 @@ export function OpportunityDetailsPage() {
                 <Clock className="h-4 w-4" /> Posted{" "}
                 {new Date(opp.created_at).toLocaleDateString()}
               </span>
-              {/* Optional: we could fetch applicant count, but let's hide if zero or not provided */}
             </div>
           </div>
-          <div className="flex gap-3">
-            <Button variant="outline" size="icon">
-              <Share2 className="h-5 w-5" />
-            </Button>
-            <Button variant="outline" size="icon">
-              <Bookmark className="h-5 w-5" />
-            </Button>
-          </div>
+
+          {/* Preview Mode Context (Moved from Sidebar) */}
+          <Card className="p-4 flex items-center gap-4 border-amber-500/20 bg-amber-500/5 dark:bg-amber-500/10 shadow-sm">
+            <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400 shrink-0">
+              <Eye className="h-5 w-5" />
+              <div className="flex flex-col text-left">
+                <p className="text-[10px] font-black uppercase tracking-wider leading-none">Preview Mode</p>
+                <p className="text-[9px] text-amber-600/70 dark:text-amber-400/70 font-bold mt-0.5">Admin Only</p>
+              </div>
+            </div>
+            <div className="h-8 w-px bg-amber-500/20 hidden sm:block" />
+            <p className="text-[11px] text-text-secondary dark:text-gray-400 leading-tight max-w-[180px] hidden lg:block">
+              This is how the opportunity appears to talent.
+            </p>
+            <Link to={`/org/talent/postings`} className="shrink-0">
+              <Button variant="outline" size="sm" className="text-[10px] h-8 font-black uppercase tracking-tight border-amber-500/30 hover:bg-amber-500/10">
+                Close Preview
+              </Button>
+            </Link>
+          </Card>
         </div>
       </div>
 
@@ -197,8 +184,9 @@ export function OpportunityDetailsPage() {
         {/* Sidebar (Sticky) */}
         <div className="lg:col-span-1">
           <div className="sticky top-24 space-y-6">
-            {/* Action Card */}
-            <Card className="p-6 space-y-6 border-primary/20 shadow-md bg-white dark:bg-surface-dark">
+
+            {/* Application Section Placeholder (to show mockup) */}
+            <Card className="p-6 space-y-6 border-dashed border-2 border-border-light dark:border-border-dark bg-white/50 dark:bg-surface-dark/50 opacity-60 grayscale-[0.5]">
               <div>
                 <p className="text-lg font-bold text-text-primary dark:text-white">
                   Apply for this role
@@ -208,68 +196,12 @@ export function OpportunityDetailsPage() {
                 </p>
               </div>
               <div className="space-y-3">
-                {showApplyModal ? (
-                  <form
-                    onSubmit={handleApply}
-                    className="space-y-4 mt-2 border-t pt-4"
-                  >
-                    <div>
-                      <label className="block text-sm font-medium text-text-primary dark:text-gray-300 mb-1">
-                        Cover Letter (Optional)
-                      </label>
-                      <textarea
-                        className="w-full h-24 p-3 rounded-lg border border-border-light bg-white dark:bg-surface-dark dark:border-border-dark focus:ring-2 focus:ring-primary/20 text-sm"
-                        placeholder="Why are you a great fit?"
-                        value={coverLetter}
-                        onChange={(e) => setCoverLetter(e.target.value)}
-                      ></textarea>
-                    </div>
-                    {opp.compensation_type !== "Unpaid" && (
-                      <div>
-                        <label className="block text-sm font-medium text-text-primary dark:text-gray-300 mb-1">
-                          Proposed Rate / Bid (₹)
-                        </label>
-                        <input
-                          type="number"
-                          className="w-full h-11 px-4 rounded-lg border border-border-light bg-white dark:bg-surface-dark dark:border-border-dark focus:ring-2 focus:ring-primary/20 text-sm"
-                          placeholder="e.g. 5000"
-                          value={proposedRate}
-                          onChange={(e) => setProposedRate(e.target.value)}
-                        />
-                      </div>
-                    )}
-                    <div className="flex gap-2">
-                      <Button
-                        type="submit"
-                        variant="primary"
-                        className="flex-1"
-                        isLoading={applyMutation.isPending}
-                      >
-                        Confirm Apply
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => setShowApplyModal(false)}
-                      >
-                        Cancel
-                      </Button>
-                    </div>
-                  </form>
-                ) : (
-                  <>
-                    <Button
-                      className="w-full font-bold text-base py-6"
-                      onClick={() => setShowApplyModal(true)}
-                      disabled={opp.status !== "Open"}
-                    >
-                      {opp.status === "Open" ? "Apply Now" : "Closed / Filled"}
-                    </Button>
-                    <Button variant="outline" className="w-full font-semibold">
-                      Save for Later
-                    </Button>
-                  </>
-                )}
+                <Button variant="primary" className="w-full font-bold text-base py-6 cursor-not-allowed" disabled>
+                  Apply Now
+                </Button>
+                <Button variant="outline" className="w-full font-semibold cursor-not-allowed" disabled>
+                  Save for Later
+                </Button>
               </div>
             </Card>
 

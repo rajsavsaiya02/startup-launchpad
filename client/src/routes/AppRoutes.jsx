@@ -38,7 +38,6 @@ import { PolicyViewerPage } from "../pages/PolicyViewerPage";
 import { HelpCenterPage } from "../pages/HelpCenterPage";
 import { CaseStudiesPage } from "../pages/CaseStudiesPage";
 import { CaseStudyDetailPage } from "../pages/CaseStudyDetailPage";
-import { GigDetailsPage } from "../features/talent/GigDetailsPage";
 import { CommunityProfilePage } from "../features/community/CommunityProfilePage";
 import { DesignSystemIntroPage } from "../features/admin/design-system/pages/DesignSystemIntroPage";
 import { AuditLogsPage } from "../features/admin/audit/AuditLogsPage";
@@ -67,7 +66,6 @@ import BrandingSettings from "../features/admin/settings/BrandingSettings";
 import { AdminPreferencesPage } from "../features/admin/users/AdminPreferencesPage";
 import { FreelancerProfilePage } from "../features/talent/FreelancerProfilePage";
 import { GigApplicationsPage } from "../features/talent/GigApplicationsPage";
-import { GigListPage } from "../features/talent/GigListPage";
 import { OpportunitiesBoardPage } from "../features/talent/OpportunitiesBoardPage";
 import { OpportunityDetailsPage } from "../features/talent/OpportunityDetailsPage";
 import { MyApplicationsPage } from "../features/talent/MyApplicationsPage";
@@ -97,6 +95,7 @@ import { AdminPlaceholderPage } from "../components/common/AdminPlaceholderPage"
 import { OrgGuard } from "../components/layout/OrgGuard";
 import { TalentGuard } from "../components/layout/TalentGuard";
 import { OrgTalentDashboard } from "../features/organization/talent/OrgTalentDashboard";
+import { OrganizationOpportunityDetailsPage } from "../features/organization/talent/OrganizationOpportunityDetailsPage";
 
 
 export function AppRoutes() {
@@ -323,11 +322,11 @@ export function AppRoutes() {
         <Route element={<UserLayout />}>
           {/* Dashboard Module */}
           <Route path="/dashboard" element={<DashboardOverview />} />
-          <Route path="/dashboard/gigs" element={<GigListPage />} />
-          <Route path="/dashboard/gigs/:id" element={<GigDetailsPage />} />
+          <Route path="/dashboard/gigs" element={<OpportunitiesBoardPage />} />
+          <Route path="/dashboard/gigs/:id" element={<OpportunityDetailsPage />} />
           <Route
             path="/dashboard/gigs/:id/applications"
-            element={<GigApplicationsPage />}
+            element={<Navigate to="/org/talent/applications" replace />}
           />
           {/* New Talent & Opportunity Routes */}
           <Route element={<TalentGuard />}>
@@ -400,7 +399,7 @@ export function AppRoutes() {
               element={<Navigate to="/org/talent/postings" replace />}
             />
             <Route path="/org/talent/*" element={<OrgTalentDashboard />} />
-            <Route path="/org/gigs/:id" element={<OpportunityDetailsPage />} />
+            <Route path="/org/gigs/:id" element={<OrganizationOpportunityDetailsPage />} />
             <Route
               path="/org/gigs/:id/applications"
               element={<ApplicationReviewPage />}

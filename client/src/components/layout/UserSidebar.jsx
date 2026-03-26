@@ -31,7 +31,7 @@ const USER_MODULE_NAV_CONFIG = {
       title: "",
       items: [
         { name: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
-        { name: "Find Gigs", path: "/dashboard/gigs", icon: Briefcase },
+        { name: "Opportunities", path: "/dashboard/opportunities", icon: Briefcase },
         { name: "Projects", path: "/productivity/projects", icon: FolderOpen },
         { name: "Tasks", path: "/productivity/tasks", icon: CheckSquare },
         { name: "Public Profile", path: "/settings/general", icon: Globe },
@@ -89,7 +89,7 @@ export function UserSidebar({
             user?.role === "admin" ||
             user?.role === "super_admin";
 
-          if (item.name === "Find Gigs" && isOrganizationRole) return false; // Founders/Admins should use the Org side
+          if (item.name === "Opportunities" && isOrganizationRole) return false; // Founders/Admins should use the Org side
           if (
             item.name === "Workspace Customization" &&
             user?.role !== "founder"
