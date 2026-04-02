@@ -3,6 +3,7 @@ const router = express.Router();
 const organizationController = require("../controllers/organizationController");
 const { protect } = require("../middleware/authMiddleware");
 const { requireOrgMember } = require("../middleware/orgAuthMiddleware");
+const upload = require("../middleware/uploadMiddleware");
 
 // Route to create a new organization (must be logged in as 'founder', checked in controller)
 router.post("/", protect, organizationController.createOrganization);
@@ -43,6 +44,24 @@ router.put(
   protect,
   requireOrgMember,
   organizationController.updatePublicProfile,
+);
+
+// Update Organization Logo
+router.put(
+  "/logo",
+  protect,
+  requireOrgMember,
+  upload.single("logo"),
+  organizationController.updateLogo,
+);
+
+// Upload Gallery Photo
+router.post(
+  "/gallery",
+  protect,
+  requireOrgMember,
+  upload.single("photo"),
+  organizationController.uploadGalleryPhoto,
 );
 
 // Get Organization Members

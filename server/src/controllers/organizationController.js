@@ -1,4 +1,41 @@
 const { pool } = require("../database");
+const logger = require("../utils/logger");
+const unifiedStorage = require("../services/UnifiedStorageService");
+
+const LOCAL_LOGO_PREFIXES = ["/public-assets/org/public/uploads"];
+
+/**
+ * Deletes a locally-stored logo from disk and from the files table.
+ */
+async function _deleteOldLogo(oldUrl) {
+  if (!oldUrl || typeof oldUrl !== "string") return;
+
+  const isLocal = LOCAL_LOGO_PREFIXES.some((prefix) =>
+    oldUrl.includes(prefix),
+  );
+  if (!isLocal) return;
+
+  const match = oldUrl.match(/\/public-assets(\/.*)/);
+  const relativePath = match ? match[1] : null;
+
+  if (!relativePath) {
+    logger.warn(`_deleteOldLogo: could not parse relative path from ${oldUrl}`);
+    return;
+  }
+
+  try {
+    await unifiedStorage.deleteFile(relativePath);
+    logger.info(`_deleteOldLogo: deleted file at ${relativePath}`);
+  } catch (e) {
+    logger.warn(`_deleteOldLogo: could not delete file at ${relativePath}`);
+  }
+
+  try {
+    await pool.query("DELETE FROM files WHERE path = $1", [relativePath]);
+  } catch (e) {
+    logger.warn(`_deleteOldLogo: could not remove files record for ${relativePath}`);
+  }
+}
 
 const organizationController = {
   /**
@@ -194,89 +231,172 @@ const organizationController = {
         "SELECT COUNT(*) as count FROM organization_members WHERE organization_id = $1 AND is_active = true",
         [orgId]
       );
+
+      // 2b. Member Status Breakdown
+      let membersByStatus = [];
+      try {
+        const statusResult = await pool.query(
+          `SELECT COALESCE(status, 'On Work') as status, COUNT(*) as count
+           FROM organization_members
+           WHERE organization_id = $1 AND is_active = true
+           GROUP BY COALESCE(status, 'On Work')
+           ORDER BY count DESC`,
+          [orgId]
+        );
+        membersByStatus = statusResult.rows.map(r => ({ status: r.status, count: parseInt(r.count) }));
+      } catch (e) {
+        console.error("Dashboard (Member status breakdown):", e);
+      }
       
-      // 3. Project Count
+      // 3. Active Projects List (top 5) + Count
       let projectCount = 0;
+      let projectsList = [];
       try {
         const projectQuery = await pool.query(
-          "SELECT COUNT(*) as count FROM projects WHERE organization_id = $1 AND status != 'completed'",
-          [orgId]
+          `SELECT p.id, p.title, p.status, p.budget, p.progress, p.due_date,
+             (SELECT COUNT(*) FROM project_members pm WHERE pm.project_id = p.id) as member_count
+           FROM projects p
+           WHERE p.owner_org_id = $1 AND LOWER(p.status) NOT IN ('archived', 'deleted')
+           ORDER BY p.created_at DESC`,
+          [orgId],
         );
-        projectCount = parseInt(projectQuery.rows[0].count);
-      } catch (e) { console.error(e); }
+        projectCount = projectQuery.rows.length;
+        projectsList = projectQuery.rows.map(r => ({
+          id: r.id,
+          title: r.title,
+          status: r.status,
+          budget: parseFloat(r.budget) || 0,
+          memberCount: parseInt(r.member_count) || 0,
+          progress: parseInt(r.progress) || 0,
+          dueDate: r.due_date,
+        }));
+      } catch (e) {
+        console.error("Dashboard (Projects list):", e);
+      }
 
-      // 4. Pending Tasks Count
-      let taskCount = 0;
+      // 4. Task Stats (pending, in-progress, completed)
+      let tasksStats = { pending: 0, inProgress: 0, completedCount: 0 };
       try {
         const taskQuery = await pool.query(
-           `SELECT COUNT(t.*) as count 
-            FROM tasks t 
-            JOIN projects p ON t.project_id = p.project_id 
-            WHERE p.organization_id = $1 AND t.status != 'COMPLETED' AND t.status != 'DONE'`,
-          [orgId]
+          `SELECT
+             COUNT(*) FILTER (WHERE t.kanban_status NOT IN ('COMPLETED', 'DONE')) AS pending,
+             COUNT(*) FILTER (WHERE t.kanban_status = 'IN_PROGRESS') AS in_progress,
+             COUNT(*) FILTER (WHERE t.kanban_status IN ('COMPLETED', 'DONE')) AS completed_count
+           FROM tasks t
+           JOIN projects p ON t.project_id = p.id
+           WHERE p.owner_org_id = $1`,
+          [orgId],
         );
-        taskCount = parseInt(taskQuery.rows[0].count);
+        if (taskQuery.rows.length > 0) {
+          tasksStats = {
+            pending: parseInt(taskQuery.rows[0].pending) || 0,
+            inProgress: parseInt(taskQuery.rows[0].in_progress) || 0,
+            completedCount: parseInt(taskQuery.rows[0].completed_count) || 0,
+          };
+        }
       } catch (e) {
-         // Fallback if schema is slightly different
-         console.error(e);
+        console.error("Dashboard (Tasks stats):", e);
       }
 
       // 5. Recent Activity
       let recentActivities = [];
       try {
         const activityQuery = await pool.query(
-          `SELECT a.content as description, a.created_at, u.first_name, u.last_name, p.name as project_name 
+          `SELECT a.content as description, a.created_at, u.first_name, u.last_name, u.avatar, p.title as project_name
            FROM project_activities a
-           JOIN projects p ON a.project_id = p.project_id
+           JOIN projects p ON a.project_id = p.id
            JOIN users u ON a.user_id = u.id
-           WHERE p.organization_id = $1
-           ORDER BY a.created_at DESC LIMIT 5`,
-          [orgId]
+           WHERE p.owner_org_id = $1
+           ORDER BY a.created_at DESC LIMIT 8`,
+          [orgId],
         );
         recentActivities = activityQuery.rows;
-      } catch (e) { console.error(e); }
+      } catch (e) {
+        console.error("Dashboard (Activity list):", e);
+      }
 
-      // 6. Financial Overview (if applicable, mocking fallback if not available)
-      let revenueData = [120, 132, 101, 134, 90, 230, 210]; // fallback
-      let totalRevenue = 0;
+      // 6. Financial Data (fully isolated — gracefully null for non-admin members)
+      let financeData = null;
       try {
-        const financeQuery = await pool.query(
-          `SELECT SUM(amount) as total FROM financial_transactions 
-           WHERE organization_id = $1 AND type = 'CREDIT' AND status = 'COMPLETED'`,
+        const incomeQuery = await pool.query(
+          "SELECT COALESCE(SUM(amount), 0) as total FROM financial_transactions WHERE organization_id = $1 AND transaction_type = 'INCOME' AND status != 'CANCELLED'",
           [orgId]
         );
-        if (financeQuery.rows.length > 0 && financeQuery.rows[0].total) {
-           totalRevenue = parseFloat(financeQuery.rows[0].total);
-           // Give a nice growth curve based on total
-           revenueData = [
-             totalRevenue * 0.15,
-             totalRevenue * 0.20,
-             totalRevenue * 0.25,
-             totalRevenue * 0.40,
-             totalRevenue * 0.55,
-             totalRevenue * 0.75,
-             totalRevenue * 1.0
-           ];
-        } else {
-           totalRevenue = 124563.00; // Mock UI default
-           revenueData = [23400, 35000, 42000, 58000, 75000, 98000, 124563];
+        const totalRevenue = parseFloat(incomeQuery.rows[0].total) || 0;
+
+        const orgExpenseQuery = await pool.query(
+          "SELECT COALESCE(SUM(amount), 0) as total FROM financial_transactions WHERE organization_id = $1 AND transaction_type = 'EXPENSE' AND status != 'CANCELLED'",
+          [orgId]
+        );
+        const orgExpenses = parseFloat(orgExpenseQuery.rows[0].total) || 0;
+
+        const projExpenseQuery = await pool.query(
+          `SELECT COALESCE(SUM(pe.amount), 0) as total
+           FROM project_expenses pe
+           JOIN projects p ON pe.project_id = p.id
+           WHERE p.owner_org_id = $1 AND pe.status NOT IN ('Refunded', 'Cancelled')`,
+          [orgId]
+        );
+        const projExpenses = parseFloat(projExpenseQuery.rows[0].total) || 0;
+        const totalExpenses = orgExpenses + projExpenses;
+        const netCashflow = totalRevenue - totalExpenses;
+
+        let healthScore = 80;
+        if (netCashflow > 0) healthScore += 10;
+        if (totalExpenses > totalRevenue && totalRevenue > 0) healthScore -= 20;
+        if (totalRevenue === 0 && totalExpenses > 0) healthScore -= 30;
+        healthScore = Math.max(0, Math.min(100, healthScore));
+
+        // Build last 6 month slots
+        const last6Months = [];
+        const now = new Date();
+        for (let i = 5; i >= 0; i--) {
+          const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+          last6Months.push({
+            month: d.toLocaleString('en-US', { month: 'short' }),
+            monthKey: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`,
+            income: 0,
+            expenses: 0,
+          });
         }
-      } catch (e) { 
-        console.error(e);
-        totalRevenue = 124563.00; 
-        revenueData = [23400, 35000, 42000, 58000, 75000, 98000, 124563];
+
+        const monthlyQuery = await pool.query(
+          `SELECT
+             TO_CHAR(DATE_TRUNC('month', expense_date), 'YYYY-MM') as month_key,
+             SUM(CASE WHEN transaction_type = 'INCOME' THEN amount ELSE 0 END) as income,
+             SUM(CASE WHEN transaction_type = 'EXPENSE' THEN amount ELSE 0 END) as expenses
+           FROM financial_transactions
+           WHERE organization_id = $1 AND status != 'CANCELLED'
+             AND expense_date >= NOW() - INTERVAL '6 months'
+           GROUP BY DATE_TRUNC('month', expense_date)
+           ORDER BY DATE_TRUNC('month', expense_date) ASC`,
+          [orgId]
+        );
+        monthlyQuery.rows.forEach(row => {
+          const slot = last6Months.find(m => m.monthKey === row.month_key);
+          if (slot) {
+            slot.income = parseFloat(row.income) || 0;
+            slot.expenses = parseFloat(row.expenses) || 0;
+          }
+        });
+
+        financeData = { totalRevenue, totalExpenses, netCashflow, healthScore, monthlyChart: last6Months };
+      } catch (e) {
+        console.error("Dashboard (Finance data):", e);
+        // financeData stays null — frontend renders restricted state
       }
 
       res.json({
         organization: orgQuery.rows[0],
         metrics: {
           memberCount: parseInt(memberQuery.rows[0].count),
-          activeProjects: projectCount,
-          pendingTasks: taskCount,
-          totalRevenue: totalRevenue,
-          revenueChartData: revenueData
+          membersByStatus,
+          activeProjectsCount: projectCount,
+          projectsList,
+          tasksStats,
+          financeData,
         },
-        recentActivities: recentActivities
+        recentActivities,
       });
 
     } catch (err) {
@@ -315,6 +435,118 @@ const organizationController = {
     } catch (err) {
       console.error("Error updating org config:", err);
       res.status(500).json({ error: "Failed to update workspace settings." });
+    }
+  },
+
+  /**
+   * Update Organization Logo
+   */
+  updateLogo: async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ error: "No logo file uploaded" });
+      }
+
+      const orgId = req.org?.organization_id;
+      const userId = req.user.id;
+
+      // 1. Save to disk via Unified Storage Service
+      const savedFile = await unifiedStorage.saveFile({
+        buffer: req.file.buffer,
+        originalName: req.file.originalname,
+        tier: "org",
+        visibility: "public",
+        subPath: "uploads",
+      });
+
+      const logoUrl = `/public-assets${savedFile.path}`;
+
+      // 2. Fetch old logo before overwriting
+      const oldResult = await pool.query(
+        "SELECT logo_url FROM organizations WHERE organization_id = $1",
+        [orgId],
+      );
+      const oldLogo = oldResult.rows[0]?.logo_url;
+
+      // 3. Update organizations table
+      await pool.query(
+        "UPDATE organizations SET logo_url = $1, updated_at = NOW() WHERE organization_id = $2",
+        [logoUrl, orgId],
+      );
+
+      // 4. Track in files table for audit trail
+      await pool.query(
+        `INSERT INTO files 
+         (uploader_id, uploader_type, original_name, stored_name, mime_type, size, path, visibility)
+         VALUES ($1, 'user', $2, $3, $4, $5, $6, 'public')`,
+        [
+          userId,
+          savedFile.originalName,
+          savedFile.storedName,
+          req.file.mimetype,
+          savedFile.size,
+          savedFile.path,
+        ],
+      );
+
+      // 5. Clean up old logo file from disk
+      await _deleteOldLogo(oldLogo);
+
+      res.json({
+        message: "Logo updated successfully.",
+        logo_url: logoUrl,
+      });
+    } catch (err) {
+      console.error("Error updating org logo:", err);
+      res.status(500).json({ error: "Failed to upload logo." });
+    }
+  },
+
+  /**
+   * Upload Organization Gallery Photo
+   */
+  uploadGalleryPhoto: async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ error: "No photo file uploaded" });
+      }
+
+      const orgId = req.org?.organization_id;
+      const userId = req.user.id;
+
+      // 1. Save to disk via Unified Storage Service
+      const savedFile = await unifiedStorage.saveFile({
+        buffer: req.file.buffer,
+        originalName: req.file.originalname,
+        tier: "org",
+        visibility: "public",
+        subPath: "gallery",
+      });
+
+      const photoUrl = `/public-assets${savedFile.path}`;
+
+      // 2. Track in files table
+      await pool.query(
+        `INSERT INTO files 
+         (uploader_id, uploader_type, original_name, stored_name, mime_type, size, path, visibility)
+         VALUES ($1, 'user', $2, $3, $4, $5, $6, 'public')`,
+        [
+          userId,
+          savedFile.originalName,
+          savedFile.storedName,
+          req.file.mimetype,
+          savedFile.size,
+          savedFile.path,
+        ],
+      );
+
+      res.json({
+        message: "Photo uploaded successfully.",
+        photo_url: photoUrl,
+      });
+    } catch (err) {
+      console.error("Error uploading org gallery photo:", err);
+      res.status(500).json({ error: "Failed to upload gallery photo." });
     }
   },
 

@@ -201,14 +201,11 @@ export function OrgProjectDetailsPage() {
         const isDone = t.kanban_status === "done";
         if (!isDone) return false;
 
-        if (t.due_date) {
-          // Scheduled: Must be before today
-          return isBefore(startOfDay(new Date(t.due_date)), todayStart);
-        } else {
-          // Unscheduled: Must have been completed before today
-          const completedAt = t.updated_at ? new Date(t.updated_at) : null;
-          return completedAt && isBefore(startOfDay(completedAt), todayStart);
-        }
+        const isCompletedToday = t.updated_at && isToday(new Date(t.updated_at));
+        const isOverdue = t.due_date && isBefore(startOfDay(new Date(t.due_date)), todayStart);
+
+        // A task is ARCHIVED if it is DONE and (it is overdue OR it was not completed today)
+        return isOverdue || !isCompletedToday;
       });
 
       // Sort by date descending (Newest Past -> Oldest Past)
@@ -262,8 +259,12 @@ export function OrgProjectDetailsPage() {
       const isCompletedToday =
         isDone && task.updated_at && isToday(new Date(task.updated_at));
 
-      // 1. If it's done and NOT completed today -> it belongs in Archive, so skip it here.
-      if (isDone && !isCompletedToday) {
+      const isOverdue = dueDate && isBefore(startOfDay(dueDate), todayStart);
+
+      // A task belongs in Archive if it is DONE AND (it is overdue OR it was not completed today)
+      // This ensures that even if completed today, an overdue task (due < today) is archived.
+      // Exception: Tasks due TODAY stay in active TODAY group until the end of the day.
+      if (isDone && (isOverdue || !isCompletedToday)) {
         return;
       }
 
@@ -775,15 +776,15 @@ export function OrgProjectDetailsPage() {
                 />
               </div>
               <div className="flex items-center gap-3 w-full sm:w-auto">
-                {/* Archive Mode Toggle */}
-                <div className="flex items-center gap-1 p-1 bg-gray-100/50 dark:bg-gray-800/40 rounded-lg border border-border-light dark:border-border-dark shrink-0">
+                {/* Archive Mode Toggle - New Styled Pill Design */}
+                <div className="flex items-center p-1 bg-gray-100/50 dark:bg-surface-dark border border-gray-200 dark:border-gray-800 rounded-full shrink-0 shadow-sm">
                   <button
                     onClick={() => setIsArchiveMode(false)}
                     className={cn(
-                      "px-3 py-1.5 text-[10px] font-black uppercase tracking-wider rounded-md transition-all",
+                      "px-5 py-1.5 text-xs font-bold rounded-full transition-all duration-300",
                       !isArchiveMode
-                        ? "bg-white dark:bg-surface-dark text-primary shadow-xs"
-                        : "text-text-tertiary hover:text-text-secondary",
+                        ? "bg-white dark:bg-gray-700 text-primary shadow-sm"
+                        : "text-text-tertiary hover:text-text-secondary"
                     )}
                   >
                     Current
@@ -791,10 +792,10 @@ export function OrgProjectDetailsPage() {
                   <button
                     onClick={() => setIsArchiveMode(true)}
                     className={cn(
-                      "px-3 py-1.5 text-[10px] font-black uppercase tracking-wider rounded-md transition-all",
+                      "px-5 py-1.5 text-xs font-bold rounded-full transition-all duration-300",
                       isArchiveMode
-                        ? "bg-white dark:bg-surface-dark text-success shadow-xs"
-                        : "text-text-tertiary hover:text-text-secondary",
+                        ? "bg-white dark:bg-gray-700 text-primary shadow-sm"
+                        : "text-text-tertiary hover:text-text-secondary"
                     )}
                   >
                     Archive

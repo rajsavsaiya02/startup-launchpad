@@ -6,6 +6,7 @@ import {
   Loader2,
   Edit2,
   Trash2,
+  Eye,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
@@ -23,12 +24,14 @@ export function FinanceTransactionsTab() {
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
   const [totalElements, setTotalElements] = useState(0);
-  const rowsPerPage = 10;
 
   // Filters
   const [typeFilter, setTypeFilter] = useState("ALL");
+  const [originFilter, setOriginFilter] = useState("ALL");
+  const [projects, setProjects] = useState([]);
 
   // Drawer State
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -37,12 +40,13 @@ export function FinanceTransactionsTab() {
 
   useEffect(() => {
     fetchConfigData();
+    fetchProjects();
   }, []);
 
   useEffect(() => {
     fetchTransactions();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentPage, typeFilter]);
+  }, [currentPage, typeFilter, originFilter, pageSize]);
 
   const fetchConfigData = async () => {
     try {
@@ -55,11 +59,22 @@ export function FinanceTransactionsTab() {
     }
   };
 
+  const fetchProjects = async () => {
+    try {
+      const res = await apiClient.get("/projects?scope=organization");
+      if (Array.isArray(res.data)) {
+        setProjects(res.data);
+      }
+    } catch (error) {
+      console.error("Failed to fetch projects for filter:", error);
+    }
+  };
+
   const fetchTransactions = async () => {
     try {
       setIsLoading(true);
       const res = await apiClient.get(
-        `/org/finances/transactions?page=${currentPage}&limit=${rowsPerPage}&type=${typeFilter}`,
+        `/org/finances/transactions?page=${currentPage}&limit=${pageSize}&type=${typeFilter}&origin=${originFilter}`,
       );
       if (res.data && res.data.transactions) {
         setTransactions(res.data.transactions);
@@ -148,6 +163,22 @@ export function FinanceTransactionsTab() {
             <option value="INCOME">Income Only</option>
             <option value="EXPENSE">Expense Only</option>
           </select>
+          <select
+            value={originFilter}
+            onChange={(e) => {
+              setOriginFilter(e.target.value);
+              setCurrentPage(1);
+            }}
+            className="px-3 py-1.5 rounded-xl border border-border-light dark:border-border-dark text-xs font-bold text-text-secondary bg-gray-50 dark:bg-gray-800/50 outline-none focus:ring-2 focus:ring-primary/20 transition-all max-w-[150px]"
+          >
+            <option value="ALL">All Origins</option>
+            <option value="ORG">Organization (General)</option>
+            {projects.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.title}
+              </option>
+            ))}
+          </select>
         </div>
 
         <div className="flex items-center gap-2 w-full sm:w-auto">
@@ -181,6 +212,7 @@ export function FinanceTransactionsTab() {
               <tr>
                 <th className="px-5 py-4">Transaction Date</th>
                 <th className="px-5 py-4">Entity / Vendor</th>
+                <th className="px-5 py-4">Origin</th>
                 <th className="px-5 py-4">Category</th>
                 <th className="px-5 py-4">Reference</th>
                 <th className="px-5 py-4 text-right">Amount</th>
@@ -190,7 +222,7 @@ export function FinanceTransactionsTab() {
             <tbody className="divide-y divide-border-light dark:divide-border-dark">
               {isLoading ? (
                 <tr>
-                  <td colSpan="6" className="px-5 py-20 text-center">
+                  <td colSpan="7" className="px-5 py-20 text-center">
                     <Loader2 className="w-6 h-6 animate-spin text-primary mx-auto" />
                     <p className="text-xs font-bold text-text-tertiary mt-4 uppercase tracking-widest">
                       Syncing ledger...
@@ -200,7 +232,7 @@ export function FinanceTransactionsTab() {
               ) : transactions.length > 0 ? (
                 transactions.map((tx) => (
                   <tr
-                    key={tx.id}
+                    key={`${tx.source}-${tx.id}`}
                     className="hover:bg-gray-50/50 dark:hover:bg-gray-800/30 transition-colors group"
                   >
                     <td className="px-5 py-4">
@@ -220,7 +252,7 @@ export function FinanceTransactionsTab() {
                     </td>
                     <td className="px-5 py-4">
                       <div className="flex flex-col">
-                        <span className="text-xs font-black text-text-primary dark:text-white truncate max-w-[180px]">
+                        <span className="text-xs font-black text-text-primary dark:text-white truncate max-w-[150px]">
                           {tx.vendor_name || "Internal Transfer"}
                         </span>
                         <span className="text-[10px] font-bold text-text-tertiary uppercase tracking-widest mt-0.5">
@@ -229,11 +261,25 @@ export function FinanceTransactionsTab() {
                       </div>
                     </td>
                     <td className="px-5 py-4">
+                      <div className="flex items-center gap-2">
+                        <span 
+                          className={cn(
+                            "px-2 py-0.5 rounded-md text-[10px] font-bold border",
+                            tx.source === "ORG" 
+                              ? "bg-primary/5 text-primary border-primary/10" 
+                              : "bg-amber-500/5 text-amber-600 border-amber-500/10"
+                          )}
+                        >
+                          {tx.origin}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-5 py-4">
                       <span className="px-2 py-0.5 rounded-lg bg-gray-100 dark:bg-gray-800 text-text-secondary dark:text-gray-300 text-[10px] font-black uppercase tracking-tight">
                         {tx.category_name || "General"}
                       </span>
                     </td>
-                    <td className="px-5 py-4 text-xs font-medium text-text-tertiary truncate max-w-[200px]" title={tx.description}>
+                    <td className="px-5 py-4 text-xs font-medium text-text-tertiary truncate max-w-[150px]" title={tx.description}>
                       {tx.description}
                     </td>
                     <td
@@ -241,7 +287,7 @@ export function FinanceTransactionsTab() {
                         "px-5 py-4 text-right font-black text-sm",
                         tx.transaction_type === "INCOME"
                           ? "text-emerald-600 dark:text-emerald-400"
-                          : "text-text-primary dark:text-white",
+                          : "text-rose-600 dark:text-rose-500",
                       )}
                     >
                       <div className="flex gap-2 items-center justify-end">
@@ -249,29 +295,48 @@ export function FinanceTransactionsTab() {
                       </div>
                     </td>
                     <td className="px-5 py-4 text-right">
-                      <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-all focus-within:opacity-100">
-                        <button 
-                          onClick={() => handleOpenDrawer("edit", tx)}
-                          className="p-1.5 rounded-lg text-text-tertiary hover:text-primary hover:bg-gray-100 dark:hover:bg-gray-800 transition-all"
-                          title="Edit Transaction"
-                        >
-                          <Edit2 className="w-4 h-4" />
-                        </button>
-                        <button 
-                          onClick={() => handleDeleteTransaction(tx.id)}
-                          className="p-1.5 rounded-lg text-text-tertiary hover:text-red-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all"
-                          title="Delete Transaction"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
+                      {tx.source === "ORG" ? (
+                        <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-all focus-within:opacity-100">
+                          <button 
+                            onClick={() => handleOpenDrawer("view", tx)}
+                            className="p-1.5 rounded-lg text-text-tertiary hover:text-primary hover:bg-gray-100 dark:hover:bg-gray-800 transition-all"
+                            title="View Details"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </button>
+                          <button 
+                            onClick={() => handleOpenDrawer("edit", tx)}
+                            className="p-1.5 rounded-lg text-text-tertiary hover:text-primary hover:bg-gray-100 dark:hover:bg-gray-800 transition-all"
+                            title="Edit Transaction"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                          <button 
+                            onClick={() => handleDeleteTransaction(tx.id)}
+                            className="p-1.5 rounded-lg text-text-tertiary hover:text-red-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all"
+                            title="Delete Transaction"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-end">
+                           <button 
+                            onClick={() => handleOpenDrawer("view", tx)}
+                            className="p-1.5 rounded-lg text-text-tertiary hover:text-primary hover:bg-gray-100 dark:hover:bg-gray-800 transition-all opacity-0 group-hover:opacity-100"
+                            title="View Details"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </button>
+                        </div>
+                      )}
                     </td>
                   </tr>
                 ))
               ) : (
                 <tr>
                   <td
-                    colSpan="6"
+                    colSpan="7"
                     className="px-5 py-20 text-center text-text-tertiary"
                   >
                     <div className="flex flex-col items-center">
@@ -291,10 +356,29 @@ export function FinanceTransactionsTab() {
         </div>
 
         {/* ─── Pagination ─── */}
-        <div className="p-4 border-t border-border-light dark:border-border-dark flex items-center justify-between bg-gray-50/30 dark:bg-gray-900/10">
-          <div className="text-[10px] font-black text-text-tertiary uppercase tracking-widest">
-            Showing {transactions.length} of {totalElements} Transactions
+        <div className="p-4 border-t border-border-light dark:border-border-dark flex flex-col sm:flex-row items-center justify-between bg-gray-50/30 dark:bg-gray-900/10 gap-4">
+          <div className="flex items-center gap-6">
+            <div className="text-[10px] font-black text-text-tertiary uppercase tracking-widest">
+              Showing {transactions.length} of {totalElements} Transactions
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-black text-text-tertiary uppercase tracking-widest">Rows per page:</span>
+              <select
+                value={pageSize}
+                onChange={(e) => {
+                  setPageSize(parseInt(e.target.value));
+                  setCurrentPage(1);
+                }}
+                className="bg-transparent text-[10px] font-black text-text-primary uppercase outline-none focus:text-primary transition-colors cursor-pointer"
+              >
+                {[10, 20, 50, 100, 500].map(size => (
+                  <option key={size} value={size}>{size}</option>
+                ))}
+              </select>
+            </div>
           </div>
+
           <div className="flex items-center gap-2">
             <button
               disabled={currentPage === 1}

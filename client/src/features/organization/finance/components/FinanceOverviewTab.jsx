@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card } from "../../../../components/ui/Card";
 import { apiClient } from "../../../../lib/axios";
 import { toast } from "react-toastify";
@@ -12,6 +13,7 @@ import {
   AlertCircle,
   Clock,
   Layers,
+  Search,
 } from "lucide-react";
 
 export function FinanceOverviewTab() {
@@ -22,8 +24,11 @@ export function FinanceOverviewTab() {
     projExpenses: 0,
     netCashflow: 0,
     healthScore: 0,
+    projectMetrics: [],
   });
+  const [searchTerm, setSearchTerm] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
     let isMounted = true;
@@ -166,131 +171,243 @@ export function FinanceOverviewTab() {
         {/* ─── Left Column (Distribution & Insights) ─── */}
         <div className="lg:col-span-2 space-y-6">
           <div className="bg-white dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-2xl p-6 shadow-sm flex flex-col h-full">
-            <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center justify-between mb-8">
               <div className="flex items-center gap-2 text-text-primary dark:text-white font-black uppercase tracking-tight text-sm px-1">
                 <div className="w-5 h-5 rounded border-2 border-primary/20 flex items-center justify-center bg-primary/5 text-primary">
                   <Activity className="w-3 h-3" />
                 </div>
                 Expense Distribution
               </div>
-              <div className="text-[11px] font-bold text-text-tertiary bg-gray-50 dark:bg-gray-800 px-2 py-1 rounded-lg border border-border-light dark:border-border-dark">
-                Dynamic Rollup
-              </div>
             </div>
 
-            <div className="space-y-8 mt-2">
-              <div>
-                <div className="flex justify-between items-end mb-3">
+            <div className="space-y-10">
+              {/* ─── Row 1: Consolidated P&L Comparison ─── */}
+              <div className="space-y-6">
+                <div className="flex justify-between items-end">
                   <div className="space-y-1">
-                    <p className="text-xs font-bold text-text-primary dark:text-gray-200">
-                      Overhead vs Project Burn
+                    <p className="text-base font-black text-text-primary dark:text-gray-100">
+                      Consolidated P&L
                     </p>
                     <p className="text-[10px] font-bold text-text-tertiary uppercase tracking-widest">
-                      Consolidated Operational Metrics
+                      Organizational Income vs Total Burn
                     </p>
                   </div>
-                  <span className="text-xs font-black text-text-primary dark:text-white">
-                    Total: {formatCurrency(metrics?.totalExpenses || 0)}
-                  </span>
+                  <div className="text-right">
+                    <p className="text-[10px] font-black text-text-tertiary uppercase tracking-widest mb-1">Burn Ratio</p>
+                    <span className={cn(
+                      "text-xs font-black px-2 py-0.5 rounded-md",
+                      metrics.totalExpenses > metrics.totalIncome ? "bg-rose-500/10 text-rose-500" : "bg-emerald-500/10 text-emerald-500"
+                    )}>
+                      {Math.round((metrics.totalExpenses / (metrics.totalIncome || 1)) * 100)}%
+                    </span>
+                  </div>
                 </div>
 
-                <div className="w-full flex h-8 rounded-xl overflow-hidden shadow-xs ring-4 ring-gray-50 dark:ring-gray-900/30">
-                  {metrics?.totalExpenses === 0 ? (
-                    <div className="w-full bg-gray-100 dark:bg-gray-800 h-full flex items-center justify-center text-[10px] font-bold text-text-tertiary uppercase tracking-widest">
-                      Waiting for transactions
+                <div className="relative">
+                  <div className="w-full flex h-12 rounded-2xl overflow-hidden shadow-xs ring-4 ring-gray-50 dark:ring-gray-900/30">
+                    <div
+                      className="bg-blue-500 transition-all hover:brightness-110 relative group"
+                      style={{
+                        width: `${(metrics.totalIncome / (metrics.totalIncome + metrics.totalExpenses || 1)) * 100}%`,
+                      }}
+                    >
+                      <div className="absolute inset-0 opacity-0 group-hover:opacity-100 bg-white/10 transition-opacity" />
                     </div>
-                  ) : (
-                    <>
-                      <div
-                        className="bg-primary/90 transition-all hover:bg-primary cursor-pointer relative group"
-                        style={{
-                          width: `${((metrics?.orgExpenses || 0) / (metrics?.totalExpenses || 1)) * 100}%`,
-                        }}
-                      >
-                        <div className="absolute inset-0 opacity-0 group-hover:opacity-100 bg-white/10 transition-opacity" />
-                      </div>
-                      <div
-                        className="bg-amber-400 hover:bg-amber-500 transition-all cursor-pointer relative group"
-                        style={{
-                          width: `${((metrics?.projExpenses || 0) / (metrics?.totalExpenses || 1)) * 100}%`,
-                        }}
-                      >
-                        <div className="absolute inset-0 opacity-0 group-hover:opacity-100 bg-white/10 transition-opacity" />
-                      </div>
-                    </>
-                  )}
-                </div>
-
-                <div className="flex items-center gap-6 mt-5">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-2.5 h-2.5 rounded-full bg-primary/90 shadow-sm" />
-                    <div>
-                      <p className="text-[10px] font-black text-text-tertiary uppercase tracking-widest leading-none">
-                        Org Overhead
-                      </p>
-                      <p className="text-xs font-bold text-text-primary dark:text-white mt-1">
-                        {formatCurrency(metrics?.orgExpenses || 0)}{" "}
-                        <span className="text-text-tertiary font-medium">
-                          (
-                          {metrics?.totalExpenses
-                            ? Math.round(
-                                ((metrics?.orgExpenses || 0) /
-                                  metrics.totalExpenses) *
-                                  100,
-                              )
-                            : 0}
-                          %)
-                        </span>
-                      </p>
+                    <div
+                      className="bg-rose-500 transition-all hover:brightness-110 relative group"
+                      style={{
+                        width: `${(metrics.totalExpenses / (metrics.totalIncome + metrics.totalExpenses || 1)) * 100}%`,
+                      }}
+                    >
+                      <div className="absolute inset-0 opacity-0 group-hover:opacity-100 bg-white/10 transition-opacity" />
                     </div>
                   </div>
-                  <div className="w-px h-6 bg-border-light dark:bg-border-dark" />
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-2.5 h-2.5 rounded-full bg-amber-400 shadow-sm" />
-                    <div>
-                      <p className="text-[10px] font-black text-text-tertiary uppercase tracking-widest leading-none">
-                        Project Burn
-                      </p>
-                      <p className="text-xs font-bold text-text-primary dark:text-white mt-1">
-                        {formatCurrency(metrics?.projExpenses || 0)}{" "}
-                        <span className="text-text-tertiary font-medium">
-                          (
-                          {metrics?.totalExpenses
-                            ? Math.round(
-                                ((metrics?.projExpenses || 0) /
-                                  metrics.totalExpenses) *
-                                  100,
-                              )
-                            : 0}
-                          %)
-                        </span>
+
+                  <div className="flex justify-between items-center mt-4 px-1">
+                    <div className="flex items-center gap-6">
+                      <div className="space-y-0.5">
+                        <div className="flex items-center gap-2">
+                          <div className="w-2 h-2 rounded-full bg-blue-500" />
+                          <span className="text-[10px] font-black text-text-tertiary uppercase tracking-widest">
+                            Total Income
+                          </span>
+                        </div>
+                        <p className="text-lg font-black text-text-primary dark:text-white">
+                          {formatCurrency(metrics.totalIncome)}
+                        </p>
+                      </div>
+                      <div className="space-y-0.5">
+                        <div className="flex items-center gap-2">
+                          <div className="w-2 h-2 rounded-full bg-rose-500" />
+                          <span className="text-[10px] font-black text-text-tertiary uppercase tracking-widest">
+                            Total Expenses
+                          </span>
+                        </div>
+                        <p className="text-lg font-black text-text-primary dark:text-white">
+                          {formatCurrency(metrics.totalExpenses)}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-[10px] font-black text-text-tertiary uppercase tracking-widest">Net Surplus</span>
+                      <p className={cn(
+                        "text-lg font-black",
+                        metrics.netCashflow >= 0 ? "text-emerald-500" : "text-rose-500"
+                      )}>
+                        {formatCurrency(metrics.netCashflow)}
                       </p>
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
 
-            <div className="mt-auto pt-8">
-              <div className="flex items-center gap-3 p-4 bg-gray-50 dark:bg-gray-800/40 rounded-2xl border border-border-light dark:border-border-dark">
-                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
-                  <Activity className="w-5 h-5" />
+              {/* ─── Row 2: Project Financials Ledger ─── */}
+              <div className="space-y-6 pt-4 border-t border-border-light dark:border-border-dark">
+                <div className="flex justify-between items-end">
+                  <div className="space-y-1">
+                    <p className="text-base font-black text-text-primary dark:text-gray-100">
+                      Project Financials
+                    </p>
+                    <p className="text-[10px] font-bold text-text-tertiary uppercase tracking-widest">
+                      Individual Project Budget Utilization
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <div className="relative group/search">
+                      <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary group-focus-within/search:text-primary transition-colors" />
+                      <input
+                        type="text"
+                        placeholder="Search projects..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="pl-9 pr-4 py-1.5 bg-gray-50 dark:bg-gray-800/50 border border-border-light dark:border-border-dark rounded-xl text-[11px] font-bold focus:outline-hidden focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all w-48"
+                      />
+                    </div>
+                    <div className="text-[10px] font-black text-primary uppercase bg-primary/5 px-2 py-0.5 rounded-md border border-primary/10">
+                      {metrics.projectMetrics?.length || 0} Projects
+                    </div>
+                  </div>
                 </div>
-                <div className="flex-1">
-                  <p className="text-[11px] font-black text-text-primary dark:text-white uppercase tracking-tight">
-                    AI Strategic Advisory
-                  </p>
-                  <p className="text-[11px] font-medium text-text-tertiary leading-relaxed mt-0.5">
-                    Your {metrics?.healthScore >= 70 ? "optimal" : "current"}{" "}
-                    burn-to-capital ratio suggests a{" "}
-                    <span className="text-primary font-bold">
-                      {(metrics?.healthScore || 0) >= 80
-                        ? "highly efficient"
-                        : "standard"}
-                    </span>{" "}
-                    growth trajectory. Maintain visibility over project
-                    tranches.
-                  </p>
+
+                <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                  {(metrics.projectMetrics || [])
+                    .filter((p) =>
+                      p.title.toLowerCase().includes(searchTerm.toLowerCase()),
+                    )
+                    .length > 0 ? (
+                    (metrics.projectMetrics || [])
+                      .filter((p) =>
+                        p.title.toLowerCase().includes(searchTerm.toLowerCase()),
+                      )
+                      .map((proj) => {
+                        const utilization =
+                          proj.allocated > 0
+                            ? (proj.expended / proj.allocated) * 100
+                            : proj.expended > 0
+                              ? 100
+                              : 0;
+                        const isOverBudget =
+                          proj.expended > proj.allocated && proj.allocated > 0;
+                        const isAtRisk = utilization >= 80 && utilization <= 100;
+                        const isHealthy = utilization < 80;
+
+                      return (
+                        <div
+                          key={proj.id}
+                          className="p-5 rounded-2xl border border-border-light dark:border-border-dark bg-gray-50/30 dark:bg-gray-800/20 group hover:border-primary/30 transition-all"
+                        >
+                          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-xl bg-white dark:bg-gray-800 border border-border-light dark:border-border-dark flex items-center justify-center text-primary shadow-xs">
+                                <Layers className="w-5 h-5" />
+                              </div>
+                              <div>
+                                <h4 className="text-sm font-black text-text-primary dark:text-gray-100 group-hover:text-primary transition-colors">
+                                  {proj.title}
+                                </h4>
+                                <div className="flex items-center gap-2 mt-0.5">
+                                  <span
+                                    className={cn(
+                                      "w-1.5 h-1.5 rounded-full",
+                                      isOverBudget
+                                        ? "bg-rose-500 animate-pulse"
+                                        : isAtRisk
+                                          ? "bg-amber-500"
+                                          : "bg-emerald-500",
+                                    )}
+                                  />
+                                  <span className="text-[10px] font-bold text-text-tertiary uppercase tracking-widest">
+                                    {isOverBudget
+                                      ? "Over Budget"
+                                      : isAtRisk
+                                        ? "Near Limit"
+                                        : "Under Budget"}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-8">
+                              <div className="text-right">
+                                <span className="text-[10px] font-black text-text-tertiary uppercase tracking-widest opacity-60">
+                                  Allocated
+                                </span>
+                                <p className="font-black text-text-primary dark:text-white text-sm">
+                                  {formatCurrency(proj.allocated)}
+                                </p>
+                              </div>
+                              <div className="text-right">
+                                <span className="text-[10px] font-black text-text-tertiary uppercase tracking-widest opacity-60">
+                                  Expended
+                                </span>
+                                <p className={cn(
+                                  "font-black text-sm",
+                                  isOverBudget ? "text-rose-500" : "text-text-primary dark:text-white"
+                                )}>
+                                  {formatCurrency(proj.expended)}
+                                </p>
+                              </div>
+                              <div className="min-w-[60px] text-right">
+                                <span className={cn(
+                                  "text-[10px] font-black uppercase px-2 py-1 rounded-lg",
+                                  isOverBudget
+                                    ? "bg-rose-500/10 text-rose-500 border border-rose-500/20"
+                                    : utilization > 80
+                                    ? "bg-amber-500/10 text-amber-500 border border-amber-500/20"
+                                    : "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20",
+                                )}>
+                                  {utilization.toFixed(0)}%
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="w-full bg-gray-100 dark:bg-gray-800 h-2 rounded-full overflow-hidden">
+                            <div
+                              className={cn(
+                                "h-full transition-all duration-700 ease-out",
+                                isOverBudget
+                                  ? "bg-rose-500"
+                                  : utilization > 80
+                                    ? "bg-amber-400"
+                                    : "bg-emerald-500",
+                              )}
+                              style={{ width: `${Math.min(100, utilization)}%` }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <div className="flex flex-col items-center justify-center py-16 text-center opacity-40 border-2 border-dashed border-border-light dark:border-border-dark rounded-3xl">
+                      <Search className="w-12 h-12 mb-4 text-text-tertiary" />
+                      <p className="text-xs font-black uppercase tracking-widest text-text-tertiary">
+                        {searchTerm
+                          ? `No results for "${searchTerm}"`
+                          : "No active projects identified"}
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -399,7 +516,10 @@ export function FinanceOverviewTab() {
               </div>
             </div>
 
-            <button className="w-full py-2.5 mt-8 bg-gray-50 hover:bg-gray-100 dark:bg-gray-800/50 dark:hover:bg-gray-800 rounded-xl text-[11px] font-black text-text-tertiary hover:text-primary transition-all border border-border-light dark:border-border-dark shadow-xs uppercase tracking-widest">
+            <button 
+              onClick={() => navigate("/org/finances/transactions")}
+              className="w-full py-2.5 mt-8 bg-gray-50 hover:bg-gray-100 dark:bg-gray-800/50 dark:hover:bg-gray-800 rounded-xl text-[11px] font-black text-text-tertiary hover:text-primary transition-all border border-border-light dark:border-border-dark shadow-xs uppercase tracking-widest cursor-pointer"
+            >
               Review Master Ledger
             </button>
           </div>

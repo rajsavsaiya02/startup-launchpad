@@ -41,6 +41,30 @@ const orgFinanceController = {
       const totalExpenses = orgExpenses + projExpenses;
       const netCashflow = totalIncome - totalExpenses;
 
+      // 4. Get individual project budgets vs expended (Active only)
+      const projectMetricsQuery = await pool.query(
+        `
+        SELECT 
+          p.id, 
+          p.title, 
+          p.budget as allocated,
+          (
+            COALESCE((SELECT SUM(amount) FROM project_expenses WHERE project_id = p.id AND status NOT IN ('Refunded', 'Cancelled')), 0) +
+            COALESCE((SELECT SUM(amount) FROM financial_transactions WHERE project_id = p.id AND transaction_type = 'EXPENSE' AND status != 'CANCELLED'), 0)
+          ) as expended
+        FROM projects p
+        WHERE p.owner_org_id = $1 AND LOWER(p.status) NOT IN ('archived', 'deleted')
+        ORDER BY p.created_at DESC
+      `,
+        [orgId],
+      );
+      const projectMetrics = projectMetricsQuery.rows.map((row) => ({
+        id: row.id,
+        title: row.title,
+        allocated: parseFloat(row.allocated),
+        expended: parseFloat(row.expended),
+      }));
+
       // Simplistic Health Score logic (can be expanded with AI later)
       let healthScore = 80; // base score
       if (netCashflow > 0) healthScore += 10;
@@ -54,6 +78,7 @@ const orgFinanceController = {
           orgExpenses,
           projExpenses,
           netCashflow,
+          projectMetrics,
           healthScore: Math.max(0, Math.min(100, healthScore)),
         },
       });
@@ -68,48 +93,113 @@ const orgFinanceController = {
    */
   getTransactions: async (req, res) => {
     const orgId = req.org?.organization_id;
-    const { page = 1, limit = 20, type = "ALL", category = "ALL" } = req.query;
+    const { page = 1, limit = 10, type = "ALL", category = "ALL", origin = "ALL" } = req.query;
 
     const offset = (parseInt(page) - 1) * parseInt(limit);
-    let queryParams = [orgId];
-    let whereClause = "WHERE t.organization_id = $1";
-
-    if (type !== "ALL" && (type === "INCOME" || type === "EXPENSE")) {
-      queryParams.push(type);
-      whereClause += ` AND t.transaction_type = $${queryParams.length}`;
-    }
-
-    if (category !== "ALL" && !isNaN(parseInt(category))) {
-      queryParams.push(parseInt(category));
-      whereClause += ` AND t.category_id = $${queryParams.length}`;
-    }
-
+    
     try {
+      // 1. Build dynamic filters for both sources
+      let orgFilters = "t.organization_id = $1";
+      let projFilters = "p.owner_org_id = $1";
+      let params = [orgId];
+
+      if (type !== "ALL") {
+        params.push(type);
+        orgFilters += ` AND t.transaction_type = $${params.length}`;
+        // If filtering for INCOME, PROJECT source (always expense) matches nothing
+        if (type === "INCOME") {
+          projFilters += " AND 1=0";
+        }
+      }
+
+      if (category !== "ALL" && !isNaN(parseInt(category))) {
+        params.push(parseInt(category));
+        orgFilters += ` AND t.category_id = $${params.length}`;
+        // Hide project expenses when a specific COA category is selected
+        projFilters += " AND 1=0";
+      }
+
+      if (origin !== "ALL") {
+        if (origin === "ORG") {
+          orgFilters += " AND t.project_id IS NULL";
+          projFilters += " AND 1=0";
+        } else if (!isNaN(parseInt(origin))) {
+          params.push(parseInt(origin));
+          const pIdx = params.length;
+          orgFilters += ` AND t.project_id = $${pIdx}`;
+          projFilters += ` AND pe.project_id = $${pIdx}`;
+        }
+      }
+
       const queryStr = `
-        SELECT t.*, c.name as category_name, cl.name as classification_name, cl.root_type, u.name as creator_name
-        FROM financial_transactions t
-        LEFT JOIN fin_coa_category c ON t.category_id = c.id
-        LEFT JOIN fin_coa_classification cl ON c.classification_id = cl.id
-        LEFT JOIN users u ON t.created_by_id = u.id
-        ${whereClause}
-        ORDER BY t.expense_date DESC, t.created_at DESC
-        LIMIT $${queryParams.length + 1} OFFSET $${queryParams.length + 2}
+        SELECT * FROM (
+          SELECT 
+            t.id, t.description, t.amount, t.expense_date, t.transaction_type, 
+            c.name as category_name, t.vendor_name, t.status, 
+            COALESCE(pr.title, 'Organization') as origin,
+            'ORG' as source,
+            t.created_at
+          FROM financial_transactions t
+          LEFT JOIN fin_coa_category c ON t.category_id = c.id
+          LEFT JOIN projects pr ON t.project_id = pr.id
+          WHERE ${orgFilters}
+
+          UNION ALL
+
+          SELECT 
+            pe.id, pe.description, pe.amount, pe.expense_date, 'EXPENSE' as transaction_type,
+            pe.category as category_name, pe.vendor_name, pe.status,
+            p.title as origin,
+            'PROJECT' as source,
+            pe.created_at
+          FROM project_expenses pe
+          JOIN projects p ON pe.project_id = p.id
+          WHERE ${projFilters}
+        ) as unified_ledger
+        ORDER BY expense_date DESC, created_at DESC
+        LIMIT $${params.length + 1} OFFSET $${params.length + 2}
       `;
 
-      const limitOffsetParams = [...queryParams, parseInt(limit), offset];
+      const limitOffsetParams = [...params, parseInt(limit), offset];
 
-      const countQueryStr = `SELECT COUNT(*) FROM financial_transactions t ${whereClause}`;
+      const countQueryStr = `
+        SELECT (
+          (SELECT COUNT(*) FROM financial_transactions t WHERE ${orgFilters}) + 
+          (SELECT COUNT(*) FROM project_expenses pe JOIN projects p ON pe.project_id = p.id WHERE ${projFilters})
+        ) as total`;
 
       const [txRes, countRes] = await Promise.all([
         pool.query(queryStr, limitOffsetParams),
-        pool.query(countQueryStr, queryParams),
+        pool.query(countQueryStr, params),
       ]);
 
-      const totalElements = parseInt(countRes.rows[0].count);
+      const txRows = txRes.rows;
+      const totalElements = parseInt(countRes.rows[0].total);
       const totalPages = Math.ceil(totalElements / parseInt(limit));
+      
+      // Fetch attachments for these transactions
+      if (txRows.length > 0) {
+        const txIds = txRows.map(t => t.id);
+        const attachmentRes = await pool.query(`
+          SELECT a.transaction_id, f.file_asset_id, f.file_name as attachment_name, f.storage_url as attachment_url, f.mime_type as attachment_type
+          FROM financial_transaction_attachments a
+          JOIN file_assets f ON a.file_asset_id = f.file_asset_id
+          WHERE a.transaction_id = ANY($1)
+        `, [txIds]);
+
+        const attachmentMap = {};
+        attachmentRes.rows.forEach(row => {
+          if (!attachmentMap[row.transaction_id]) attachmentMap[row.transaction_id] = [];
+          attachmentMap[row.transaction_id].push(row);
+        });
+
+        txRows.forEach(t => {
+          t.attachments = attachmentMap[t.id] || [];
+        });
+      }
 
       res.status(200).json({
-        transactions: txRes.rows,
+        transactions: txRows,
         pagination: {
           totalElements,
           totalPages,
@@ -136,7 +226,10 @@ const orgFinanceController = {
       description,
       vendor_name,
       expense_date,
-      currency = "USD",
+      currency = "INR",
+      brief,
+      payment_modes = [],
+      attachment_ids = [],
     } = req.body;
 
     if (!transaction_type || !amount || !description || !expense_date) {
@@ -152,8 +245,8 @@ const orgFinanceController = {
       const result = await client.query(
         `
         INSERT INTO financial_transactions 
-        (organization_id, transaction_type, category_id, amount, currency, description, vendor_name, expense_date, created_by_id)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        (organization_id, transaction_type, category_id, amount, currency, description, vendor_name, expense_date, created_by_id, brief, payment_modes)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
         RETURNING *
       `,
         [
@@ -166,13 +259,28 @@ const orgFinanceController = {
           vendor_name,
           expense_date,
           userId,
+          brief,
+          JSON.stringify(payment_modes),
         ],
       );
+
+      const transaction = result.rows[0];
+
+      // Handle attachments
+      if (attachment_ids && attachment_ids.length > 0) {
+        const attachmentValues = attachment_ids.map(
+          (fileId) => `(${transaction.id}, ${fileId})`,
+        );
+        await client.query(`
+          INSERT INTO financial_transaction_attachments (transaction_id, file_asset_id)
+          VALUES ${attachmentValues.join(", ")}
+        `);
+      }
 
       await client.query("COMMIT");
       res.status(201).json({
         message: "Transaction added successfully",
-        transaction: result.rows[0],
+        transaction,
       });
     } catch (error) {
       await client.query("ROLLBACK");
@@ -197,10 +305,16 @@ const orgFinanceController = {
       vendor_name,
       expense_date,
       status,
+      brief,
+      payment_modes,
+      attachment_ids,
     } = req.body;
 
+    const client = await pool.connect();
     try {
-      const result = await pool.query(
+      await client.query("BEGIN");
+
+      const result = await client.query(
         `
         UPDATE financial_transactions 
         SET 
@@ -211,8 +325,10 @@ const orgFinanceController = {
           vendor_name = COALESCE($5, vendor_name),
           expense_date = COALESCE($6, expense_date),
           status = COALESCE($7, status),
+          brief = COALESCE($8, brief),
+          payment_modes = COALESCE($9, payment_modes),
           updated_at = CURRENT_TIMESTAMP
-        WHERE id = $8 AND organization_id = $9
+        WHERE id = $10 AND organization_id = $11
         RETURNING *
       `,
         [
@@ -223,22 +339,48 @@ const orgFinanceController = {
           vendor_name,
           expense_date,
           status,
+          brief,
+          payment_modes ? JSON.stringify(payment_modes) : null,
           txId,
           orgId,
         ],
       );
 
       if (result.rowCount === 0) {
+        await client.query("ROLLBACK");
         return res.status(404).json({ error: "Transaction not found" });
       }
 
+      const transaction = result.rows[0];
+
+      // Update attachments if provided
+      if (attachment_ids !== undefined) {
+        await client.query(
+          "DELETE FROM financial_transaction_attachments WHERE transaction_id = $1",
+          [txId],
+        );
+        if (attachment_ids.length > 0) {
+          const attachmentValues = attachment_ids.map(
+            (fileId) => `(${txId}, ${fileId})`,
+          );
+          await client.query(`
+            INSERT INTO financial_transaction_attachments (transaction_id, file_asset_id)
+            VALUES ${attachmentValues.join(", ")}
+          `);
+        }
+      }
+
+      await client.query("COMMIT");
       res.status(200).json({
         message: "Transaction updated successfully",
-        transaction: result.rows[0],
+        transaction,
       });
     } catch (error) {
+      await client.query("ROLLBACK");
       console.error("Error updating transaction:", error);
       res.status(500).json({ error: "Failed to update transaction" });
+    } finally {
+      client.release();
     }
   },
 

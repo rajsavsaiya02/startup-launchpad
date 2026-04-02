@@ -172,7 +172,12 @@ export function OrgManagementPage() {
 
       {/* ─── Content Area ─── */}
       <div className="w-full px-6 pb-6">
-        {activeTab === "Overview" && <OrgOverviewTab />}
+        {activeTab === "Overview" && (
+          <OrgOverviewTab 
+            onViewMembers={() => setActiveTab("Members")} 
+            onViewResources={() => setActiveTab("Resource")}
+          />
+        )}
         {activeTab === "Members" && <OrgTeamManagementPage hideHeader />}
 
         {activeTab === "Team Map" && (

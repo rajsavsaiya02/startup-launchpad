@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
+import { apiClient } from "../../../lib/axios";
 import {
   X,
   Calendar,
@@ -21,6 +22,7 @@ import {
   ChevronDown,
   Check,
   Clock,
+  Search,
   ExternalLink,
 } from "lucide-react";
 import { Button } from "../../../components/ui/Button";
@@ -29,18 +31,13 @@ import { CreatableSelect } from "../../../components/ui/CreatableSelect";
 import taskService from "../../../services/taskService";
 import fileAssetService from "../../../services/fileAssetService";
 import userService from "../../../services/userService";
+import { useAuth } from "../../../context/AuthContext";
+import orgProjectService from "../../../services/organization/orgProjectService";
+import organizationService from "../../../services/organization/organizationService";
 import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
-import { useAuth } from "../../../context/AuthContext";
 import { ConfirmationModal } from "../../../components/ui/ConfirmationModal";
-
-// ─── Helper ──────────────────────────────────────────────────────────────────
-
-function cn(...classes) {
-  return classes.filter(Boolean).join(" ");
-}
-
-// ─── CapsuleProgress ─────────────────────────────────────────────────────────
+import { cn } from "../../../utils/cn";
 
 const CapsuleProgress = ({ completed, total }) => {
   const percentage = total === 0 ? 0 : (completed / total) * 100;
@@ -81,8 +78,6 @@ const CapsuleProgress = ({ completed, total }) => {
   );
 };
 
-// ─── OrgTaskDrawer ────────────────────────────────────────────────────────────
-
 export function OrgTaskDrawer({
   task,
   onClose,
@@ -90,11 +85,11 @@ export function OrgTaskDrawer({
   onRefresh,
   isReadOnly = false,
 }) {
-  const { id: projectId } = useParams();
+  const { id: routeProjectId } = useParams();
   const { user } = useAuth();
-
-  // Derive org ID — now correctly populated by the backend in user.organization_id
-  const orgId = user?.organization_id;
+  
+  // Dynamic project ID: Prefer route params (if in project view), otherwise use task property
+  const projectId = routeProjectId || task?.project_id;
 
   const [formData, setFormData] = useState({
     title: "",
@@ -112,10 +107,8 @@ export function OrgTaskDrawer({
     "Development",
     "Design",
     "Marketing",
-    "Operations",
     "Research",
-    "HR",
-    "Finance",
+    "Sales",
   ]);
 
   const [attachments, setAttachments] = useState([]);
@@ -124,13 +117,38 @@ export function OrgTaskDrawer({
   const [urlInput, setUrlInput] = useState("");
   const [urlTitleInput, setUrlTitleInput] = useState("");
   const [newSubtask, setNewSubtask] = useState("");
-  const [liveTotalTime, setLiveTotalTime] = useState(0);
+  const [comments, setComments] = useState([]);
+  const [newComment, setNewComment] = useState("");
+  const [isPostingComment, setIsPostingComment] = useState(false);
+  const [members, setMembers] = useState([]);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
-  // Live timer in drawer
+  const [isAssigneeDropdownOpen, setIsAssigneeDropdownOpen] = useState(false);
+  const [assigneeSearchQuery, setAssigneeSearchQuery] = useState("");
+
+  const [liveTotalTime, setLiveTotalTime] = useState(0);
+
+  const fetchComments = useCallback(
+    async (taskId) => {
+      if (!taskId) return;
+      try {
+        const url = projectId 
+          ? `/projects/${projectId}/tasks/${taskId}/comments`
+          : `/tasks/${taskId}/comments`;
+        
+        const res = await apiClient.get(url);
+        setComments(Array.isArray(res.data) ? res.data : []);
+      } catch (err) {
+        console.error("Failed to load comments:", err);
+        setComments([]);
+      }
+    },
+    [projectId],
+  );
+
   useEffect(() => {
     if (!task) return;
-    
+
     // Calculate initial live time including current session if running
     let initialLiveTime = task.time_spent || 0;
     if (task.timer_started_at) {
@@ -142,6 +160,11 @@ export function OrgTaskDrawer({
     }
     setLiveTotalTime(initialLiveTime);
 
+    // Fetch comments
+    if (task.id && isOpen) {
+      fetchComments(task.id);
+    }
+
     let interval = null;
     if (task.timer_started_at) {
       const start = new Date(task.timer_started_at).getTime();
@@ -149,15 +172,16 @@ export function OrgTaskDrawer({
         interval = setInterval(() => {
           const now = Date.now();
           let elapsedSeconds = Math.floor((now - start) / 1000);
-          if (elapsedSeconds > 86400) elapsedSeconds = 86400;
+          if (elapsedSeconds > 86400) {
+            elapsedSeconds = 86400; // Cap visual timer at 24h
+          }
           setLiveTotalTime((task.time_spent || 0) + elapsedSeconds);
         }, 1000);
       }
     }
     return () => clearInterval(interval);
-  }, [task]);
+  }, [task, fetchComments, isOpen]);
 
-  // Populate form on open
   useEffect(() => {
     setUrlInput("");
     setUrlTitleInput("");
@@ -173,17 +197,22 @@ export function OrgTaskDrawer({
           : "",
         due_time: task.due_date
           ? new Date(task.due_date).toLocaleTimeString([], {
-              hour: "2-digit",
-              minute: "2-digit",
-              hour12: false,
+               hour: "2-digit",
+               minute: "2-digit",
+               hour12: false,
             })
           : "",
         is_milestone: task.is_milestone || false,
+        assignee_id:
+          task.assignee_ids && task.assignee_ids.length > 0
+            ? task.assignee_ids[0]
+            : "",
         subtasks: (() => {
           if (typeof task.subtasks === "string") {
             try {
               return JSON.parse(task.subtasks);
-            } catch {
+            } catch (err) {
+              console.error("Failed to parse subtasks:", err);
               return [];
             }
           }
@@ -217,40 +246,45 @@ export function OrgTaskDrawer({
           hour12: false,
         }),
         is_milestone: false,
+        assignee_id: user?.id || "",
         subtasks: [],
       });
       setAttachments([]);
     }
-  }, [task, isOpen]);
+  }, [task, isOpen, user?.id]);
 
-  // Load org-specific categories from preferences
   useEffect(() => {
     if (isOpen) {
       const fetchInitialData = async () => {
         try {
           const prefs = await userService.getPreferences();
-          if (
-            prefs.org_task_categories &&
-            prefs.org_task_categories.length > 0
-          ) {
-            setCategories(prefs.org_task_categories);
+          if (prefs.task_categories && prefs.task_categories.length > 0) {
+            setCategories(prefs.task_categories);
+          }
+
+          if (projectId) {
+            const res = await orgProjectService.getProjectMembers(projectId);
+            const membersList = Array.isArray(res) ? res : res.active_members || [];
+            setMembers(membersList);
+          } else {
+            const res = await organizationService.getMembers();
+            setMembers(Array.isArray(res) ? res : []);
           }
         } catch (err) {
-          console.error("Failed to fetch org TaskDrawer preferences:", err);
+          console.error("Failed to fetch initial data:", err);
         }
       };
+      
       fetchInitialData();
     }
-  }, [isOpen]);
+  }, [isOpen, projectId]);
 
   const handleCreateCategory = async (newCategory) => {
     if (categories.includes(newCategory)) return;
     const newCategories = [...categories, newCategory];
     setCategories(newCategories);
     try {
-      await userService.updatePreferences({
-        org_task_categories: newCategories,
-      });
+      await userService.updatePreferences({ task_categories: newCategories });
     } catch {
       toast.error("Failed to save category preference");
     }
@@ -266,9 +300,7 @@ export function OrgTaskDrawer({
       }));
     }
     try {
-      await userService.updatePreferences({
-        org_task_categories: newCategories,
-      });
+      await userService.updatePreferences({ task_categories: newCategories });
     } catch {
       toast.error("Failed to save category preference");
     }
@@ -276,10 +308,28 @@ export function OrgTaskDrawer({
 
   if (!isOpen) return null;
 
-  // ── Subtask helpers ──
+  const handleAddComment = async () => {
+    if (!newComment.trim()) return;
+    setIsPostingComment(true);
+    try {
+      const url = projectId 
+        ? `/projects/${projectId}/tasks/${task.id}/comments`
+        : `/tasks/${task.id}/comments`;
+        
+      const res = await apiClient.post(url, { comment: newComment.trim() });
+      setComments((prev) => [...prev, res.data]);
+      setNewComment("");
+    } catch (err) {
+      console.error("Failed to post comment:", err);
+      toast.error("Failed to post comment");
+    } finally {
+      setIsPostingComment(false);
+    }
+  };
 
   const handleAddSubtask = (e) => {
     if (e && e.key && e.key !== "Enter") return;
+
     if (newSubtask.trim()) {
       if (e && e.preventDefault) e.preventDefault();
       setFormData((prev) => ({
@@ -297,13 +347,31 @@ export function OrgTaskDrawer({
     }
   };
 
-  const toggleSubtask = (id) => {
+  const toggleSubtask = async (id) => {
+    const updatedSubtasks = formData.subtasks.map((st) =>
+      st.id === id ? { ...st, is_completed: !st.is_completed } : st,
+    );
+
     setFormData((prev) => ({
       ...prev,
-      subtasks: prev.subtasks.map((st) =>
-        st.id === id ? { ...st, is_completed: !st.is_completed } : st,
-      ),
+      subtasks: updatedSubtasks,
     }));
+
+    if (isReadOnly && task) {
+      try {
+        await taskService.updateTask(projectId, task.id, {
+          subtasks: updatedSubtasks,
+        });
+        if (onRefresh) onRefresh();
+      } catch (err) {
+        console.error("Failed to update subtask:", err);
+        toast.error("Failed to update subtask");
+        setFormData((prev) => ({
+          ...prev,
+          subtasks: formData.subtasks,
+        }));
+      }
+    }
   };
 
   const deleteSubtask = (id) => {
@@ -312,8 +380,6 @@ export function OrgTaskDrawer({
       subtasks: prev.subtasks.filter((st) => st.id !== id),
     }));
   };
-
-  // ── Form handlers ──
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -340,12 +406,10 @@ export function OrgTaskDrawer({
     if (!urlInput) return;
     setUploadingAttachment(true);
     try {
-      const title =
-        urlTitleInput || urlInput.split("/").pop() || "External Link";
-
-      // Org-scoped context
-      const contextType = projectId ? "project" : "organization";
-      const contextId = projectId || orgId;
+      const title = urlTitleInput || urlInput.split("/").pop() || "External Link";
+      
+      const contextType = projectId ? "project" : "user";
+      const contextId = projectId || user?.id;
 
       const newAsset = await fileAssetService.attachExternalLink(
         contextType,
@@ -384,6 +448,7 @@ export function OrgTaskDrawer({
       }
       return;
     }
+
     if (att.type === "url") {
       window.open(att.url, "_blank", "noopener,noreferrer");
     } else {
@@ -398,59 +463,10 @@ export function OrgTaskDrawer({
     }
   };
 
-  // ── Save ──
-
   const handleSave = async () => {
     if (!formData.title.trim()) return;
     setIsSaving(true);
-
-    // [New Rule]: Pause active timer before task update to ensure accuracy
-    const wasTimerRunning = !!task?.timer_started_at;
-    let currentTotalTime = task?.time_spent || 0;
-
     try {
-      if (wasTimerRunning && task?.id) {
-        // Calculate exact live time spent up to this moment
-        const start = new Date(task.timer_started_at).getTime();
-        const elapsed = Math.floor((Date.now() - start) / 1000);
-        const cappedElapsed = Math.min(Math.max(0, elapsed), 86400); // Max 24h cap
-        currentTotalTime = (task.time_spent || 0) + cappedElapsed;
-
-        let parsedLogs = [];
-        if (typeof task.time_logs === "string") {
-          try {
-            parsedLogs = JSON.parse(task.time_logs);
-          } catch (e) {
-            console.error("Failed to parse time_logs:", e);
-          }
-        } else if (Array.isArray(task.time_logs)) {
-          parsedLogs = task.time_logs;
-        }
-        let newTimeLogs = [...parsedLogs];
-
-        if (cappedElapsed > 0) {
-          const endTs = start + cappedElapsed * 1000;
-          newTimeLogs.unshift({
-            id: crypto.randomUUID(),
-            start_time: new Date(start).toISOString(),
-            end_time: new Date(endTs).toISOString(),
-            duration_seconds: cappedElapsed,
-          });
-        }
-
-        // Pause/Sync live time to the database first
-        try {
-          await taskService.updateTask(projectId, task.id, {
-            time_spent: currentTotalTime,
-            timer_started_at: null,
-            time_logs: newTimeLogs,
-          });
-        } catch (pauseErr) {
-          console.error("Failed to pause org timer during update:", pauseErr);
-          // Continue with main update regardless
-        }
-      }
-
       let attachmentIds = attachments
         .filter((a) => !a.isNewFile)
         .map((a) => a.id);
@@ -460,9 +476,9 @@ export function OrgTaskDrawer({
       if (filesToUpload.length > 0) {
         setUploadingAttachment(true);
         try {
-          const contextType = projectId ? "project" : "organization";
-          const contextId = projectId || orgId;
-
+          const contextType = projectId ? "project" : "user";
+          const contextId = projectId || user?.id;
+          
           const uploadPromises = filesToUpload.map((att) =>
             fileAssetService.uploadFile(
               contextType,
@@ -495,24 +511,14 @@ export function OrgTaskDrawer({
         ...formData,
         due_date: finalDueDate || null,
         attachment_ids: attachmentIds,
-        organization_id: projectId ? null : orgId, // Associate with org if no project
+        assignee_ids: formData.assignee_id ? [formData.assignee_id] : [],
       };
       delete submissionData.due_time;
+      delete submissionData.assignee_id;
 
       if (task?.id) {
         await taskService.updateTask(projectId, task.id, submissionData);
         toast.success("Task updated");
-
-        // [New Rule]: Resume timer if it was running before
-        if (wasTimerRunning) {
-          try {
-            await taskService.updateTask(projectId, task.id, {
-              timer_started_at: new Date().toISOString(),
-            });
-          } catch (resumeErr) {
-            console.error("Failed to resume org timer after update:", resumeErr);
-          }
-        }
       } else {
         await taskService.createTask(projectId, submissionData);
         toast.success("Task created");
@@ -520,14 +526,12 @@ export function OrgTaskDrawer({
       onRefresh?.();
       onClose();
     } catch (err) {
-      console.error("Error saving org task:", err);
+      console.error("Error saving task:", err);
       toast.error("Error saving task");
     } finally {
       setIsSaving(false);
     }
   };
-
-  // ── Delete ──
 
   const handleDelete = async () => {
     if (!task?.id) return;
@@ -541,31 +545,35 @@ export function OrgTaskDrawer({
       onRefresh?.();
       onClose();
     } catch (err) {
-      console.error("Error deleting org task:", err);
+      console.error("Error deleting task:", err);
       toast.error("Failed to delete task");
+    } finally {
+      setIsDeleteModalOpen(false);
     }
   };
 
-  // ── Render ──
+  const currentMember = members.find((m) => m.user_id === user?.id);
+  const isManager =
+    ["owner", "admin"].includes(currentMember?.project_role) ||
+    ["FOUNDER", "CO-FOUNDER", "ADMIN"].includes(currentMember?.org_role) ||
+    !!currentMember?.is_team_lead ||
+    !projectId; 
+    
+  const isAssignee = formData.assignee_id === user?.id;
+  const canCompleteSubtasks = isManager || isAssignee;
 
   return (
     <>
-      {/* Backdrop */}
       <div
         className="fixed inset-0 bg-black/30 backdrop-blur-sm z-40 transition-opacity"
         onClick={onClose}
       />
 
-      {/* Drawer Panel */}
-      <aside className="fixed right-0 top-0 h-full w-[480px] bg-white dark:bg-background-dark shadow-2xl z-50 transform transition-transform duration-300 ease-out flex flex-col border-l border-border-light dark:border-border-dark">
+      <aside className="fixed right-0 top-0 h-full w-full max-w-4xl bg-white dark:bg-background-dark shadow-2xl z-50 transform transition-transform duration-300 ease-out flex flex-col border-l border-border-light dark:border-border-dark">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-border-light dark:border-border-dark shrink-0">
           <h2 className="text-lg font-bold text-text-primary dark:text-white">
-            {isReadOnly
-              ? "Task Details"
-              : task?.id
-                ? "Edit Org Task"
-                : "New Org Task"}
+            {isReadOnly ? "Task Details" : task?.id ? "Edit Task" : "Add Task"}
           </h2>
           <div className="flex items-center gap-2">
             {!isReadOnly && task?.id && (
@@ -604,267 +612,338 @@ export function OrgTaskDrawer({
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto custom-scrollbar p-6">
-          <form className="space-y-6">
-            {/* Title */}
-            <div>
-              <label className="block text-sm font-medium text-text-secondary dark:text-gray-300 mb-1.5">
-                Task Title <span className="text-error">*</span>
-              </label>
-              <input
-                type="text"
-                name="title"
-                value={formData.title}
-                onChange={handleChange}
-                disabled={isReadOnly}
-                placeholder="e.g., Onboard new team members for Q2"
-                className="w-full px-4 py-2.5 text-sm bg-gray-50 dark:bg-gray-800/50 border border-border-light dark:border-border-dark rounded-lg focus:ring-2 focus:ring-primary/20 outline-none text-text-primary dark:text-white font-medium placeholder:font-normal placeholder:text-text-tertiary transition-all disabled:opacity-75"
-                required
-              />
-            </div>
-
-            {/* Description */}
-            <div>
-              <label className="block text-sm font-medium text-text-secondary dark:text-gray-300 mb-1.5">
-                Description{" "}
-                <span className="text-text-tertiary font-normal">
-                  (Optional)
-                </span>
-              </label>
-              <textarea
-                name="description"
-                value={formData.description}
-                onChange={handleChange}
-                disabled={isReadOnly}
-                placeholder="Provide task details or context for your team..."
-                className="w-full px-4 py-2.5 text-sm bg-gray-50 dark:bg-gray-800/50 border border-border-light dark:border-border-dark rounded-lg focus:ring-2 focus:ring-primary/20 outline-none text-text-primary dark:text-white font-medium placeholder:font-normal placeholder:text-text-tertiary min-h-[80px] resize-y custom-scrollbar transition-all disabled:opacity-75"
-              />
-            </div>
-
-            {/* Category & Priority */}
-            <div className="grid grid-cols-2 gap-4">
+        <div className="flex-1 overflow-y-auto custom-scrollbar p-6 grid grid-cols-1 lg:grid-cols-5 gap-8">
+          <div className="lg:col-span-3">
+            <form className="space-y-6">
+              {/* Title */}
               <div>
-                <CreatableSelect
-                  label="Category"
-                  name="category"
-                  value={formData.category}
-                  options={categories}
+                <label className="block text-sm font-medium text-text-secondary dark:text-gray-300 mb-1.5">
+                  Task Title <span className="text-error">*</span>
+                </label>
+                <input
+                  type="text"
+                  name="title"
+                  value={formData.title}
                   onChange={handleChange}
-                  onCreateOption={handleCreateCategory}
-                  onDeleteOption={handleDeleteCategory}
-                  placeholder="Select category"
                   disabled={isReadOnly}
+                  placeholder="e.g., Fix memory leak"
+                  className="w-full px-4 py-2.5 text-sm bg-gray-50 dark:bg-gray-800/50 border border-border-light dark:border-border-dark rounded-lg focus:ring-2 focus:ring-primary/20 outline-none text-text-primary dark:text-white font-medium placeholder:font-normal transition-all"
+                  required
                 />
               </div>
 
+              {/* Description */}
               <div>
                 <label className="block text-sm font-medium text-text-secondary dark:text-gray-300 mb-1.5">
-                  Priority
+                  Description <span className="text-text-tertiary font-normal">(Optional)</span>
                 </label>
-                <div className="relative">
-                  <select
-                    name="priority"
-                    value={formData.priority}
+                <textarea
+                  name="description"
+                  value={formData.description}
+                  onChange={handleChange}
+                  disabled={isReadOnly}
+                  placeholder="Provide task details..."
+                  className="w-full px-4 py-2.5 text-sm bg-gray-50 dark:bg-gray-800/50 border border-border-light dark:border-border-dark rounded-lg focus:ring-2 focus:ring-primary/20 outline-none text-text-primary dark:text-white font-medium min-h-[80px] resize-y custom-scrollbar transition-all"
+                />
+              </div>
+
+              {/* Grid for Category & Priority */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <CreatableSelect
+                    label="Category"
+                    name="category"
+                    value={formData.category}
+                    options={categories}
                     onChange={handleChange}
+                    onCreateOption={handleCreateCategory}
+                    onDeleteOption={handleDeleteCategory}
+                    placeholder="Select category"
                     disabled={isReadOnly}
-                    className="w-full px-4 py-2.5 text-sm bg-gray-50 dark:bg-gray-800/50 border border-border-light dark:border-border-dark rounded-lg focus:ring-2 focus:ring-primary/20 outline-none text-text-primary dark:text-white font-medium appearance-none cursor-pointer transition-all disabled:opacity-75"
-                  >
-                    <option value="Low">Low Priority</option>
-                    <option value="Medium">Medium Priority</option>
-                    <option value="High">High Priority</option>
-                    <option value="Critical">Critical</option>
-                  </select>
-                  <div className="absolute right-3 top-1/2 -translate-y-1/2 text-text-tertiary pointer-events-none">
-                    <ChevronDown className="h-4 w-4" />
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-text-secondary dark:text-gray-300 mb-1.5">
+                    Priority
+                  </label>
+                  <div className="relative">
+                    <select
+                      name="priority"
+                      value={formData.priority}
+                      onChange={handleChange}
+                      disabled={isReadOnly}
+                      className="w-full px-4 py-2.5 text-sm bg-gray-50 dark:bg-gray-800/50 border border-border-light dark:border-border-dark rounded-lg focus:ring-2 focus:ring-primary/20 outline-none text-text-primary dark:text-white font-medium appearance-none cursor-pointer transition-all"
+                    >
+                      <option value="Low">Low Priority</option>
+                      <option value="Medium">Medium Priority</option>
+                      <option value="High">High Priority</option>
+                      <option value="Critical">Critical</option>
+                    </select>
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 text-text-tertiary pointer-events-none">
+                      <ChevronDown className="h-4 w-4" />
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
 
-            {/* Due Date & Time */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-text-secondary dark:text-gray-300 mb-1.5">
-                  Due Date
-                </label>
-                <input
-                  type="date"
-                  name="due_date"
-                  value={formData.due_date}
-                  onChange={handleChange}
-                  disabled={isReadOnly}
-                  className="w-full pl-4 pr-3 py-2.5 text-sm bg-gray-50 dark:bg-gray-800/50 border border-border-light dark:border-border-dark rounded-lg focus:ring-2 focus:ring-primary/20 outline-none text-text-primary dark:text-white font-medium transition-all disabled:opacity-75"
-                />
-              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-text-secondary dark:text-gray-300 mb-1.5">
+                    Due Date
+                  </label>
+                  <input
+                    type="date"
+                    name="due_date"
+                    value={formData.due_date}
+                    onChange={handleChange}
+                    disabled={isReadOnly}
+                    className="w-full pl-4 pr-3 py-2.5 text-sm bg-gray-50 dark:bg-gray-800/50 border border-border-light dark:border-border-dark rounded-lg focus:ring-2 focus:ring-primary/20 outline-none text-text-primary dark:text-white font-medium transition-all"
+                  />
+                </div>
 
-              <div>
-                <label className="block text-sm font-medium text-text-secondary dark:text-gray-300 mb-1.5">
-                  Due Time
-                </label>
-                <input
-                  type="time"
-                  name="due_time"
-                  value={formData.due_time}
-                  onChange={handleChange}
-                  disabled={isReadOnly}
-                  className="w-full pl-4 pr-3 py-2.5 text-sm bg-gray-50 dark:bg-gray-800/50 border border-border-light dark:border-border-dark rounded-lg focus:ring-2 focus:ring-primary/20 outline-none text-text-primary dark:text-white font-medium transition-all disabled:opacity-75"
-                />
-              </div>
-            </div>
-
-            {/* Status — includes "review" for the 4-column org board */}
-            <div>
-              <label className="block text-sm font-medium text-text-secondary dark:text-gray-300 mb-1.5">
-                Status
-              </label>
-              <div className="relative">
-                <select
-                  name="kanban_status"
-                  value={formData.kanban_status}
-                  onChange={handleChange}
-                  disabled={isReadOnly}
-                  className="w-full px-4 py-2.5 text-sm bg-gray-50 dark:bg-gray-800/50 border border-border-light dark:border-border-dark rounded-lg focus:ring-2 focus:ring-primary/20 outline-none text-text-primary dark:text-white font-medium appearance-none cursor-pointer transition-all disabled:opacity-75"
-                >
-                  <option value="todo">To Do</option>
-                  <option value="progress">In Progress</option>
-                  <option value="review">In Review</option>
-                  <option value="done">Done</option>
-                </select>
-                <div className="absolute right-3 top-1/2 -translate-y-1/2 text-text-tertiary pointer-events-none">
-                  <ChevronDown className="h-4 w-4" />
+                <div>
+                  <label className="block text-sm font-medium text-text-secondary dark:text-gray-300 mb-1.5">
+                    Due Time
+                  </label>
+                  <input
+                    type="time"
+                    name="due_time"
+                    value={formData.due_time}
+                    onChange={handleChange}
+                    disabled={isReadOnly}
+                    className="w-full pl-4 pr-3 py-2.5 text-sm bg-gray-50 dark:bg-gray-800/50 border border-border-light dark:border-border-dark rounded-lg focus:ring-2 focus:ring-primary/20 outline-none text-text-primary dark:text-white font-medium transition-all"
+                  />
                 </div>
               </div>
-            </div>
 
-            {/* Subtasks */}
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="block text-sm font-medium text-text-secondary dark:text-gray-300">
-                  Subtasks{" "}
-                  <span className="text-text-tertiary font-normal">
-                    (Optional)
-                  </span>
-                </label>
-                {formData.subtasks?.length > 0 && (
-                  <CapsuleProgress
-                    completed={
-                      formData.subtasks.filter((s) => s.is_completed).length
-                    }
-                    total={formData.subtasks.length}
-                  />
-                )}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-text-secondary dark:text-gray-300 mb-1.5">
+                    Status
+                  </label>
+                  <div className="relative">
+                    <select
+                      name="kanban_status"
+                      value={formData.kanban_status}
+                      onChange={handleChange}
+                      disabled={isReadOnly}
+                      className="w-full px-4 py-2.5 text-sm bg-gray-50 dark:bg-gray-800/50 border border-border-light dark:border-border-dark rounded-lg focus:ring-2 focus:ring-primary/20 outline-none text-text-primary dark:text-white font-medium appearance-none cursor-pointer transition-all"
+                    >
+                      <option value="todo">To Do</option>
+                      <option value="progress">In Progress</option>
+                      <option value="done">Done</option>
+                    </select>
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 text-text-tertiary pointer-events-none">
+                      <ChevronDown className="h-4 w-4" />
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-text-secondary dark:text-gray-300 mb-1.5">
+                    Assignee <span className="text-text-tertiary font-normal">(Optional)</span>
+                  </label>
+                  <div className="relative">
+                    <div
+                      className={`w-full px-4 py-2.5 flex items-center justify-between text-sm bg-gray-50 dark:bg-gray-800/50 border ${isAssigneeDropdownOpen ? "border-primary ring-2 ring-primary/20" : "border-border-light dark:border-border-dark"} rounded-lg cursor-pointer transition-all ${isReadOnly ? "opacity-75 pointer-events-none" : ""}`}
+                      onClick={() => !isReadOnly && setIsAssigneeDropdownOpen(!isAssigneeDropdownOpen)}
+                    >
+                      <span className="text-text-primary dark:text-white font-medium truncate">
+                        {formData.assignee_id
+                          ? (() => {
+                              const member = members.find((m) => m.user_id === formData.assignee_id);
+                              return member ? `${member.first_name} ${member.last_name}` : "Unknown Member";
+                            })()
+                          : "Unassigned"}
+                      </span>
+                      <ChevronDown className="h-4 w-4 text-text-tertiary shrink-0" />
+                    </div>
+
+                    {isAssigneeDropdownOpen && (
+                      <>
+                        <div className="fixed inset-0 z-40" onClick={() => setIsAssigneeDropdownOpen(false)}></div>
+                        <div className="absolute z-50 w-full mt-2 bg-white dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-xl shadow-xl overflow-hidden animate-in fade-in slide-in-from-top-2">
+                          <div className="p-2 border-b border-border-light dark:border-border-dark flex items-center gap-2">
+                            <Search className="h-4 w-4 text-text-tertiary ml-1 shrink-0" />
+                            <input
+                              type="text"
+                              placeholder="Search members..."
+                              value={assigneeSearchQuery}
+                              onChange={(e) => setAssigneeSearchQuery(e.target.value)}
+                              autoFocus
+                              className="w-full bg-transparent text-sm border-none focus:ring-0 outline-none text-text-primary dark:text-white font-medium"
+                            />
+                          </div>
+                          <div className="max-h-48 overflow-y-auto custom-scrollbar p-1">
+                            <div
+                              className={`flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer transition-colors text-sm font-medium ${!formData.assignee_id ? "bg-primary/10 text-primary" : "hover:bg-gray-50 dark:hover:bg-gray-800/50 text-text-secondary dark:text-gray-300"}`}
+                              onClick={() => {
+                                handleChange({ target: { name: "assignee_id", value: "" } });
+                                setIsAssigneeDropdownOpen(false);
+                                setAssigneeSearchQuery("");
+                              }}
+                            >
+                              <Avatar fallback="U" size="xs" className="h-6 w-6 opacity-50 border border-border-light" />
+                              Unassigned
+                            </div>
+                            {members
+                              .filter((m) => `${m.first_name} ${m.last_name}`.toLowerCase().includes(assigneeSearchQuery.toLowerCase()))
+                              .map((member) => (
+                                <div
+                                  key={member.user_id}
+                                  className={`flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer transition-colors text-sm font-medium ${formData.assignee_id === member.user_id ? "bg-primary/10 text-primary" : "hover:bg-gray-50 dark:hover:bg-gray-800/50 text-text-secondary dark:text-gray-300"}`}
+                                  onClick={() => {
+                                    handleChange({ target: { name: "assignee_id", value: member.user_id } });
+                                    setIsAssigneeDropdownOpen(false);
+                                    setAssigneeSearchQuery("");
+                                  }}
+                                >
+                                  <Avatar src={member.profile_picture_url} fallback={member.first_name?.charAt(0) || "U"} size="xs" className="h-6 w-6 shrink-0" />
+                                  <span className="truncate">{member.first_name} {member.last_name}</span>
+                                </div>
+                              ))}
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
               </div>
 
-              <div className="border border-border-light dark:border-border-dark bg-gray-50 dark:bg-gray-800/50 rounded-lg p-2 min-h-[60px]">
-                <div className="space-y-1">
-                  {(formData.subtasks || []).map((st) => (
-                    <div
-                      key={st.id}
-                      className="group flex items-center justify-between gap-3 p-2 rounded-md hover:bg-white dark:hover:bg-surface-dark transition-colors border border-transparent hover:border-border-light dark:hover:border-border-dark hover:shadow-sm"
-                    >
-                      <label className="flex items-center gap-3 cursor-pointer overflow-hidden flex-1">
-                        <div className="relative flex items-center justify-center shrink-0">
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-sm font-medium text-text-secondary dark:text-gray-300">
+                    Subtasks <span className="text-text-tertiary font-normal">(Optional)</span>
+                  </label>
+                  {formData.subtasks.length > 0 && <CapsuleProgress completed={formData.subtasks.filter((s) => s.is_completed).length} total={formData.subtasks.length} />}
+                </div>
+                <div className="border border-border-light dark:border-border-dark bg-gray-50 dark:bg-gray-800/50 rounded-lg p-2">
+                  <div className="space-y-1">
+                    {formData.subtasks.map((st) => (
+                      <div key={st.id} className="group flex items-center justify-between gap-3 p-2 rounded-md hover:bg-white dark:hover:bg-surface-dark transition-colors border border-transparent hover:border-border-light dark:hover:border-border-dark">
+                        <label className="flex items-center gap-3 cursor-pointer overflow-hidden flex-1">
                           <input
                             type="checkbox"
                             checked={st.is_completed}
-                            onChange={() =>
-                              !isReadOnly && toggleSubtask(st.id)
-                            }
+                            onChange={() => canCompleteSubtasks && toggleSubtask(st.id)}
                             className="peer sr-only"
-                            disabled={isReadOnly}
+                            disabled={!canCompleteSubtasks}
                           />
-                          <div
-                            className={cn(
-                              "h-5 w-5 rounded border-2 transition-all duration-200 flex items-center justify-center",
-                              "border-gray-300 dark:border-gray-600 bg-white dark:bg-surface-dark peer-hover:border-primary/50",
-                              "peer-checked:bg-primary peer-checked:border-primary",
+                          <div className={cn("h-5 w-5 rounded border-2 flex items-center justify-center transition-all", "border-gray-300 dark:border-gray-600 bg-white dark:bg-surface-dark peer-checked:bg-primary peer-checked:border-primary")}>
+                            <Check className={cn("h-3 w-3 text-white transition-all stroke-[4px]", st.is_completed ? "scale-100 opacity-100" : "scale-50 opacity-0")} />
+                          </div>
+                          <span className={cn("text-sm truncate transition-colors font-medium", st.is_completed ? "text-text-tertiary line-through" : "text-text-secondary dark:text-gray-200")}>
+                            {st.title}
+                          </span>
+                        </label>
+                        {!isReadOnly && (
+                          <button type="button" onClick={() => deleteSubtask(st.id)} className="opacity-0 group-hover:opacity-100 p-1 text-text-tertiary hover:text-error transition-all">
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                    {!isReadOnly && (
+                      <div className="flex items-center gap-2 p-1.5 mt-1 bg-gray-50 dark:bg-gray-800/80 rounded-md border border-border-light dark:border-border-dark focus-within:ring-2 focus-within:ring-primary/20">
+                        <input
+                          type="text"
+                          value={newSubtask}
+                          onChange={(e) => setNewSubtask(e.target.value)}
+                          onKeyDown={(e) => e.key === "Enter" && handleAddSubtask(e)}
+                          placeholder="Add a subtask..."
+                          className="bg-transparent border-none p-1.5 text-sm focus:ring-0 flex-1 text-text-secondary dark:text-gray-300"
+                        />
+                        <button type="button" onClick={(e) => handleAddSubtask(e)} disabled={!newSubtask.trim()} className="p-1 text-primary hover:bg-primary/10 rounded-md transition-colors disabled:opacity-30">
+                          <Plus className="h-5 w-5" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-text-secondary dark:text-gray-300 mb-1.5">
+                  Attachments <span className="text-text-tertiary font-normal">(Optional)</span>
+                </label>
+                <div className="border border-border-light dark:border-border-dark rounded-lg p-3 bg-white dark:bg-surface-dark space-y-3 shadow-sm">
+                  {!isReadOnly && (
+                    <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-md">
+                      <button type="button" className={`flex-1 py-1.5 text-xs font-bold rounded-md ${attachmentMode === "file" ? "bg-white dark:bg-surface-dark text-primary shadow-sm" : "text-text-tertiary"}`} onClick={() => setAttachmentMode("file")}>
+                        <div className="flex items-center justify-center gap-1.5"><Paperclip className="h-3.5 w-3.5" /> File</div>
+                      </button>
+                      <button type="button" className={`flex-1 py-1.5 text-xs font-bold rounded-md ${attachmentMode === "url" ? "bg-white dark:bg-surface-dark text-primary shadow-sm" : "text-text-tertiary"}`} onClick={() => setAttachmentMode("url")}>
+                        <div className="flex items-center justify-center gap-1.5"><Link2 className="h-3.5 w-3.5" /> URL</div>
+                      </button>
+                    </div>
+                  )}
+
+                  {!isReadOnly && attachmentMode === "file" && (
+                    <label className="relative flex flex-col items-center justify-center p-4 border border-dashed border-border-light dark:border-border-dark hover:border-primary/50 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg cursor-pointer transition-all bg-gray-50/30 dark:bg-gray-800/20">
+                      <div className="p-2 rounded-full bg-primary/10 text-primary mb-2"><Paperclip className="h-4 w-4" /></div>
+                      <p className="text-sm font-bold text-text-primary dark:text-white">Click to attach documents</p>
+                      <input type="file" className="hidden" multiple onChange={handleFileChange} />
+                    </label>
+                  )}
+
+                  {!isReadOnly && attachmentMode === "url" && (
+                    <div className="space-y-2 p-3 border border-border-light dark:border-border-dark rounded-lg bg-gray-50/50 dark:bg-gray-800/30">
+                      <input type="text" placeholder="URL link" value={urlInput} onChange={(e) => setUrlInput(e.target.value)} className="w-full px-3 py-2 text-sm bg-white dark:bg-surface-dark border rounded-md focus:ring-2 focus:ring-primary/20 outline-none" />
+                      <input type="text" placeholder="Title (Optional)" value={urlTitleInput} onChange={(e) => setUrlTitleInput(e.target.value)} className="w-full px-3 py-2 text-sm bg-white dark:bg-surface-dark border rounded-md focus:ring-2 focus:ring-primary/20 outline-none" />
+                      <Button type="button" size="sm" className="w-full h-8" onClick={handleAddUrl} disabled={!urlInput || uploadingAttachment}>
+                        {uploadingAttachment ? "Adding..." : "Add Link"}
+                      </Button>
+                    </div>
+                  )}
+
+                  {attachments.length > 0 && (
+                    <div className="space-y-2 mt-3 max-h-40 overflow-y-auto custom-scrollbar">
+                      {attachments.map((att, index) => (
+                        <div key={att.id || index} className="flex items-center justify-between p-2.5 bg-gray-50 dark:bg-gray-800/50 border border-border-light dark:border-border-dark rounded-md">
+                          <div className="flex items-center gap-2 overflow-hidden flex-1">
+                            <div className="p-1.5 bg-primary/10 text-primary rounded shrink-0">{att.type === "url" ? <Link2 className="h-3.5 w-3.5" /> : <Paperclip className="h-3.5 w-3.5" />}</div>
+                            <div className="min-w-0 pr-2">
+                              <p className="text-sm font-bold text-primary dark:text-primary-light truncate cursor-pointer hover:underline" onClick={() => handleAttachmentClick(att)}>{att.name}</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1 shrink-0">
+                            <button type="button" onClick={() => handleAttachmentClick(att)} className="p-1.5 text-text-tertiary hover:text-primary rounded-md transition-colors">
+                              {att.type === "url" ? <ExternalLink className="h-4 w-4" /> : <Download className="h-4 w-4" />}
+                            </button>
+                            {!isReadOnly && (
+                              <button type="button" onClick={() => handleRemoveAttachment(index)} className="p-1.5 text-text-tertiary hover:text-error rounded-md transition-colors">
+                                <Trash2 className="h-4 w-4" />
+                              </button>
                             )}
-                          >
-                            <Check
-                              className={cn(
-                                "h-3 w-3 text-white transition-all duration-200 stroke-[4px]",
-                                st.is_completed
-                                  ? "scale-100 opacity-100"
-                                  : "scale-50 opacity-0",
-                              )}
-                            />
                           </div>
                         </div>
-                        <span
-                          className={cn(
-                            "text-sm truncate transition-colors font-medium",
-                            st.is_completed
-                              ? "text-text-tertiary line-through"
-                              : "text-text-secondary dark:text-gray-200",
-                          )}
-                        >
-                          {st.title}
-                        </span>
-                      </label>
-                      {!isReadOnly && (
-                        <button
-                          type="button"
-                          onClick={() => deleteSubtask(st.id)}
-                          className="opacity-0 group-hover:opacity-100 p-1 text-text-tertiary hover:text-error transition-all shrink-0"
-                        >
-                          <X className="h-3.5 w-3.5" />
-                        </button>
-                      )}
-                    </div>
-                  ))}
-
-                  {!isReadOnly && (
-                    <div className="flex items-center gap-2 p-1.5 mt-1 bg-gray-50 dark:bg-gray-800/80 rounded-md border border-border-light dark:border-border-dark focus-within:ring-2 focus-within:ring-primary/20 transition-all">
-                      <input
-                        type="text"
-                        value={newSubtask}
-                        onChange={(e) => setNewSubtask(e.target.value)}
-                        onKeyDown={(e) =>
-                          e.key === "Enter" && handleAddSubtask(e)
-                        }
-                        placeholder="Add a subtask..."
-                        className="bg-transparent border-none p-1.5 text-sm focus:ring-0 flex-1 text-text-secondary dark:text-gray-300 placeholder:text-gray-400"
-                      />
-                      <button
-                        type="button"
-                        onClick={(e) => handleAddSubtask(e)}
-                        disabled={!newSubtask.trim()}
-                        className="p-1 text-primary hover:bg-primary/10 rounded-md transition-colors disabled:opacity-30"
-                        title="Add Subtask"
-                      >
-                        <Plus className="h-5 w-5" />
-                      </button>
+                      ))}
                     </div>
                   )}
                 </div>
               </div>
-            </div>
+            </form>
+          </div>
 
-            {/* Time Tracking Log (read-only display) */}
+          <div className="lg:col-span-2 lg:border-l lg:border-border-light dark:lg:border-border-dark lg:pl-8 space-y-8 flex flex-col h-[calc(100vh-100px)] pt-2 md:pt-0">
+            {/* Time Tracking */}
             {(() => {
               if (!task?.id || !task?.time_logs) return null;
               let parsedLogs = [];
-              if (typeof task.time_logs === "string") {
-                try {
-                  parsedLogs = JSON.parse(task.time_logs);
-                } catch {
-                  parsedLogs = [];
-                }
-              } else if (Array.isArray(task.time_logs)) {
-                parsedLogs = task.time_logs;
-              }
-              if (parsedLogs.length === 0) return null;
+              try {
+                parsedLogs = typeof task.time_logs === "string" ? JSON.parse(task.time_logs) : task.time_logs;
+              } catch (err) { console.error(err); }
+              if (!parsedLogs || parsedLogs.length === 0) return null;
 
               return (
-                <div className="mt-2 text-sm">
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="text-sm font-medium text-text-secondary dark:text-gray-300 flex items-center gap-2">
-                      <Clock className="h-4 w-4 text-primary" />
-                      Time Tracking Log
+                <div className="text-sm shrink-0">
+                  <div className="flex items-center justify-between mb-3">
+                    <label className="text-sm font-bold text-text-primary dark:text-white flex items-center gap-2">
+                      <Clock className="h-4 w-4 text-primary" /> Time Tracking
                     </label>
-                    <span className="text-xs font-semibold text-primary bg-primary/10 px-2 py-1 flex items-center rounded-full">
-                      Total:{" "}
-                      {(() => {
+                    <span className="text-xs font-bold text-primary bg-primary/10 px-2.5 py-1 rounded-md">
+                      Total: {(() => {
                         const h = Math.floor(liveTotalTime / 3600);
                         const m = Math.floor((liveTotalTime % 3600) / 60);
                         const s = liveTotalTime % 60;
@@ -876,59 +955,17 @@ export function OrgTaskDrawer({
                     {parsedLogs.map((log, index) => {
                       const startDate = new Date(log.start_time);
                       const endDate = new Date(log.end_time);
-                      const diffInSeconds = Math.max(
-                        0,
-                        Math.floor(
-                          (endDate.getTime() - startDate.getTime()) / 1000,
-                        ),
-                      );
-                      const h = Math.floor(diffInSeconds / 3600);
-                      const m = Math.floor((diffInSeconds % 3600) / 60);
-                      const s = diffInSeconds % 60;
-                      const durationStr = `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
-
-                      const fmtTime = (d) =>
-                        isNaN(d.getTime())
-                          ? "—"
-                          : d.toLocaleTimeString([], {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                              hour12: true,
-                            });
-                      const fmtDate = (d) =>
-                        isNaN(d.getTime())
-                          ? "—"
-                          : d.toLocaleDateString("en-US", {
-                              month: "short",
-                              day: "2-digit",
-                              year: "numeric",
-                            });
-
+                      const diff = Math.max(0, Math.floor((endDate.getTime() - startDate.getTime()) / 1000));
+                      const duration = `${Math.floor(diff/3600).toString().padStart(2,"0")}:${Math.floor((diff%3600)/60).toString().padStart(2,"0")}:${(diff%60).toString().padStart(2,"0")}`;
                       return (
-                        <div
-                          key={log.id || index}
-                          className="flex justify-between bg-gray-50/40 dark:bg-gray-800/20 rounded-2xl p-3.5 border border-border-light dark:border-border-dark transition-all hover:bg-white dark:hover:bg-surface-dark hover:shadow-sm"
-                        >
-                          <div className="flex flex-col gap-1">
-                            <span className="text-[13.5px] font-medium text-text-primary dark:text-gray-200">
-                              {fmtDate(startDate)}
-                            </span>
-                            <span className="text-xs text-text-tertiary">
-                              {fmtTime(startDate)}
-                            </span>
+                        <div key={log.id || index} className="bg-gray-50/40 dark:bg-gray-800/20 rounded-xl p-3 border border-border-light dark:border-border-dark transition-all hover:bg-white dark:hover:bg-surface-dark">
+                          <div className="flex justify-between items-center mb-1">
+                            <span className="text-xs font-semibold text-text-primary dark:text-gray-200">{log.user_name || "Self"}</span>
+                            <span className="text-[10px] text-text-tertiary">{startDate.toLocaleDateString()}</span>
                           </div>
-                          <div className="flex flex-col justify-end pb-0.5">
-                            <span className="text-xs text-text-tertiary opacity-70">
-                              →
-                            </span>
-                          </div>
-                          <div className="flex flex-col gap-1 items-end">
-                            <span className="text-[13.5px] font-medium text-success">
-                              {durationStr}
-                            </span>
-                            <span className="text-xs text-text-tertiary">
-                              {fmtTime(endDate)}
-                            </span>
+                          <div className="flex justify-between items-center text-[10px]">
+                            <span className="text-text-tertiary">{startDate.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})} - {endDate.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
+                            <span className="font-black text-emerald-600 dark:text-emerald-400">{duration}</span>
                           </div>
                         </div>
                       );
@@ -938,149 +975,53 @@ export function OrgTaskDrawer({
               );
             })()}
 
-            {/* Attachments */}
-            <div>
-              <label className="block text-sm font-medium text-text-secondary dark:text-gray-300 mb-1.5">
-                Attachments{" "}
-                <span className="text-text-tertiary font-normal">
-                  (Optional)
-                </span>
-              </label>
-              <div className="border border-border-light dark:border-border-dark rounded-lg p-3 bg-white dark:bg-surface-dark space-y-3 shadow-sm">
-                {!isReadOnly && (
-                  <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-md">
-                    <button
-                      type="button"
-                      className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-colors ${attachmentMode === "file" ? "bg-white dark:bg-surface-dark text-primary shadow-sm" : "text-text-tertiary hover:text-text-primary"}`}
-                      onClick={() => setAttachmentMode("file")}
-                    >
-                      <div className="flex items-center justify-center gap-1.5">
-                        <Paperclip className="h-3.5 w-3.5" /> File
-                      </div>
-                    </button>
-                    <button
-                      type="button"
-                      className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-colors ${attachmentMode === "url" ? "bg-white dark:bg-surface-dark text-primary shadow-sm" : "text-text-tertiary hover:text-text-primary"}`}
-                      onClick={() => setAttachmentMode("url")}
-                    >
-                      <div className="flex items-center justify-center gap-1.5">
-                        <Link2 className="h-3.5 w-3.5" /> URL
-                      </div>
-                    </button>
-                  </div>
-                )}
-
-                {!isReadOnly && attachmentMode === "file" && (
-                  <label className="relative flex flex-col items-center justify-center p-4 border border-dashed border-border-light dark:border-border-dark hover:border-primary/50 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg cursor-pointer transition-all bg-gray-50/30 dark:bg-gray-800/20">
-                    <div className="p-2 rounded-full bg-primary/10 text-primary mb-2">
-                      <Paperclip className="h-4 w-4" />
-                    </div>
-                    <p className="text-sm font-bold text-text-primary dark:text-white">
-                      Click to attach documents
-                    </p>
-                    <input
-                      type="file"
-                      className="hidden"
-                      multiple
-                      onChange={handleFileChange}
-                    />
+            {/* Discussion */}
+            {task?.id ? (
+              <div className="flex flex-col flex-1 min-h-[300px] border border-border-light dark:border-border-dark rounded-xl bg-gray-50/30 dark:bg-gray-800/10 overflow-hidden">
+                <div className="px-4 py-3 bg-white dark:bg-surface-dark border-b border-border-light dark:border-border-dark shrink-0">
+                  <label className="text-sm font-bold text-text-primary dark:text-white flex items-center gap-2">
+                    <MessageSquare className="h-4 w-4 text-primary" /> Discussion <span className="text-xs font-normal text-text-tertiary bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-full">{comments.length}</span>
                   </label>
-                )}
-
-                {!isReadOnly && attachmentMode === "url" && (
-                  <div className="space-y-2 p-3 border border-border-light dark:border-border-dark rounded-lg bg-gray-50/50 dark:bg-gray-800/30">
-                    <input
-                      type="text"
-                      placeholder="URL (e.g., Google Drive link)"
-                      value={urlInput}
-                      onChange={(e) => setUrlInput(e.target.value)}
-                      className="w-full px-3 py-2 text-sm bg-white dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-md focus:ring-2 focus:ring-primary/20 outline-none transition-all"
-                    />
-                    <input
-                      type="text"
-                      placeholder="Title (Optional)"
-                      value={urlTitleInput}
-                      onChange={(e) => setUrlTitleInput(e.target.value)}
-                      className="w-full px-3 py-2 text-sm bg-white dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-md focus:ring-2 focus:ring-primary/20 outline-none transition-all"
-                    />
-                    <Button
-                      type="button"
-                      size="sm"
-                      className="w-full text-xs py-1.5 h-8"
-                      onClick={handleAddUrl}
-                      disabled={!urlInput || uploadingAttachment}
-                    >
-                      {uploadingAttachment ? "Adding..." : "Add Link"}
-                    </Button>
-                  </div>
-                )}
-
-                {attachments.length > 0 && (
-                  <div className="space-y-2 mt-3 max-h-40 overflow-y-auto custom-scrollbar">
-                    {attachments.map((att, index) => (
-                      <div
-                        key={att.id || index}
-                        className="flex items-center justify-between p-2.5 bg-gray-50 dark:bg-gray-800/50 border border-border-light dark:border-border-dark rounded-md"
-                      >
-                        <div className="flex items-center gap-2 overflow-hidden flex-1">
-                          <div className="p-1.5 bg-primary/10 text-primary rounded shrink-0">
-                            {att.type === "url" ? (
-                              <Link2 className="h-3.5 w-3.5" />
-                            ) : (
-                              <Paperclip className="h-3.5 w-3.5" />
-                            )}
+                </div>
+                <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-4">
+                  {comments.length === 0 ? (
+                    <div className="text-center text-sm text-text-tertiary py-8 flex flex-col items-center gap-2">
+                      <MessageSquare className="h-8 w-8 text-gray-200 dark:text-gray-700 opacity-20" /> No comments yet.
+                    </div>
+                  ) : (
+                    comments.map((comment) => (
+                      <div key={comment.id} className="flex gap-3">
+                        <Avatar src={comment.profile_picture_url} fallback={comment.first_name?.charAt(0) || "U"} className="h-8 w-8 ring-2 ring-white dark:ring-surface-dark shadow-sm shrink-0" />
+                        <div className="flex flex-col flex-1 min-w-0">
+                          <div className="flex justify-between items-baseline mb-1">
+                            <span className="text-[12px] font-bold text-text-primary dark:text-gray-200 truncate">{comment.first_name} {comment.last_name}</span>
+                            <span className="text-[9px] font-medium text-text-tertiary shrink-0 ml-2">{new Date(comment.created_at).toLocaleDateString([], {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'})}</span>
                           </div>
-                          <div className="min-w-0 pr-2">
-                            <p
-                              className="text-sm font-bold text-primary dark:text-primary-light truncate cursor-pointer hover:underline"
-                              onClick={() => handleAttachmentClick(att)}
-                              title={`Open ${att.name}`}
-                            >
-                              {att.name}
-                            </p>
+                          <div className="bg-white dark:bg-surface-dark border border-gray-100 dark:border-border-dark shadow-sm rounded-xl rounded-tl-none px-3 py-2 text-[12px] text-text-secondary dark:text-gray-300 leading-relaxed">
+                            {comment.comment}
                           </div>
-                        </div>
-                        <div className="flex items-center gap-1 shrink-0">
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleAttachmentClick(att);
-                            }}
-                            className="p-1.5 text-text-tertiary hover:text-primary hover:bg-primary/10 rounded-md transition-colors"
-                            title={att.type === "url" ? "Open Link" : "Download File"}
-                          >
-                            {att.type === "url" ? (
-                              <ExternalLink className="h-4 w-4" />
-                            ) : (
-                              <Download className="h-4 w-4" />
-                            )}
-                          </button>
-                          {!isReadOnly && (
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveAttachment(index)}
-                              className="p-1.5 text-text-tertiary hover:text-error hover:bg-error/10 rounded-md transition-colors"
-                              title="Remove Attachment"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
-                          )}
                         </div>
                       </div>
-                    ))}
+                    ))
+                  )}
+                </div>
+                <div className="p-3 bg-white dark:bg-surface-dark border-t border-border-light dark:border-border-dark shrink-0">
+                  <div className="flex flex-col gap-2">
+                    <textarea value={newComment} onChange={(e) => setNewComment(e.target.value)} placeholder="Type a message..." className="w-full px-3 py-2 text-[12px] bg-gray-50 dark:bg-gray-800/50 border rounded-xl focus:ring-2 focus:ring-primary/20 outline-none min-h-[60px] resize-none custom-scrollbar" onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && (e.preventDefault(), handleAddComment())} />
+                    <div className="flex justify-end">
+                      <button type="button" onClick={handleAddComment} disabled={isPostingComment || !newComment.trim()} className="flex items-center gap-1.5 px-3 py-1.5 bg-primary hover:bg-primary-dark disabled:opacity-50 text-white rounded-lg text-[11px] font-bold transition-all">
+                        {isPostingComment ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />} Post
+                      </button>
+                    </div>
                   </div>
-                )}
-
-                {uploadingAttachment && attachmentMode === "file" && (
-                  <div className="flex items-center gap-2 text-xs font-bold text-primary justify-center mt-2">
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" /> Uploading
-                    files...
-                  </div>
-                )}
+                </div>
               </div>
-            </div>
-          </form>
+            ) : (
+              <div className="flex flex-col items-center justify-center flex-1 min-h-[300px] border border-dashed border-border-light dark:border-border-dark rounded-xl bg-gray-50/20 dark:bg-gray-800/5 text-text-tertiary text-sm">
+                <MessageSquare className="h-8 w-8 mb-2 opacity-50" /> Save task to start discussion.
+              </div>
+            )}
+          </div>
         </div>
       </aside>
 
@@ -1089,7 +1030,7 @@ export function OrgTaskDrawer({
         onClose={() => setIsDeleteModalOpen(false)}
         onConfirm={confirmDelete}
         title="Delete Task"
-        message={`Are you sure you want to delete the task "${task?.title}"? This action cannot be undone.`}
+        message="Are you sure you want to delete this task? This action cannot be undone."
       />
     </>
   );

@@ -24,7 +24,10 @@ import {
   Image as ImageIcon,
   FileSpreadsheet,
   Pause,
+  Archive,
 } from "lucide-react";
+import { isBefore, isToday, startOfDay, format } from "date-fns";
+import { useMemo } from "react";
 import { Avatar } from "../../components/ui/Avatar";
 import { cn } from "../../utils/cn";
 import { Button } from "../../components/ui/Button";
@@ -56,6 +59,7 @@ export function ProjectTasksPage() {
   const [taskSearchQuery, setTaskSearchQuery] = useState("");
   const [taskPriorityFilter, setTaskPriorityFilter] = useState("All");
   const [taskCategoryFilter, setTaskCategoryFilter] = useState("All");
+  const [isArchiveMode, setIsArchiveMode] = useState(false);
 
   // --- Resource Files State ---
   const [fileAssets, setFileAssets] = useState([]);
@@ -134,6 +138,17 @@ export function ProjectTasksPage() {
     setSelectedTask((prev) =>
       prev?.id === taskId ? { ...prev, ...updatedProps } : prev,
     );
+    // Persist kanban_status changes (e.g. restore from archive) to backend
+    if (updatedProps.kanban_status !== undefined) {
+      const task = tasks.find((t) => t.id === taskId);
+      if (task) {
+        taskService
+          .updateTask(task.project_id, taskId, {
+            kanban_status: updatedProps.kanban_status,
+          })
+          .catch((err) => console.error("Failed to persist task status:", err));
+      }
+    }
   };
 
   useEffect(() => {
@@ -294,26 +309,84 @@ export function ProjectTasksPage() {
     }
   };
 
-  const filteredTasks = tasks.filter((task) => {
-    const matchesSearch = task.title
-      .toLowerCase()
-      .includes(taskSearchQuery.toLowerCase());
-    const matchesPriority =
-      taskPriorityFilter === "All" || task.priority === taskPriorityFilter;
-    const matchesCategory =
-      taskCategoryFilter === "All" || task.category === taskCategoryFilter;
-    return matchesSearch && matchesPriority && matchesCategory;
-  });
+  // Archive & Active Logic
+  const { activeTasks, archiveTasksGroups, isFiltered } = useMemo(() => {
+    // 1. Initial filter by Search/Priority/Category
+    const baseFiltered = tasks.filter((task) => {
+      const matchesSearch = task.title
+        .toLowerCase()
+        .includes(taskSearchQuery.toLowerCase());
+      const matchesPriority =
+        taskPriorityFilter === "All" || task.priority === taskPriorityFilter;
+      const matchesCategory =
+        taskCategoryFilter === "All" || task.category === taskCategoryFilter;
+      return matchesSearch && matchesPriority && matchesCategory;
+    });
 
-  const uniqueCategories = Array.from(
-    new Set(tasks.map((t) => t.category).filter(Boolean)),
-  ).sort();
+    // 2. Separate into Active and Archive
+    const active = [];
+    const archived = [];
+
+    baseFiltered.forEach((task) => {
+      const isDone = task.kanban_status === "done";
+      const isCompletedToday =
+        isDone && task.updated_at && isToday(new Date(task.updated_at));
+      const isOverdue =
+        task.due_date &&
+        isBefore(startOfDay(new Date(task.due_date)), startOfDay(new Date()));
+
+      // A task is ARCHIVED if it is DONE AND (it was not completed today OR it is overdue)
+      const shouldArchive = isDone && (!isCompletedToday || isOverdue);
+
+      if (shouldArchive) {
+        archived.push(task);
+      } else {
+        active.push(task);
+      }
+    });
+
+    // 3. Group Archived tasks by date
+    const archGroupsMap = new Map();
+    archived.sort((a, b) => {
+      const dateA = a.due_date ? new Date(a.due_date) : new Date(a.updated_at);
+      const dateB = b.due_date ? new Date(b.due_date) : new Date(b.updated_at);
+      return dateB - dateA; // Newest first
+    });
+
+    archived.forEach((task) => {
+      const dateKey = task.due_date
+        ? format(new Date(task.due_date), "EEE, MMM dd, yyyy").toUpperCase()
+        : task.updated_at
+          ? format(new Date(task.updated_at), "EEE, MMM dd, yyyy").toUpperCase()
+          : "NO DATE";
+
+      if (!archGroupsMap.has(dateKey)) archGroupsMap.set(dateKey, []);
+      archGroupsMap.get(dateKey).push(task);
+    });
+
+    const isFiltered =
+      taskSearchQuery !== "" ||
+      taskPriorityFilter !== "All" ||
+      taskCategoryFilter !== "All";
+
+    return {
+      activeTasks: active,
+      archiveTasksGroups: Array.from(archGroupsMap.entries()),
+      isFiltered,
+    };
+  }, [tasks, taskSearchQuery, taskPriorityFilter, taskCategoryFilter]);
+
+  const uniqueCategories = useMemo(
+    () =>
+      Array.from(new Set(tasks.map((t) => t.category).filter(Boolean))).sort(),
+    [tasks],
+  );
 
   const tasksByStatus = {
-    todo: filteredTasks.filter((t) => t.kanban_status === "todo"),
-    progress: filteredTasks.filter((t) => t.kanban_status === "progress"),
-    review: filteredTasks.filter((t) => t.kanban_status === "review"),
-    done: filteredTasks.filter((t) => t.kanban_status === "done"),
+    todo: activeTasks.filter((t) => t.kanban_status === "todo"),
+    progress: activeTasks.filter((t) => t.kanban_status === "progress"),
+    review: activeTasks.filter((t) => t.kanban_status === "review"),
+    done: activeTasks.filter((t) => t.kanban_status === "done"),
   };
 
   return (
@@ -394,12 +467,40 @@ export function ProjectTasksPage() {
               />
             </div>
             <div className="flex items-center gap-3 w-full sm:w-auto">
-              <div className="relative w-full sm:w-40 shrink-0">
-                <Filter className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-tertiary" />
+              {/* Archive Toggle - New Styled Pill Design */}
+              <div className="flex items-center p-1 bg-gray-100/50 dark:bg-surface-dark border border-gray-200 dark:border-gray-800 rounded-full shrink-0 shadow-sm">
+                <button
+                  onClick={() => setIsArchiveMode(false)}
+                  className={cn(
+                    "px-5 py-1.5 text-xs font-bold rounded-full transition-all duration-300",
+                    !isArchiveMode
+                      ? "bg-white dark:bg-gray-700 text-primary shadow-sm"
+                      : "text-text-tertiary hover:text-text-secondary",
+                  )}
+                >
+                  Current
+                </button>
+                <button
+                  onClick={() => setIsArchiveMode(true)}
+                  className={cn(
+                    "px-5 py-1.5 text-xs font-bold rounded-full transition-all duration-300",
+                    isArchiveMode
+                      ? "bg-white dark:bg-gray-700 text-primary shadow-sm"
+                      : "text-text-tertiary hover:text-text-secondary",
+                  )}
+                >
+                  Archive
+                </button>
+              </div>
+
+              <div className="h-8 w-px bg-gray-200 dark:bg-gray-800 hidden sm:block mx-1" />
+
+              <div className="relative w-full sm:w-44 shrink-0">
+                <Filter className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-text-tertiary" />
                 <select
                   value={taskCategoryFilter}
                   onChange={(e) => setTaskCategoryFilter(e.target.value)}
-                  className="w-full pl-9 pr-8 py-2 text-sm bg-white dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-lg focus:ring-2 focus:ring-primary/20 transition-all outline-none appearance-none cursor-pointer"
+                  className="w-full pl-10 pr-10 py-3 text-xs font-bold text-text-secondary dark:text-gray-400 bg-white dark:bg-surface-dark border-none ring-1 ring-gray-200 dark:ring-gray-800 rounded-2xl focus:ring-2 focus:ring-primary/40 transition-all outline-none appearance-none cursor-pointer shadow-sm"
                 >
                   <option value="All">All Categories</option>
                   {uniqueCategories.map((cat) => (
@@ -408,17 +509,18 @@ export function ProjectTasksPage() {
                     </option>
                   ))}
                 </select>
-                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-tertiary pointer-events-none" />
+                <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text-tertiary pointer-events-none" />
               </div>
 
-              <div className="relative w-full sm:w-40 shrink-0">
-                <Filter className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-tertiary" />
+              <div className="relative w-full sm:w-44 shrink-0">
+                <Filter className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-text-tertiary" />
                 <select
                   value={taskPriorityFilter}
                   onChange={(e) => setTaskPriorityFilter(e.target.value)}
                   className="w-full pl-10 pr-10 py-3 text-xs font-bold text-text-secondary dark:text-gray-400 bg-white dark:bg-surface-dark border-none ring-1 ring-gray-200 dark:ring-gray-800 rounded-2xl focus:ring-2 focus:ring-primary/40 transition-all outline-none appearance-none cursor-pointer shadow-sm"
                 >
                   <option value="All">All Priorities</option>
+                  <option value="Critical">Critical</option>
                   <option value="High">High Priority</option>
                   <option value="Medium">Medium Priority</option>
                   <option value="Low">Low Priority</option>
@@ -428,88 +530,172 @@ export function ProjectTasksPage() {
             </div>
           </div>
 
-          <DragDropContext onDragEnd={onDragEnd}>
-            <div className="pb-10">
-              <div className="flex gap-4 min-h-full items-stretch">
-                <WorkColumn
-                  id="todo"
-                  title="To Do"
-                  count={tasksByStatus.todo.length}
-                  color="border-yellow-400"
-                >
-                  {tasksByStatus.todo.map((task, index) => (
-                    <TaskCard
-                      key={task.id}
-                      task={task}
-                      index={index}
-                      onEdit={() => handleEditTask(task)}
-                      onView={() => handleViewTask(task)}
-                      onToggleSubtask={handleToggleSubtask}
-                      onTaskUpdate={(props) => handleTaskUpdate(task.id, props)}
-                      onDelete={() => handleDeleteTask(task)}
-                    />
+          {isArchiveMode ? (
+            /* ── Dull Premium List Archive ── */
+            <div className="flex-1 overflow-y-auto pr-1 custom-scrollbar pb-20">
+              {archiveTasksGroups.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-32 bg-white/30 dark:bg-surface-dark/30 rounded-[2.5rem] border border-dashed border-gray-200 dark:border-gray-800 backdrop-blur-sm">
+                  <div className="h-20 w-20 rounded-3xl bg-gray-50 dark:bg-gray-800/50 flex items-center justify-center mb-6 ring-1 ring-gray-100 dark:ring-gray-700 shadow-sm">
+                    <Archive className="h-10 w-10 text-text-tertiary opacity-30" />
+                  </div>
+                  <h3 className="text-xl font-bold text-text-primary dark:text-white mb-2">
+                    {isFiltered
+                      ? "No matching archived tasks"
+                      : "Archive is Empty"}
+                  </h3>
+                  <p className="text-text-secondary dark:text-gray-400 text-center max-w-sm px-4 mb-6">
+                    {isFiltered
+                      ? "Try adjusting your filters to see more archived results."
+                      : "Completed tasks from previous days appear here automatically."}
+                  </p>
+                  {isFiltered && (
+                    <button
+                      onClick={() => {
+                        setTaskSearchQuery("");
+                        setTaskPriorityFilter("All");
+                        setTaskCategoryFilter("All");
+                      }}
+                      className="px-6 py-2.5 bg-primary text-white text-sm font-bold rounded-xl shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 transition-all"
+                    >
+                      Clear all filters
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-8">
+                  {archiveTasksGroups.map(([date, groupTasks]) => (
+                    <div key={date}>
+                      {/* ── Date Group Header ── */}
+                      <div className="flex items-center gap-3 mb-3 sticky top-0 z-20 pt-1 pb-2 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-md">
+                        <div className="flex items-center gap-2.5 px-3.5 py-1.5 bg-gray-100/80 dark:bg-gray-800/60 border border-gray-200/80 dark:border-gray-700/50 rounded-xl">
+                          <Archive className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500" />
+                          <span className="text-[11px] font-black uppercase tracking-[0.12em] text-gray-500 dark:text-gray-400">
+                            {date}
+                          </span>
+                          <span className="ml-0.5 bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400 text-[9px] font-black px-2 py-0.5 rounded-full">
+                            {groupTasks.length}
+                          </span>
+                        </div>
+                        <div className="flex-1 h-px bg-gray-200/60 dark:bg-gray-700/40" />
+                      </div>
+
+                      {/* ── Task Grid Cards ── */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                        <AnimatePresence initial={false}>
+                          {groupTasks.map((task, index) => (
+                            <TaskCard
+                              key={task.id}
+                              task={task}
+                              index={index}
+                              onEdit={() => handleEditTask(task)}
+                              onView={() => handleViewTask(task)}
+                              onTaskUpdate={(props) =>
+                                handleTaskUpdate(task.id, props)
+                              }
+                              onDelete={() => handleDeleteTask(task)}
+                              isArchive={true}
+                              isDraggable={false}
+                            />
+                          ))}
+                        </AnimatePresence>
+                      </div>
+                    </div>
                   ))}
-                </WorkColumn>
-                <WorkColumn
-                  id="progress"
-                  title="In Progress"
-                  count={tasksByStatus.progress.length}
-                  color="border-primary"
-                >
-                  {tasksByStatus.progress.map((task, index) => (
-                    <TaskCard
-                      key={task.id}
-                      task={task}
-                      index={index}
-                      onEdit={() => handleEditTask(task)}
-                      onView={() => handleViewTask(task)}
-                      onToggleSubtask={handleToggleSubtask}
-                      onTaskUpdate={(props) => handleTaskUpdate(task.id, props)}
-                      onDelete={() => handleDeleteTask(task)}
-                    />
-                  ))}
-                </WorkColumn>
-                <WorkColumn
-                  id="review"
-                  title="In Review"
-                  count={tasksByStatus.review.length}
-                  color="border-purple-500"
-                >
-                  {tasksByStatus.review.map((task, index) => (
-                    <TaskCard
-                      key={task.id}
-                      task={task}
-                      index={index}
-                      onEdit={() => handleEditTask(task)}
-                      onView={() => handleViewTask(task)}
-                      onToggleSubtask={handleToggleSubtask}
-                      onTaskUpdate={(props) => handleTaskUpdate(task.id, props)}
-                      onDelete={() => handleDeleteTask(task)}
-                    />
-                  ))}
-                </WorkColumn>
-                <WorkColumn
-                  id="done"
-                  title="Done"
-                  count={tasksByStatus.done.length}
-                  color="border-green-500"
-                >
-                  {tasksByStatus.done.map((task, index) => (
-                    <TaskCard
-                      key={task.id}
-                      task={task}
-                      index={index}
-                      onEdit={() => handleEditTask(task)}
-                      onView={() => handleViewTask(task)}
-                      onToggleSubtask={handleToggleSubtask}
-                      onTaskUpdate={(props) => handleTaskUpdate(task.id, props)}
-                      onDelete={() => handleDeleteTask(task)}
-                    />
-                  ))}
-                </WorkColumn>
-              </div>
+                </div>
+              )}
             </div>
-          </DragDropContext>
+          ) : (
+            <DragDropContext onDragEnd={onDragEnd}>
+              <div className="pb-10 overflow-x-auto -mx-6 px-6">
+                <div className="flex gap-4 min-h-[calc(100vh-450px)] items-stretch mt-2 w-full">
+                  <WorkColumn
+                    id="todo"
+                    title="To Do"
+                    count={tasksByStatus.todo.length}
+                    color="border-yellow-400"
+                  >
+                    {tasksByStatus.todo.map((task, index) => (
+                      <TaskCard
+                        key={task.id}
+                        task={task}
+                        index={index}
+                        onEdit={() => handleEditTask(task)}
+                        onView={() => handleViewTask(task)}
+                        onToggleSubtask={handleToggleSubtask}
+                        onTaskUpdate={(props) =>
+                          handleTaskUpdate(task.id, props)
+                        }
+                        onDelete={() => handleDeleteTask(task)}
+                      />
+                    ))}
+                  </WorkColumn>
+                  <WorkColumn
+                    id="progress"
+                    title="In Progress"
+                    count={tasksByStatus.progress.length}
+                    color="border-primary"
+                  >
+                    {tasksByStatus.progress.map((task, index) => (
+                      <TaskCard
+                        key={task.id}
+                        task={task}
+                        index={index}
+                        onEdit={() => handleEditTask(task)}
+                        onView={() => handleViewTask(task)}
+                        onToggleSubtask={handleToggleSubtask}
+                        onTaskUpdate={(props) =>
+                          handleTaskUpdate(task.id, props)
+                        }
+                        onDelete={() => handleDeleteTask(task)}
+                      />
+                    ))}
+                  </WorkColumn>
+                  <WorkColumn
+                    id="review"
+                    title="In Review"
+                    count={tasksByStatus.review.length}
+                    color="border-purple-500"
+                  >
+                    {tasksByStatus.review.map((task, index) => (
+                      <TaskCard
+                        key={task.id}
+                        task={task}
+                        index={index}
+                        onEdit={() => handleEditTask(task)}
+                        onView={() => handleViewTask(task)}
+                        onToggleSubtask={handleToggleSubtask}
+                        onTaskUpdate={(props) =>
+                          handleTaskUpdate(task.id, props)
+                        }
+                        onDelete={() => handleDeleteTask(task)}
+                      />
+                    ))}
+                  </WorkColumn>
+                  <WorkColumn
+                    id="done"
+                    title="Done"
+                    count={tasksByStatus.done.length}
+                    color="border-green-500"
+                  >
+                    {tasksByStatus.done.map((task, index) => (
+                      <TaskCard
+                        key={task.id}
+                        task={task}
+                        index={index}
+                        onEdit={() => handleEditTask(task)}
+                        onView={() => handleViewTask(task)}
+                        onToggleSubtask={handleToggleSubtask}
+                        onTaskUpdate={(props) =>
+                          handleTaskUpdate(task.id, props)
+                        }
+                        onDelete={() => handleDeleteTask(task)}
+                      />
+                    ))}
+                  </WorkColumn>
+                </div>
+              </div>
+            </DragDropContext>
+          )}
         </div>
       )}
 
@@ -749,7 +935,7 @@ function WorkColumn({ id, title, count, color, children }) {
   if (bgDot.includes("purple")) bgDot = "bg-purple-500";
 
   return (
-    <div className="flex flex-1 min-w-[300px] flex-col bg-slate-50/50 dark:bg-slate-900/30 border border-border-light dark:border-border-dark rounded-[1.5rem] shadow-sm overflow-visible">
+    <div className="flex flex-1 min-w-[280px] flex-col bg-slate-50/50 dark:bg-slate-900/30 border border-border-light dark:border-border-dark rounded-[1.5rem] shadow-sm overflow-visible">
       <div className="bg-white/80 dark:bg-surface-dark/80 border-b border-border-light dark:border-border-dark px-5 py-4 flex justify-between items-center shrink-0 rounded-t-[1.5rem]">
         <div className="flex items-center gap-3">
           <div
@@ -788,14 +974,18 @@ function WorkColumn({ id, title, count, color, children }) {
   );
 }
 
+// ─── TaskCard ────────────────────────────────────────────────────────────────
+
 function TaskCard({
   task,
   index,
   onEdit,
   onView,
-  onToggleSubtask = () => {},
-  onTaskUpdate,
+  onToggleSubtask,
   onDelete,
+  onTaskUpdate,
+  isDraggable = true,
+  isArchive = false,
 }) {
   const priorityColors = {
     Critical: "text-error",
@@ -818,7 +1008,7 @@ function TaskCard({
   const totalSubtasks = subtasks.length;
   const completedSubtasks = subtasks.filter((s) => s.is_completed).length;
 
-  // --- Timer & Time Tracking Logic ---
+  // ── Timer & Time Tracking ──
   const baseTimeSpent = parseInt(task.time_spent) || 0;
   const isTimerRunning = !!task.timer_started_at;
   const activeTimerStart = task.timer_started_at;
@@ -863,12 +1053,11 @@ function TaskCard({
     let newTimeLogs = [...parsedLogs];
 
     if (isTimerRunning) {
-      // Stopping
       if (activeTimerStart) {
         const startTs = new Date(activeTimerStart).getTime();
         if (!isNaN(startTs) && startTs > 0) {
           const elapsed = Math.floor((Date.now() - startTs) / 1000);
-          const cappedElapsed = Math.min(Math.max(0, elapsed), 86400); // Max 24 hours
+          const cappedElapsed = Math.min(Math.max(0, elapsed), 86400); // 24h max
           if (cappedElapsed > 0) {
             const endTs = startTs + cappedElapsed * 1000;
             newTimeLogs.unshift({
@@ -882,7 +1071,6 @@ function TaskCard({
         }
       }
     } else {
-      // Starting
       newTimerStartedAt = nowISO;
     }
 
@@ -913,224 +1101,289 @@ function TaskCard({
     return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
   };
 
-  return (
-    <Draggable draggableId={task.id.toString()} index={index}>
-      {(provided, snapshot) => (
-        <div
-          ref={provided.innerRef}
-          {...provided.draggableProps}
-          {...provided.dragHandleProps}
-          onDoubleClick={onView}
-          style={{ ...provided.draggableProps.style }}
+  const cardContent = (provided, snapshot) => (
+    <div
+      ref={provided?.innerRef}
+      {...(provided?.draggableProps || {})}
+      {...(provided?.dragHandleProps || {})}
+      onDoubleClick={onView}
+      style={{ ...(provided?.draggableProps?.style || {}) }}
+      className={cn(
+        "group relative bg-white dark:bg-surface-dark rounded-2xl border border-border-light dark:border-border-dark shadow-sm overflow-hidden shrink-0",
+        isArchive ? "p-4 opacity-80 border-dashed" : "p-4",
+        snapshot?.isDragging
+          ? "shadow-2xl ring-2 ring-primary/50 rotate-1 z-9999"
+          : "hover:shadow-md transition-all",
+        isArchive
+          ? "grayscale-[0.4] hover:grayscale-0 transition-all duration-300"
+          : "",
+      )}
+    >
+      <div className="flex gap-4 items-start flex-col">
+        {/* Checkbox */}
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            if (isArchive) {
+              onTaskUpdate({ kanban_status: "review" });
+            } else {
+              onTaskUpdate({
+                kanban_status: task.kanban_status === "done" ? "todo" : "done",
+              });
+            }
+          }}
           className={cn(
-            "group relative bg-white dark:bg-surface-dark rounded-2xl border border-border-light dark:border-border-dark shadow-sm p-4 cursor-default overflow-hidden shrink-0",
-            snapshot.isDragging
-              ? "shadow-2xl ring-2 ring-primary/50 rotate-1 z-9999"
-              : "hover:shadow-md transition-all",
+            "shrink-0 h-5 w-5 mt-[2px] rounded-full border-2 transition-all flex items-center justify-center",
+            task.kanban_status === "done"
+              ? "border-primary bg-primary"
+              : "border-text-tertiary hover:border-primary",
           )}
         >
-          {/* Main content area */}
-          <div className="flex flex-col gap-3.5">
-            {/* Top row: Check circle + Title + Tag + Flag */}
+          {task.kanban_status === "done" && (
+            <Check className="h-3 w-3 text-white" strokeWidth={4} />
+          )}
+        </button>
+
+        <div className="flex gap-4 flex-1 flex-col w-full">
+          <div className="flex flex-col gap-3.5 min-w-0 flex-1">
             <div className="flex justify-between items-start gap-3">
-              <div className="flex gap-3 items-start min-w-0">
-                <button
+              <div className="min-w-0">
+                <h4
                   className={cn(
-                    "shrink-0 mt-[2px] h-5 w-5 rounded-full border-2 transition-all flex items-center justify-center",
-                    task.kanban_status === "done"
-                      ? "border-primary bg-primary"
-                      : "border-text-tertiary hover:border-primary",
+                    "text-[14px] font-black leading-tight tracking-tight",
+                    isArchive
+                      ? "text-gray-400 dark:text-gray-500 line-through"
+                      : "text-text-primary dark:text-white",
                   )}
                 >
-                  {task.kanban_status === "done" && (
-                    <Check className="h-3 w-3 text-white" strokeWidth={4} />
-                  )}
-                </button>
-                <div className="min-w-0">
-                  <h4 className="text-[14px] font-black text-text-primary dark:text-white leading-tight tracking-tight">
-                    {task.title}
-                  </h4>
-                  {task.description && (
-                    <p className="text-[11px] text-text-tertiary mt-1.5 leading-relaxed line-clamp-2">
-                      {task.description}
-                    </p>
-                  )}
-                </div>
+                  {task.title}
+                </h4>
+                {task.description && (
+                  <p
+                    className={cn(
+                      "text-[11px] leading-relaxed line-clamp-2 mt-1.5",
+                      isArchive
+                        ? "text-gray-300 dark:text-gray-600 italic"
+                        : "text-text-tertiary",
+                    )}
+                  >
+                    {task.description}
+                  </p>
+                )}
               </div>
               <div className="flex items-center gap-1.5 shrink-0">
                 <Flag
                   className={cn(
                     "h-4 w-4 fill-current",
                     priorityColors[task.priority] || "text-emerald-500",
+                    isArchive ? "opacity-30" : "",
                   )}
                   strokeWidth={2}
                 />
               </div>
             </div>
 
-            {/* Subtasks Section - Modern & Interactive */}
             {totalSubtasks > 0 && (
-              <div className="flex flex-col gap-2 p-3 bg-gray-50/50 dark:bg-gray-800/40 rounded-xl border border-border-light/40 dark:border-border-dark/40">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-[9px] font-black text-text-tertiary uppercase tracking-widest">
-                    Subtasks
-                  </span>
-                  <div className="flex items-center gap-1.5 text-[10px] font-black text-primary">
-                    <CheckSquare className="h-3 w-3" />
-                    {completedSubtasks}/{totalSubtasks}
-                  </div>
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  {subtasks.map((subtask, sIdx) => (
-                    <div
-                      key={sIdx}
-                      className="flex items-center gap-2 group/sub"
-                    >
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onToggleSubtask(task, sIdx);
-                        }}
-                        className={cn(
-                          "h-3.5 w-3.5 rounded border flex items-center justify-center transition-all",
-                          subtask.is_completed
-                            ? "bg-primary border-primary"
-                            : "bg-white dark:bg-surface-dark border-text-tertiary group-hover/sub:border-primary",
-                        )}
-                      >
-                        {subtask.is_completed && (
-                          <Check
-                            className="h-2.5 w-2.5 text-white"
-                            strokeWidth={4}
-                          />
-                        )}
-                      </button>
-                      <span
-                        className={cn(
-                          "text-[10px] font-bold transition-all",
-                          subtask.is_completed
-                            ? "text-text-tertiary line-through"
-                            : "text-text-secondary dark:text-gray-300",
-                        )}
-                      >
-                        {subtask.title}
-                      </span>
+              <div
+                className={cn(
+                  "flex items-center transition-colors border-border-light/40 dark:border-border-dark/40",
+                  isArchive
+                    ? "gap-4 py-2 mt-2 border-t border-dashed"
+                    : "flex-col gap-2 p-3 bg-gray-50/50 dark:bg-gray-800/40 rounded-xl border",
+                )}
+              >
+                {!isArchive && (
+                  <div className="flex items-center justify-between mb-1 w-full">
+                    <span className="text-[9px] font-black text-text-tertiary uppercase tracking-widest">
+                      Subtasks
+                    </span>
+                    <div className="flex items-center gap-1.5 text-[10px] font-black text-primary">
+                      <CheckSquare className="h-3 w-3" />
+                      {completedSubtasks}/{totalSubtasks}
                     </div>
-                  ))}
+                  </div>
+                )}
+                <div
+                  className={cn(
+                    "flex",
+                    isArchive
+                      ? "flex-row gap-4 items-center flex-1"
+                      : "flex-col gap-1.5 w-full",
+                  )}
+                >
+                  {isArchive ? (
+                    <>
+                      <div className="flex flex-1 gap-2 overflow-hidden items-center">
+                        {subtasks.slice(0, 2).map((subtask, sIdx) => (
+                          <div
+                            key={sIdx}
+                            className="flex items-center gap-1 shrink-0"
+                          >
+                            <div
+                              className={cn(
+                                "h-1.5 w-1.5 rounded-full",
+                                subtask.is_completed
+                                  ? "bg-primary"
+                                  : "bg-gray-200 dark:bg-gray-700",
+                              )}
+                            />
+                            <span
+                              className={cn(
+                                "text-[9px] font-bold truncate max-w-[60px]",
+                                subtask.is_completed
+                                  ? "text-gray-400"
+                                  : "text-text-secondary",
+                              )}
+                            >
+                              {subtask.title}
+                            </span>
+                          </div>
+                        ))}
+                        {subtasks.length > 2 && (
+                          <span className="text-[9px] text-text-tertiary">
+                            +{subtasks.length - 2}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1 bg-primary/5 px-2 py-0.5 rounded text-[9px] font-black text-primary border border-primary/10">
+                        {completedSubtasks}/{totalSubtasks}
+                      </div>
+                    </>
+                  ) : (
+                    subtasks.map((subtask, sIdx) => (
+                      <div
+                        key={sIdx}
+                        className="flex items-center gap-2 group/sub"
+                      >
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onToggleSubtask(task, sIdx);
+                          }}
+                          className={cn(
+                            "h-3.5 w-3.5 rounded border flex items-center justify-center transition-all",
+                            subtask.is_completed
+                              ? "bg-primary border-primary"
+                              : "bg-white dark:bg-surface-dark border-text-tertiary group-hover/sub:border-primary",
+                          )}
+                        >
+                          {subtask.is_completed && (
+                            <Check
+                              className="h-2.5 w-2.5 text-white"
+                              strokeWidth={4}
+                            />
+                          )}
+                        </button>
+                        <span
+                          className={cn(
+                            "text-[10px] font-bold transition-all",
+                            subtask.is_completed
+                              ? "text-text-tertiary line-through"
+                              : "text-text-secondary dark:text-gray-300",
+                          )}
+                        >
+                          {subtask.title}
+                        </span>
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
             )}
+          </div>
 
-            {/* Metadata Section - Elevated Style */}
-            <div className="flex flex-wrap items-center gap-2">
-              {/* Project Tag */}
-              {task.project_title && (
-                <div className="bg-primary/5 dark:bg-primary/10 border border-primary/20 px-2 py-0.5 rounded text-[9px] font-black text-primary uppercase tracking-wider">
-                  {task.project_title}
-                </div>
+          <div className="flex items-center justify-between pt-1 border-t border-border-light/40 dark:border-border-dark/40 w-full mt-auto">
+            <div
+              className={cn(
+                "flex items-center gap-1.5 text-[10px] font-black px-2 py-1 rounded-lg transition-colors",
+                isTimerRunning && !isArchive
+                  ? "bg-warning/10 text-warning animate-pulse"
+                  : "text-text-tertiary bg-gray-50/50 dark:bg-gray-800/20",
+                isArchive ? "bg-gray-50 dark:bg-gray-800/20 opacity-50" : "",
               )}
-              {/* Category Pill */}
-              <div className="bg-warning/5 dark:bg-warning/10 border border-warning/10 px-2 py-0.5 rounded text-[9px] font-black text-warning uppercase tracking-wider">
-                {task.category || "General"}
-              </div>
-              {/* Date Pill */}
-              {task.due_date &&
-                (() => {
-                  const isOverdue =
-                    new Date(task.due_date) < new Date() &&
-                    task.kanban_status !== "done";
-                  return (
-                    <div
-                      className={cn(
-                        "px-2 py-0.5 rounded flex items-center gap-1.5 text-[9px] font-bold transition-all",
-                        isOverdue
-                          ? "bg-error/10 border border-error/20 text-error"
-                          : "bg-gray-50 dark:bg-gray-800/50 border border-border-light dark:border-border-dark text-text-secondary",
-                      )}
-                    >
-                      <Calendar
-                        className={cn(
-                          "h-2.5 w-2.5",
-                          isOverdue ? "text-error" : "text-text-tertiary",
-                        )}
-                      />
-                      {new Date(task.due_date).toLocaleString(undefined, {
-                        month: "short",
-                        day: "numeric",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                        hour12: true,
-                      })}
-                    </div>
-                  );
-                })()}
+            >
+              <Clock className="h-3 w-3" />
+              <span className="tabular-nums">
+                {isArchive
+                  ? formatTime(Number(task.time_spent || 0))
+                  : formatTime(liveTimeSpent)}
+              </span>
             </div>
-
-            {/* Bottom Row: Actions & Timer */}
-            <div className="flex items-center justify-between pt-1 border-t border-border-light/40 dark:border-border-dark/40">
-              <div
-                className={cn(
-                  "flex items-center gap-1.5 text-[10px] font-black px-2 py-1 rounded-lg transition-colors",
-                  isTimerRunning
-                    ? "bg-warning/10 text-warning animate-pulse"
-                    : "text-text-tertiary bg-gray-50/50 dark:bg-gray-800/20",
-                )}
+            <div className="flex items-center gap-0.5">
+              {!isArchive && (
+                <>
+                  <button
+                    onClick={handleToggleTimer}
+                    className={cn(
+                      "p-1.5 rounded-lg transition-all",
+                      isTimerRunning
+                        ? "text-warning hover:bg-warning/5"
+                        : "text-success hover:bg-success/5",
+                    )}
+                  >
+                    {isTimerRunning ? (
+                      <Pause className="h-4 w-4 fill-current" />
+                    ) : (
+                      <Play className="h-4 w-4 fill-current" />
+                    )}
+                  </button>
+                  <div className="w-px h-3 bg-border-light dark:bg-border-dark mx-1" />
+                </>
+              )}
+              <button
+                onClick={onView}
+                className="p-1.5 text-text-tertiary hover:text-primary hover:bg-primary/5 rounded-lg transition-all"
               >
-                <Clock className="h-3.3" />
-                {formatTime(liveTimeSpent)}
-              </div>
-
-              <div className="flex items-center gap-0.5">
-                <button
-                  onClick={handleToggleTimer}
-                  className={cn(
-                    "p-1.5 rounded-lg transition-all",
-                    isTimerRunning
-                      ? "text-warning hover:bg-warning/5"
-                      : "text-success hover:bg-success/5",
-                  )}
-                  title={isTimerRunning ? "Pause Timer" : "Track Time"}
-                >
-                  {isTimerRunning ? (
-                    <Pause className="h-4 w-4 fill-current" />
-                  ) : (
-                    <Play className="h-4 w-4 fill-current" />
-                  )}
-                </button>
-                <div className="w-px h-3 bg-border-light dark:bg-border-dark mx-1" />
-                <button
-                  onClick={onView}
-                  className="p-1.5 text-text-tertiary hover:text-primary hover:bg-primary/5 rounded-lg transition-all"
-                  title="View Details"
-                >
-                  <ExternalLink className="h-4 w-4" />
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (isTimerRunning) handleToggleTimer(e);
-                    onEdit();
-                  }}
-                  className="p-1.5 text-text-tertiary hover:text-primary hover:bg-primary/5 rounded-lg transition-all"
-                  title="Edit Task"
-                >
-                  <Edit2 className="h-4 w-4" />
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onDelete();
-                  }}
-                  className="p-1.5 text-text-tertiary hover:text-error hover:bg-error/5 rounded-lg transition-all"
-                  title="Delete Task"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
-              </div>
+                <ExternalLink className="h-4 w-4" />
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEdit();
+                }}
+                className="p-1.5 text-text-tertiary hover:text-primary hover:bg-primary/5 rounded-lg transition-all"
+              >
+                <Edit2 className="h-4 w-4" />
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete();
+                }}
+                className="p-1.5 text-text-tertiary hover:text-error hover:bg-error/5 rounded-lg transition-all"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
             </div>
           </div>
+
+          {isArchive && (
+            <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-dashed border-border-light dark:border-border-dark mt-2">
+              {task.due_date && (
+                <div className="bg-gray-50 dark:bg-gray-800/50 border border-border-light dark:border-border-dark px-2 py-1 rounded flex items-center gap-1.5 text-[9px] font-bold text-text-tertiary">
+                  <Calendar className="h-3 w-3" />
+                  {format(new Date(task.due_date), "MMM dd, yyyy")}
+                </div>
+              )}
+              <div className="bg-warning/5 dark:bg-warning/10 border border-warning/10 px-2 py-1 rounded text-[9px] font-black text-warning uppercase tracking-wider">
+                {task.category || "General"}
+              </div>
+            </div>
+          )}
         </div>
-      )}
+      </div>
+    </div>
+  );
+
+  if (!isDraggable) {
+    return cardContent(null, null);
+  }
+
+  return (
+    <Draggable draggableId={task.id.toString()} index={index}>
+      {(provided, snapshot) => cardContent(provided, snapshot)}
     </Draggable>
   );
 }
+
+// ArchiveCard is no longer used; TaskCard (isArchive={true}) is used instead.

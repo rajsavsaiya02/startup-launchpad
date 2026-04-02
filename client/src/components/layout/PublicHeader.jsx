@@ -88,7 +88,7 @@ const MENU_STRUCTURE = [
   },
   */ // TODO: We will develop this later
   {
-    label: "Company",
+    label: "Other",
     type: "dropdown",
     items: [
       { name: "About Us", icon: Info, path: "/about" },

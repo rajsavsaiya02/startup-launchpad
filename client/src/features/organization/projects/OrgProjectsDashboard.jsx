@@ -6,14 +6,15 @@ import {
   LayoutGrid,
   List as ListIcon,
   ExternalLink,
-  Calendar,
   Pencil,
   Clock,
   Target,
   Filter,
-  Briefcase,
-  Users,
+  Archive,
+  ChevronDown,
 } from "lucide-react";
+import { isBefore, startOfDay } from "date-fns";
+import { cn } from "../../../utils/cn";
 import { Button } from "../../../components/ui/Button";
 import { Badge } from "../../../components/ui/Badge";
 import { Card } from "../../../components/ui/Card";
@@ -47,6 +48,7 @@ export function OrgProjectsDashboard() {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeStatus, setActiveStatus] = useState("All");
   const [activeCategory, setActiveCategory] = useState("All");
+  const [isArchiveMode, setIsArchiveMode] = useState(false);
 
   // Dynamic Options State
   const [categories, setCategories] = useState(DEFAULT_CATEGORIES);
@@ -143,27 +145,41 @@ export function OrgProjectsDashboard() {
   }, []);
 
   // Filter Logic
-  const filteredProjects = Array.isArray(projects)
-    ? projects.filter((project) => {
-        const matchesSearch =
-          (project.title?.toLowerCase() || "").includes(
-            searchQuery.toLowerCase(),
-          ) ||
-          (project.description?.toLowerCase() || "").includes(
-            searchQuery.toLowerCase(),
-          );
+  const filteredProjects = useMemo(() => {
+    if (!Array.isArray(projects)) return [];
 
-        const matchesStatus =
-          activeStatus === "All" ||
-          (project.status || "Active") === activeStatus;
+    return projects.filter((project) => {
+      // Archive Logic: Completed (or 100% progress) + Overdue (Due date is before today)
+      const isCompleted = (project.status || "Active") === "Completed" || Number(project.progress) >= 100;
+      const isOverdue =
+        project.due_date && isBefore(startOfDay(new Date(project.due_date)), startOfDay(new Date()));
+      const isArchived = isCompleted && isOverdue;
 
-        const matchesCategory =
-          activeCategory === "All" ||
-          (project.category || "General") === activeCategory;
+      // Filter by Archive Mode
+      if (isArchiveMode) {
+        if (!isArchived) return false;
+      } else {
+        if (isArchived) return false;
+      }
 
-        return matchesSearch && matchesStatus && matchesCategory;
-      })
-    : [];
+      const matchesSearch =
+        (project.title?.toLowerCase() || "").includes(searchQuery.toLowerCase()) ||
+        (project.description?.toLowerCase() || "").includes(
+          searchQuery.toLowerCase(),
+        );
+
+      const matchesStatus =
+        activeStatus === "All" || (project.status || "Active") === activeStatus;
+
+      const matchesCategory =
+        activeCategory === "All" ||
+        (project.category || "General") === activeCategory;
+
+      return matchesSearch && matchesStatus && matchesCategory;
+    });
+  }, [projects, isArchiveMode, searchQuery, activeStatus, activeCategory]);
+
+  const isFiltered = searchQuery !== "" || activeStatus !== "All" || activeCategory !== "All";
 
   const handleEditClick = (e, project) => {
     e.stopPropagation();
@@ -193,7 +209,7 @@ export function OrgProjectsDashboard() {
     <div className="space-y-8 animate-in fade-in duration-500 pb-20">
       {/* Header & Controls */}
       <div className="flex flex-col gap-6">
-        <div className="flex flex-col md:flex-row justify-between items-end gap-4 border-b border-border-light dark:border-border-dark pb-6">
+        <div className="flex flex-col md:flex-row justify-between items-center gap-4 border-b border-border-light dark:border-border-dark pb-6">
           <div>
             <h1 className="text-3xl font-bold text-text-primary dark:text-white">
               Projects
@@ -202,18 +218,46 @@ export function OrgProjectsDashboard() {
               Manage team initiatives, track progress, and collaborate.
             </p>
           </div>
-          {isOrgManager && (
-            <Button
-              className="gap-2 shadow-lg shadow-primary/20"
-              onClick={handleCreateClick}
-            >
-              <Plus className="h-5 w-5" /> New Project
-            </Button>
-          )}
+          <div className="flex items-center gap-4">
+            {/* Archive Mode Toggle - New Styled Pill Design */}
+            <div className="flex items-center p-1 bg-gray-100/50 dark:bg-surface-dark border border-gray-200 dark:border-gray-800 rounded-full shrink-0 shadow-sm">
+              <button
+                onClick={() => setIsArchiveMode(false)}
+                className={cn(
+                  "px-5 py-1.5 text-xs font-bold rounded-full transition-all duration-300",
+                  !isArchiveMode
+                    ? "bg-white dark:bg-primary/10 text-primary shadow-sm"
+                    : "text-text-tertiary hover:text-text-secondary"
+                )}
+              >
+                Current
+              </button>
+              <button
+                onClick={() => setIsArchiveMode(true)}
+                className={cn(
+                  "px-5 py-1.5 text-xs font-bold rounded-full transition-all duration-300",
+                  isArchiveMode
+                    ? "bg-white dark:bg-primary/10 text-primary shadow-sm"
+                    : "text-text-tertiary hover:text-text-secondary"
+                )}
+              >
+                Archive
+              </button>
+            </div>
+
+            {isOrgManager && (
+              <Button
+                className="gap-2 shadow-lg shadow-primary/20"
+                onClick={handleCreateClick}
+              >
+                <Plus className="h-5 w-5" /> New Project
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* Modern Filter Bar */}
-        <div className="flex flex-col lg:flex-row gap-4 items-center bg-white dark:bg-[#1E293B] p-2 rounded-xl border border-border-light dark:border-gray-800 shadow-sm">
+        <div className="flex flex-col lg:flex-row gap-4 items-center bg-white dark:bg-surface-dark p-2 px-3 rounded-2xl border border-border-light dark:border-border-dark shadow-sm">
           {/* Search */}
           <div className="relative flex-1 w-full">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-tertiary" />
@@ -226,16 +270,17 @@ export function OrgProjectsDashboard() {
             />
           </div>
 
-          <div className="h-6 w-px bg-gray-200 dark:bg-gray-700 hidden lg:block" />
+          <div className="h-6 w-px bg-gray-200/60 dark:bg-gray-700/60 hidden lg:block mx-2" />
 
           {/* Filters Group */}
           <div className="flex w-full lg:w-auto gap-2 overflow-x-auto pb-1 lg:pb-0">
             {/* Status Filter */}
-            <div className="relative min-w-[140px]">
+            <div className="relative w-full sm:w-44 shrink-0">
+              <Filter className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-text-tertiary" />
               <select
                 value={activeStatus}
                 onChange={(e) => setActiveStatus(e.target.value)}
-                className="w-full h-10 pl-3 pr-8 rounded-lg bg-gray-50 dark:bg-gray-800/50 border-none text-sm text-text-primary dark:text-gray-200 appearance-none cursor-pointer focus:ring-2 focus:ring-primary/20"
+                className="w-full pl-10 pr-10 py-3 text-xs font-bold text-text-secondary dark:text-gray-400 bg-white dark:bg-surface-dark border-none ring-1 ring-gray-200 dark:ring-gray-800 rounded-2xl focus:ring-2 focus:ring-primary/40 transition-all outline-none appearance-none cursor-pointer shadow-sm"
               >
                 <option value="All">All Statuses</option>
                 {statuses.map((status) => (
@@ -244,15 +289,16 @@ export function OrgProjectsDashboard() {
                   </option>
                 ))}
               </select>
-              <Filter className="absolute right-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text-tertiary pointer-events-none" />
+              <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text-tertiary pointer-events-none" />
             </div>
 
             {/* Category Filter */}
-            <div className="relative min-w-[140px]">
+            <div className="relative w-full sm:w-44 shrink-0">
+              <Filter className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-text-tertiary" />
               <select
                 value={activeCategory}
                 onChange={(e) => setActiveCategory(e.target.value)}
-                className="w-full h-10 pl-3 pr-8 rounded-lg bg-gray-50 dark:bg-gray-800/50 border-none text-sm text-text-primary dark:text-gray-200 appearance-none cursor-pointer focus:ring-2 focus:ring-primary/20"
+                className="w-full pl-10 pr-10 py-3 text-xs font-bold text-text-secondary dark:text-gray-400 bg-white dark:bg-surface-dark border-none ring-1 ring-gray-200 dark:ring-gray-800 rounded-2xl focus:ring-2 focus:ring-primary/40 transition-all outline-none appearance-none cursor-pointer shadow-sm"
               >
                 <option value="All">All Categories</option>
                 {categories.map((cat) => (
@@ -261,8 +307,11 @@ export function OrgProjectsDashboard() {
                   </option>
                 ))}
               </select>
-              <LayoutGrid className="absolute right-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text-tertiary pointer-events-none" />
+              <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text-tertiary pointer-events-none" />
             </div>
+
+            <div className="h-6 w-px bg-gray-200/60 dark:bg-gray-700/60 hidden lg:block mx-2" />
+
 
             {/* View Toggle */}
             <div className="flex items-center bg-gray-50 dark:bg-gray-800/50 rounded-lg p-1 ml-auto lg:ml-2">
@@ -291,28 +340,37 @@ export function OrgProjectsDashboard() {
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
           Loading projects...
         </div>
-      ) : projects.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 bg-white dark:bg-[#1E293B] rounded-2xl border border-dashed border-gray-200 dark:border-gray-800">
-          <div className="h-20 w-20 rounded-3xl bg-gray-50 dark:bg-gray-800/50 flex items-center justify-center mb-6 ring-1 ring-gray-100 dark:ring-gray-700 shadow-sm">
-            <Briefcase className="h-10 w-10 text-text-tertiary" />
+      ) : filteredProjects.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-20 bg-white/50 dark:bg-surface-dark/50 rounded-2xl border border-dashed border-gray-200 dark:border-gray-800 backdrop-blur-sm">
+          <div className="h-16 w-16 rounded-2xl bg-gray-50 dark:bg-gray-800/50 flex items-center justify-center mb-4 ring-1 ring-gray-100 dark:ring-gray-700 shadow-sm">
+            <Archive className="h-8 w-8 text-text-tertiary opacity-40" />
           </div>
-          <h3 className="text-xl font-bold text-text-primary dark:text-white mb-2">
-            No Projects Yet
+          <h3 className="text-lg font-bold text-text-primary dark:text-white mb-2">
+            {isFiltered ? "No matching projects" : isArchiveMode ? "Archive Empty" : "No Projects Found"}
           </h3>
-          <p className="text-text-secondary dark:text-gray-400 text-center max-w-sm mb-8 px-4">
-            {isOrgManager
-              ? "Your organization's project list is empty. Start your first initiative to begin tracking progress and collaborating with your team."
-              : "You haven't been added to any projects yet. Reach out to your manager or administrator to get started on your first initiative."}
+          <p className="text-sm text-text-secondary dark:text-gray-400 text-center max-w-xs mb-6">
+            {isFiltered
+              ? "Try adjusting your filters or search query to find what you're looking for."
+              : isArchiveMode
+              ? "Completed projects with passed due dates will appear here automatically."
+              : "No organization projects found matching your scope."}
           </p>
-          {isOrgManager ? (
-            <Button onClick={handleCreateClick} className="gap-2">
+          {isFiltered && (
+            <button
+              onClick={() => {
+                setSearchQuery("");
+                setActiveStatus("All");
+                setActiveCategory("All");
+              }}
+              className="px-6 py-2 bg-primary text-white text-sm font-bold rounded-xl shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 transition-all"
+            >
+              Clear all filters
+            </button>
+          )}
+          {!isFiltered && !isArchiveMode && isOrgManager && (
+            <Button onClick={handleCreateClick} className="gap-2 mt-6">
               <Plus className="h-5 w-5" /> Create First Project
             </Button>
-          ) : (
-            <div className="flex items-center gap-2 text-primary font-medium bg-primary/5 px-4 py-2 rounded-lg border border-primary/10">
-              <Users className="h-4 w-4" />
-              <span>Contact Team Lead</span>
-            </div>
           )}
         </div>
       ) : (
@@ -603,8 +661,8 @@ export function OrgProjectsDashboard() {
             );
           })}
 
-          {/* Add New Project Card (Grid Only) */}
-          {viewMode === "grid" && isOrgManager && (
+          {/* Add New Project Card (Grid Only, Current Mode Only) */}
+          {viewMode === "grid" && isOrgManager && !isArchiveMode && (
             <button
               onClick={handleCreateClick}
               className="h-full min-h-[300px] rounded-xl border border-dashed border-gray-300 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/20 flex flex-col items-center justify-center text-text-tertiary hover:text-primary hover:border-primary/50 hover:bg-primary/5 transition-all group duration-300 p-6 shadow-sm"

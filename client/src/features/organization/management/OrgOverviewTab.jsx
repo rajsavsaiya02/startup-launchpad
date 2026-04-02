@@ -5,31 +5,85 @@ import {
   Layers,
   Award,
   Search,
-  Filter,
-  MoreHorizontal,
   Clock,
+  ShieldCheck,
+  UserCheck,
+  UserPlus,
+  Ghost,
+  FileText,
+  ExternalLink,
+  Lock,
+  Image as ImageIcon,
+  FileCode,
+  FileArchive,
+  FileVideo,
+  FileAudio,
+  FileMinus,
 } from "lucide-react";
 import { Avatar } from "../../../components/ui/Avatar";
 import { apiClient } from "../../../lib/axios";
+import { StatusBadge } from "../team/StatusBadge";
+import { getStatusInfo } from "../team/statusConstants";
+import fileAssetService from "../../../services/fileAssetService";
+import { FileDetailModal } from "../../../components/files/FileDetailModal";
+import { toast } from "react-toastify";
+import { useAuth } from "../../../context/AuthContext";
 
-export function OrgOverviewTab() {
+const getFileIcon = (fileName) => {
+  const ext = fileName?.split(".").pop()?.toLowerCase();
+  switch (ext) {
+    case "pdf":
+      return <FileText className="w-4 h-4 text-red-500" />;
+    case "jpg":
+    case "jpeg":
+    case "png":
+    case "webp":
+    case "svg":
+      return <ImageIcon className="w-4 h-4 text-blue-500" />;
+    case "mp4":
+    case "mov":
+    case "avi":
+      return <FileVideo className="w-4 h-4 text-purple-500" />;
+    case "zip":
+    case "rar":
+    case "7z":
+      return <FileArchive className="w-4 h-4 text-amber-600" />;
+    case "js":
+    case "jsx":
+    case "ts":
+    case "tsx":
+    case "html":
+    case "css":
+    case "json":
+      return <FileCode className="w-4 h-4 text-emerald-600" />;
+    default:
+      return <FileText className="w-4 h-4 text-gray-500" />;
+  }
+};
+
+export function OrgOverviewTab({ onViewMembers, onViewResources }) {
+  const { user } = useAuth();
   const [members, setMembers] = useState([]);
   const [departments, setDepartments] = useState([]);
   const [teams, setTeams] = useState([]);
+  const [resources, setResources] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [visibleCount, setVisibleCount] = useState(10);
+  const [selectedResource, setSelectedResource] = useState(null);
+  const [myRole, setMyRole] = useState("MEMBER");
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [membersRes, deptsRes, teamsRes] = await Promise.all([
+        const [membersRes, deptsRes, teamsRes, orgRes] = await Promise.all([
           apiClient.get("/org/members"),
           apiClient.get("/org/departments").catch(() => null),
-          apiClient.get("/org/teams").catch(() => null), // Optional fallback
+          apiClient.get("/org/teams").catch(() => null),
+          apiClient.get("/org").catch(() => null),
         ]);
 
         const membersList = membersRes.data?.members || [];
-        // Extract safely
         const deptsList =
           deptsRes?.data?.departments ||
           (Array.isArray(deptsRes?.data) ? deptsRes.data : []);
@@ -43,6 +97,16 @@ export function OrgOverviewTab() {
         setMembers(membersList);
         setDepartments(deptsList);
         setTeams(teamsList);
+
+        // Fetch Resources
+        const orgId = orgRes?.data?.organization?.organization_id;
+        if (orgId) {
+          const filesData = await fileAssetService.getFileAssets("organization", orgId);
+          setResources(filesData.slice(0, 5));
+          
+          const me = membersRes.data.members?.find((m) => m.user_id === user?.id);
+          if (me) setMyRole(me.org_role);
+        }
       } catch (error) {
         console.error("Failed to fetch overview data:", error);
       } finally {
@@ -51,7 +115,7 @@ export function OrgOverviewTab() {
     };
 
     fetchData();
-  }, []);
+  }, [user?.id]);
 
   if (isLoading) {
     return (
@@ -84,119 +148,99 @@ export function OrgOverviewTab() {
         title.includes("DIRECTOR")
       );
     })
-    .slice(0, 2);
+    .sort((a, b) => {
+      const roleA = a.org_role?.toUpperCase();
+      const roleB = b.org_role?.toUpperCase();
+      
+      const priority = { "FOUNDER": 1, "CO-FOUNDER": 2, "ADMIN": 3 };
+      const weightA = priority[roleA] || 10;
+      const weightB = priority[roleB] || 10;
+      
+      return weightA - weightB;
+    })
+    .slice(0, 3);
 
   // Filter roster by search
-  const rosterMembers = members
-    .filter((m) =>
-      `${m.first_name} ${m.last_name} ${m.designation_title || m.org_role}`
-        .toLowerCase()
-        .includes(searchQuery.toLowerCase()),
-    )
-    .slice(0, 5); // Limit to 5 for the overview
+  const filteredMembers = members.filter((m) =>
+    `${m.first_name} ${m.last_name} ${m.designation_title || m.org_role}`
+      .toLowerCase()
+      .includes(searchQuery.toLowerCase()),
+  );
+
+  const displayedMembers = filteredMembers.slice(0, visibleCount);
 
   // Map real Structure logic
-  let displayStructure = [];
+  // --- Role Distribution Logic ---
+  const distributions = [
+    {
+      label: "Authority",
+      icon: ShieldCheck,
+      color: "text-amber-500",
+      bg: "bg-amber-50 dark:bg-amber-900/20",
+      count: members.filter(m => 
+        ["FOUNDER", "CO-FOUNDER", "CEO", "CTO", "CHIEF", "DIRECTOR"].includes(m.org_role?.toUpperCase()) ||
+        m.designation_title?.toUpperCase().includes("HEAD") ||
+        m.designation_title?.toUpperCase().includes("LEAD")
+      ).length
+    },
+    {
+      label: "Admin",
+      icon: Lock,
+      color: "text-blue-500",
+      bg: "bg-blue-50 dark:bg-blue-900/20",
+      count: members.filter(m => m.org_role?.toUpperCase() === "ADMIN").length
+    },
+    {
+      label: "Employee",
+      icon: UserCheck,
+      color: "text-emerald-500",
+      bg: "bg-emerald-50 dark:bg-emerald-900/20",
+      count: members.filter(m => m.org_role?.toUpperCase() === "MEMBER" && m.designation_title).length
+    },
+    {
+      label: "Unassigned",
+      icon: UserPlus,
+      color: "text-gray-500",
+      bg: "bg-gray-50 dark:bg-gray-900/20",
+      count: members.filter(m => m.org_role?.toUpperCase() === "MEMBER" && !m.designation_title).length
+    },
+    {
+      label: "Guest",
+      icon: Ghost,
+      color: "text-purple-500",
+      bg: "bg-purple-50 dark:bg-purple-900/20",
+      count: members.filter(m => m.org_role?.toUpperCase() === "GUEST").length
+    }
+  ];
 
-  if (departments.length > 0) {
-    displayStructure = departments.slice(0, 4).map((dept, index) => {
-      // Find all members accurately linked to this department
-      const deptMembers = members.filter((m) => m.department === dept.name);
-
-      // Look for a leader
-      const leadMember = deptMembers.find(
-        (m) =>
-          m.org_role === "ADMIN" ||
-          m.designation_title?.toLowerCase().includes("lead") ||
-          m.designation_title?.toLowerCase().includes("head"),
+  const handleDownloadFile = async (e, asset) => {
+    if (e) e.stopPropagation();
+    if (asset.isExternal) {
+      window.open(asset.storageUrl, "_blank");
+      return;
+    }
+    try {
+      const response = await apiClient.get(
+        `/file-assets/${asset.id}/download`,
+        {
+          responseType: "blob",
+        },
       );
-      const leadName = leadMember
-        ? `${leadMember.first_name} ${leadMember.last_name}`
-        : "Unassigned";
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", asset.fileName);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Download failed:", error);
+      toast.error("Failed to download file");
+    }
+  };
 
-      // Calculate the number of distinct roles in this department genuinely represented
-      const distinctRoles = new Set(
-        deptMembers.map((m) => m.designation_title || m.org_role),
-      ).size;
-
-      // Calculate genuine percentage out of total members (max 100%)
-      const percent =
-        totalMembers > 0
-          ? Math.round((deptMembers.length / totalMembers) * 100)
-          : 0;
-
-      const colors = [
-        "bg-emerald-500",
-        "bg-blue-500",
-        "bg-indigo-500",
-        "bg-green-500",
-      ];
-
-      return {
-        id: dept.department_id || index,
-        name: dept.name,
-        lead: leadName,
-        rolesCount: distinctRoles,
-        staffCount: deptMembers.length,
-        percent: Math.max(10, percent),
-        color: colors[index % colors.length],
-      };
-    });
-  } else {
-    // If no real departments, derive them organically from titles
-    const derivedGroups = {};
-    members.forEach((m) => {
-      let groupName = "General";
-      if (m.designation_title) {
-        if (m.designation_title.toLowerCase().includes("design"))
-          groupName = "Design";
-        else if (
-          m.designation_title.toLowerCase().includes("engineer") ||
-          m.designation_title.toLowerCase().includes("dev")
-        )
-          groupName = "Engineering";
-        else if (m.designation_title.toLowerCase().includes("market"))
-          groupName = "Marketing";
-        else if (m.designation_title.toLowerCase().includes("sale"))
-          groupName = "Sales";
-      }
-      if (!derivedGroups[groupName]) derivedGroups[groupName] = [];
-      derivedGroups[groupName].push(m);
-    });
-
-    const colors = [
-      "bg-emerald-500",
-      "bg-blue-500",
-      "bg-indigo-500",
-      "bg-green-500",
-    ];
-    displayStructure = Object.keys(derivedGroups)
-      .slice(0, 4)
-      .map((groupName, index) => {
-        const staff = derivedGroups[groupName];
-        const distinctRoles = new Set(
-          staff.map((m) => m.designation_title || m.org_role),
-        ).size;
-        const percent =
-          totalMembers > 0
-            ? Math.round((staff.length / totalMembers) * 100)
-            : 0;
-        return {
-          id: groupName,
-          name: groupName,
-          lead: "Unassigned",
-          rolesCount: distinctRoles,
-          staffCount: staff.length,
-          percent: Math.max(10, percent),
-          color: colors[index % colors.length],
-        };
-      });
-  }
-
-  // Derive Recent Members organically
-  const recentMembers = [...members]
-    .sort((a, b) => new Date(b.joined_at) - new Date(a.joined_at))
-    .slice(0, 3);
+    
   const getDaysAgo = (dateStr) => {
     if (!dateStr) return "Recently";
     const diff = Math.floor(
@@ -205,7 +249,6 @@ export function OrgOverviewTab() {
     return diff === 0 ? "Today" : diff === 1 ? "1d ago" : `${diff}d ago`;
   };
 
-  // Helper formatting routines
   const getMemberRole = (m) => {
     if (m.designation_title) return m.designation_title;
     return (
@@ -222,356 +265,407 @@ export function OrgOverviewTab() {
     return m.department ? m.department.split(" ")[0] : "General";
   };
 
-  const isOnline = (status) => {
-    const lower = (status || "").toLowerCase();
-    return lower === "active" || lower === "on work" || lower === "online";
-  };
-
   return (
-    <div className="space-y-6 animate-in fade-in duration-500 -mt-2">
-      {/* --- Top Stats Row --- */}
+    <div className="space-y-6 animate-in fade-in duration-700 -mt-2">
+      {/* ─── Top Performance Cards ─── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Total Members */}
-        <div className="bg-white dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-2xl p-5 shadow-sm flex items-center justify-between transition-all hover:shadow-md">
-          <div className="space-y-1">
-            <p className="text-[10px] font-black text-text-tertiary uppercase tracking-widest">
-              Total Members
-            </p>
-            <h3 className="text-3xl font-black text-text-primary dark:text-white">
-              {totalMembers}
-            </h3>
-          </div>
-          <div className="w-12 h-12 rounded-full bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800/50 flex items-center justify-center text-blue-500">
-            <Users className="w-5 h-5" />
-          </div>
-        </div>
+        {[
+          {
+            label: "Total Members",
+            value: totalMembers,
+            icon: Users,
+            color: "text-blue-600 dark:text-blue-400",
+            bg: "bg-blue-50 dark:bg-blue-900/30",
+            border: "border-blue-100/50 dark:border-blue-500/20",
+            glow: "from-blue-500/10 to-transparent",
+          },
+          {
+            label: "Active Teams",
+            value: activeTeamsCount,
+            icon: Briefcase,
+            color: "text-indigo-600 dark:text-indigo-400",
+            bg: "bg-indigo-50 dark:bg-indigo-900/30",
+            border: "border-indigo-100/50 dark:border-indigo-500/20",
+            glow: "from-indigo-500/10 to-transparent",
+          },
+          {
+            label: "Departments",
+            value: departmentsCount,
+            icon: Layers,
+            color: "text-amber-600 dark:text-amber-400",
+            bg: "bg-amber-50 dark:bg-amber-900/30",
+            border: "border-amber-100/50 dark:border-amber-500/20",
+            glow: "from-amber-500/10 to-transparent",
+          },
+          {
+            label: "Roles Defined",
+            value: uniqueRolesCount,
+            icon: Award,
+            color: "text-emerald-600 dark:text-emerald-400",
+            bg: "bg-emerald-50 dark:bg-emerald-900/30",
+            border: "border-emerald-100/50 dark:border-emerald-500/20",
+            glow: "from-emerald-500/10 to-transparent",
+          },
+        ].map((stat, i) => (
+          <div
+            key={i}
+            className="relative bg-white dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-[20px] p-5 shadow-sm overflow-hidden transition-all hover:-translate-y-1 hover:shadow-xl group"
+          >
+            {/* Premium Background Glow */}
+            <div className={`absolute top-0 right-0 w-28 h-28 bg-radial-gradient ${stat.glow} opacity-30 group-hover:opacity-60 transition-opacity duration-700 blur-3xl -mr-8 -mt-8 pointer-events-none`} />
 
-        {/* Dynamic: Active Teams instead of Projects */}
-        <div className="bg-white dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-2xl p-5 shadow-sm flex items-center justify-between transition-all hover:shadow-md">
-          <div className="space-y-1">
-            <p className="text-[10px] font-black text-text-tertiary uppercase tracking-widest">
-              Active Teams
-            </p>
-            <h3 className="text-3xl font-black text-text-primary dark:text-white">
-              {activeTeamsCount}
-            </h3>
+            <div className="relative z-10">
+              <div
+                className={`w-10 h-10 rounded-xl ${stat.bg} ${stat.color} border ${stat.border} flex items-center justify-center transition-all duration-500 group-hover:scale-110 group-hover:rotate-3 mb-3 shadow-sm`}
+              >
+                <stat.icon className="w-4.5 h-4.5" strokeWidth={2.5} />
+              </div>
+              
+              <div className="space-y-0.5">
+                <h3 className="text-3xl font-black text-text-primary dark:text-white leading-none tabular-nums tracking-tighter mb-1 group-hover:translate-x-1 transition-transform duration-500">
+                  {stat.value}
+                </h3>
+                <p className="text-[10px] font-black text-text-tertiary uppercase tracking-widest opacity-70">
+                  {stat.label}
+                </p>
+              </div>
+            </div>
           </div>
-          <div className="w-12 h-12 rounded-full bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800/50 flex items-center justify-center text-indigo-500">
-            <Briefcase className="w-5 h-5" />
-          </div>
-        </div>
-
-        {/* Dynamic: Total Departments instead of Org Velocity */}
-        <div className="bg-white dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-2xl p-5 shadow-sm flex items-center justify-between transition-all hover:shadow-md">
-          <div className="space-y-1">
-            <p className="text-[10px] font-black text-text-tertiary uppercase tracking-widest">
-              Departments
-            </p>
-            <h3 className="text-3xl font-black text-text-primary dark:text-white">
-              {departmentsCount}
-            </h3>
-          </div>
-          <div className="w-12 h-12 rounded-full bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800/50 flex items-center justify-center text-amber-500">
-            <Layers className="w-5 h-5" />
-          </div>
-        </div>
-
-        {/* Dynamic: Distinct Roles instead of Org Health */}
-        <div className="bg-white dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-2xl p-5 shadow-sm flex items-center justify-between transition-all hover:shadow-md">
-          <div className="space-y-1">
-            <p className="text-[10px] font-black text-text-tertiary uppercase tracking-widest">
-              Roles Defined
-            </p>
-            <h3 className="text-3xl font-black text-text-primary dark:text-white">
-              {uniqueRolesCount}
-            </h3>
-          </div>
-          <div className="w-12 h-12 rounded-full bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800/50 flex items-center justify-center text-emerald-500">
-            <Award className="w-5 h-5" />
-          </div>
-        </div>
+        ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* --- Left Column (Leadership & Roster) --- */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Leadership Section */}
-          <div className="space-y-3">
-            <div className="flex items-center gap-2 text-text-primary dark:text-white font-bold px-1">
-              <div className="w-5 h-5 rounded border-2 border-primary/20 flex items-center justify-center bg-primary/5 text-primary">
-                <svg
-                  width="12"
-                  height="12"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="3"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />
-                </svg>
-              </div>
-              Leadership
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {leadership.map((leader, i) => (
-                <div
-                  key={leader.user_id || i}
-                  className="bg-white dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-2xl p-4 flex items-center gap-4 transition-all hover:border-primary/30 hover:shadow-md group"
-                >
-                  <Avatar
-                    src={leader.avatar}
-                    fallback={leader.first_name?.[0]}
-                    size="lg"
-                    className="border-2 border-gray-100 dark:border-gray-800 shrink-0 shadow-sm"
-                  />
-                  <div className="min-w-0 flex-1">
-                    <h4 className="font-bold text-[15px] text-text-primary dark:text-white truncate group-hover:text-primary transition-colors">
-                      {leader.first_name} {leader.last_name}
-                    </h4>
-                    <p className="text-xs font-semibold text-primary truncate mt-0.5">
-                      {getMemberRole(leader)}
-                    </p>
-                    <div className="flex items-center gap-3 mt-2 text-[10px] uppercase font-bold tracking-wider text-text-tertiary">
-                      <span className="flex items-center gap-1">
-                        <MapPin className="w-3 h-3 text-gray-400" />{" "}
-                        {leader.location || "Remote"}
-                      </span>
-                      {isOnline(leader.status) ? (
-                        <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
-                          <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_4px_rgba(16,185,129,0.5)]"></div>{" "}
-                          Online
-                        </span>
-                      ) : (
-                        <span className="flex items-center gap-1 text-text-tertiary">
-                          <div className="w-1.5 h-1.5 rounded-full bg-amber-500"></div>{" "}
-                          {leader.status?.toLowerCase() || "Working"}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
-              {leadership.length === 0 && (
-                <div className="bg-white dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-2xl p-4 flex items-center justify-center transition-all hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer border-dashed col-span-2">
-                  <p className="text-sm font-bold text-text-tertiary flex items-center gap-2">
-                    <Users className="w-4 h-4" /> No Leadership assigned
+      <div className="flex flex-col lg:flex-row gap-6 items-stretch">
+        {/* ─── Left Side: Team Directory (Col span 8 equivalent) ─── */}
+        <div className="lg:w-2/3 flex flex-col">
+          <div className="bg-white dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-3xl shadow-sm overflow-hidden flex flex-col flex-1">
+            {/* Header with Search */}
+            <div className="p-6 border-b border-border-light/60 dark:border-border-dark/60">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <h3 className="text-lg font-black text-text-primary dark:text-white flex items-center gap-2">
+                    Team Directory
+                    <span className="bg-primary/10 text-primary text-[10px] px-2 py-0.5 rounded-full font-bold">
+                      {totalMembers} Total
+                    </span>
+                  </h3>
+                  <p className="text-xs text-text-tertiary font-medium mt-0.5">
+                    Manage and view all members in your organization.
                   </p>
+                </div>
+                <div className="relative group overflow-hidden">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-tertiary group-focus-within:text-primary transition-colors" />
+                  <input
+                    type="text"
+                    placeholder="Find a member..."
+                    value={searchQuery}
+                    onChange={(e) => {
+                      setSearchQuery(e.target.value);
+                      setVisibleCount(10); // Reset pagination on search
+                    }}
+                    className="pl-10 pr-4 py-2 rounded-xl border border-border-light dark:border-border-dark text-sm font-semibold text-text-primary bg-gray-50/50 focus:bg-white dark:bg-gray-800/50 outline-none w-full sm:w-64 focus:ring-2 focus:ring-primary/10 focus:border-primary/30 transition-all shadow-inner"
+                  />
+                </div>
+              </div>
+
+              {/* Leadership Highlights Row */}
+              {leadership.length > 0 && (
+                <div className="mt-6">
+                  <p className="text-[10px] font-bold text-text-tertiary uppercase tracking-widest mb-3 flex items-center gap-2">
+                    <div className="h-px bg-border-light dark:bg-border-dark flex-1"></div>
+                    Executive Leadership
+                    <div className="h-px bg-border-light dark:bg-border-dark flex-1"></div>
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {leadership.map((leader, i) => {
+                      const statusInfo = getStatusInfo(leader.status);
+                      return (
+                        <div
+                          key={leader.user_id || i}
+                          className="relative group flex items-start gap-3 bg-white dark:bg-gray-800/40 border border-border-light dark:border-border-dark rounded-2xl p-3 transition-all hover:shadow-md hover:-translate-y-0.5"
+                        >
+                          {/* Avatar & Pulse */}
+                          <div className="relative shrink-0 mt-0.5">
+                            <Avatar
+                              src={leader.avatar}
+                              fallback={leader.first_name?.[0]}
+                              size="lg"
+                              className="w-11 h-11 rounded-xl border-2 border-white dark:border-gray-800 shadow-sm"
+                            />
+                            <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-white dark:bg-gray-800 flex items-center justify-center shadow-sm">
+                              <div className={`w-2.5 h-2.5 rounded-full ${statusInfo.color} animate-pulse-subtle`}></div>
+                            </div>
+                          </div>
+
+                          {/* Info Grid */}
+                          <div className="flex-1 min-w-0 grid grid-cols-2 gap-x-3 gap-y-1.5">
+                            {/* Identity */}
+                            <div className="col-span-1 min-w-0">
+                              <h4 className="text-[13px] font-black text-text-primary dark:text-white truncate leading-tight">
+                                {leader.first_name} {leader.last_name}
+                              </h4>
+                              <p className="text-[10px] font-bold text-primary truncate uppercase tracking-wider mt-0.5 opacity-90">
+                                {getMemberRole(leader)}
+                              </p>
+                            </div>
+
+                            {/* Placement */}
+                            <div className="col-span-1 text-right min-w-0 pl-2 border-l border-border-light/40 dark:border-border-dark/40">
+                              <p className="text-[10px] font-bold text-text-primary dark:text-gray-300 truncate leading-none">
+                                {getMemberProject(leader)}
+                              </p>
+                              <p className="text-[9px] font-bold text-text-tertiary uppercase truncate tracking-tight mt-1">
+                                {leader.department || "General"}
+                              </p>
+                            </div>
+
+                            {/* Status Overlay/Label */}
+                            <div className="col-span-2 flex items-center justify-between mt-1 pt-1.5 border-t border-border-light/30 dark:border-border-dark/30">
+                              <div className="flex items-center gap-1.5">
+                                <statusInfo.icon className={`w-3 h-3 ${statusInfo.textColor}`} />
+                                <span className={`text-[9px] font-black uppercase tracking-widest ${statusInfo.textColor}`}>
+                                  {leader.status || "On Work"}
+                                </span>
+                              </div>
+                              <div className="text-[8px] font-black uppercase text-text-tertiary tracking-tighter bg-gray-50 dark:bg-gray-700/50 px-1.5 py-0.5 rounded-md">
+                                Priority Lead
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
             </div>
-          </div>
 
-          {/* Team Roster Section */}
-          <div className="bg-white dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-2xl shadow-sm overflow-hidden flex flex-col">
-            <div className="p-5 border-b border-border-light dark:border-border-dark flex items-center justify-between">
-              <h3 className="font-bold text-text-primary dark:text-white">
-                Team Roster
-              </h3>
-              <div className="flex items-center gap-2">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-tertiary" />
-                  <input
-                    type="text"
-                    placeholder="Search team..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-9 pr-3 py-1.5 rounded-xl border border-border-light dark:border-border-dark text-xs font-semibold text-text-primary bg-gray-50 focus:bg-white dark:bg-gray-800/50 outline-none w-48 focus:ring-2 focus:ring-primary/20 transition-all"
-                  />
-                </div>
-                <button className="p-1.5 rounded-xl border border-border-light dark:border-border-dark text-text-tertiary hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors shadow-sm">
-                  <Filter className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-
+            {/* Roster Table */}
             <div className="overflow-x-auto flex-1">
-              <table className="w-full text-left text-sm">
-                <thead className="text-[10px] font-black text-text-tertiary uppercase tracking-wider bg-gray-50/50 dark:bg-gray-900/20">
+              <table className="w-full text-left">
+                <thead className="bg-gray-50/50 dark:bg-gray-900/40">
                   <tr>
-                    <th className="px-5 py-4">Name</th>
-                    <th className="px-5 py-4">Role</th>
-                    <th className="px-5 py-4 pl-0">Current Team</th>
-                    <th className="px-5 py-4">Status</th>
-                    <th className="px-5 py-4 text-right">Actions</th>
+                    <th className="px-6 py-4 text-[10px] font-black text-text-tertiary uppercase tracking-widest">
+                      Member Name & Role
+                    </th>
+                    <th className="px-6 py-4 text-[10px] font-black text-text-tertiary uppercase tracking-widest hidden md:table-cell">
+                      Placement
+                    </th>
+                    <th className="px-6 py-4 text-[10px] font-black text-text-tertiary uppercase tracking-widest text-center">
+                      Status
+                    </th>
+                    <th className="px-6 py-4 text-[10px] font-black text-text-tertiary uppercase tracking-widest text-right">
+                      Activity
+                    </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-border-light dark:divide-border-dark">
-                  {rosterMembers.map((member) => (
+                <tbody className="divide-y divide-border-light/50 dark:divide-border-dark/50">
+                  {displayedMembers.map((member) => (
                     <tr
                       key={member.organization_member_id}
-                      className="hover:bg-gray-50/50 dark:hover:bg-gray-800/30 transition-colors group"
+                      className="group hover:bg-primary/2 dark:hover:bg-primary/5 transition-all cursor-pointer"
                     >
-                      <td className="px-5 py-3.5">
+                      <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
                           <Avatar
                             src={member.avatar}
                             fallback={member.first_name?.[0]}
-                            size="sm"
+                            size="md"
+                            className="bg-gray-100 dark:bg-gray-800"
                           />
-                          <span className="font-bold text-text-primary dark:text-gray-200">
-                            {member.first_name} {member.last_name}
+                          <div className="space-y-0.5">
+                            <p className="font-bold text-sm text-text-primary dark:text-gray-200">
+                              {member.first_name} {member.last_name}
+                            </p>
+                            <p className="text-[11px] font-medium text-text-tertiary">
+                              {getMemberRole(member)}
+                            </p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 hidden md:table-cell">
+                        <div className="flex flex-col">
+                          <span className="text-xs font-bold text-text-secondary dark:text-gray-400">
+                            {getMemberProject(member)}
+                          </span>
+                          <span className="text-[10px] font-bold text-text-tertiary uppercase">
+                            {member.department || "Organization"}
                           </span>
                         </div>
                       </td>
-                      <td className="px-5 py-3.5 text-text-secondary dark:text-gray-400 text-xs font-medium">
-                        {getMemberRole(member)}
+                      <td className="px-6 py-4">
+                        <div className="flex justify-start">
+                          <StatusBadge statusLabel={member.status} />
+                        </div>
                       </td>
-                      <td className="px-5 py-3.5 pl-0">
-                        <span className="text-xs font-bold text-text-secondary dark:text-gray-400 max-w-[120px] truncate block">
-                          {getMemberProject(member)}
-                        </span>
-                      </td>
-                      <td className="px-5 py-3.5">
-                        {isOnline(member.status) ? (
-                          <div className="flex items-center gap-1.5 px-2 py-0.5 w-fit rounded bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold uppercase tracking-wider">
-                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_4px_rgba(16,185,129,0.5)]"></div>
-                            {member.status || "ACTIVE"}
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-1.5 px-2 py-0.5 w-fit rounded bg-gray-100 dark:bg-gray-800 text-text-secondary dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider">
-                            <div className="w-1.5 h-1.5 rounded-full bg-gray-400"></div>
-                            {member.status || "IDLE"}
-                          </div>
-                        )}
-                      </td>
-                      <td className="px-5 py-3.5 text-right">
-                        <button className="p-1.5 rounded-lg text-text-tertiary hover:text-text-primary hover:bg-gray-100 dark:hover:bg-gray-800 opacity-0 group-hover:opacity-100 transition-all">
-                          <MoreHorizontal className="w-4 h-4" />
-                        </button>
+                      <td className="px-6 py-4 text-right">
+                        <div className="flex flex-col items-end">
+                          <span className="text-xs font-bold text-text-secondary dark:text-gray-400">
+                            {getDaysAgo(member.joined_at)}
+                          </span>
+                          <span className="text-[9px] font-black uppercase tracking-wider text-text-tertiary">
+                            Joined
+                          </span>
+                        </div>
                       </td>
                     </tr>
                   ))}
-                  {rosterMembers.length === 0 && (
-                    <tr>
-                      <td
-                        colSpan="5"
-                        className="px-5 py-12 text-center text-text-tertiary text-sm"
-                      >
-                        No team members found matching your search.
-                      </td>
-                    </tr>
-                  )}
                 </tbody>
               </table>
+              {displayedMembers.length === 0 && (
+                <div className="py-20 flex flex-col items-center justify-center text-center">
+                  <div className="w-16 h-16 bg-gray-50 dark:bg-gray-900 rounded-2xl flex items-center justify-center mb-4 border border-border-light dark:border-border-dark">
+                    <Search className="w-8 h-8 text-text-tertiary animate-pulse" />
+                  </div>
+                  <h4 className="font-bold text-text-primary dark:text-white">
+                    No results found
+                  </h4>
+                  <p className="text-sm text-text-tertiary max-w-[200px] mt-1">
+                    Try adjusting your filters or search keywords.
+                  </p>
+                </div>
+              )}
+            </div>
+            
+            {/* Pagination / Load More */}
+            {visibleCount < filteredMembers.length && (
+              <div className="p-4 border-t border-border-light dark:border-border-dark flex justify-center bg-gray-50/30 dark:bg-gray-900/10">
+                <button 
+                  onClick={() => setVisibleCount(prev => prev + 10)}
+                  className="px-6 py-2 rounded-xl border border-border-light dark:border-border-dark text-xs font-black uppercase tracking-widest text-text-secondary hover:text-primary hover:bg-white dark:hover:bg-gray-800 transition-all flex items-center gap-2 shadow-sm"
+                >
+                  Load More Members
+                  <span className="text-[9px] opacity-60">({filteredMembers.length - visibleCount} remaining)</span>
+                </button>
+              </div>
+            )}
+
+            {/* Footer Action */}
+            <div className="p-4 bg-gray-50/50 dark:bg-gray-900/20 border-t border-border-light dark:border-border-dark flex justify-center mt-auto">
+              <button 
+                onClick={onViewMembers}
+                className="text-[10px] font-black uppercase tracking-widest text-text-tertiary hover:text-primary transition-all hover:scale-105"
+              >
+                View Full Directory &rarr;
+              </button>
             </div>
           </div>
         </div>
 
-        {/* --- Right Column (Structure & Processes) --- */}
-        <div className="space-y-6">
-          {/* Organizational Structure */}
-          <div className="bg-white dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-2xl p-6 shadow-sm">
-            <h3 className="font-bold text-text-primary dark:text-white mb-6">
-              Organizational Structure
-            </h3>
-
-            <div className="space-y-6">
-              {displayStructure.length > 0 ? (
-                displayStructure.map((dept) => (
-                  <div key={dept.id} className="space-y-2.5">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h4 className="text-sm font-bold text-text-primary dark:text-gray-200">
-                          {dept.name}
-                        </h4>
-                        <p className="text-[10px] uppercase font-bold tracking-widest text-text-tertiary mt-1">
-                          Lead: {dept.lead} &bull; {dept.rolesCount} Roles
-                        </p>
-                      </div>
-                      <span className="text-[10px] font-black uppercase tracking-wider text-text-primary dark:text-white group flex items-center gap-1.5">
-                        {dept.staffCount} Staff
-                      </span>
-                    </div>
-                    {/* Progress bar visual */}
-                    <div className="w-full h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
-                      <div
-                        className={`h-full ${dept.color} rounded-full transition-all duration-1000`}
-                        style={{ width: `${dept.percent}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="text-center py-6 text-sm text-text-tertiary">
-                  No organizational structure data found.
-                </div>
-              )}
+        {/* ─── Right Side: Department Distribution & Activity ─── */}
+        <div className="lg:w-1/3 flex flex-col gap-6">
+          {/* Distributions breakdown card */}
+          <div className="bg-white dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-3xl p-6 shadow-sm relative overflow-hidden group flex flex-col">
+            <div className="absolute top-0 right-0 p-6 opacity-[0.03] group-hover:opacity-10 dark:text-white transition-opacity duration-700 pointer-events-none">
+              <ShieldCheck size={120} />
             </div>
-          </div>
-
-          {/* Newest Additions */}
-          <div className="bg-white dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-2xl p-6 shadow-sm flex flex-col pt-5">
+            
             <div className="flex items-center justify-between mb-5">
-              <h3 className="font-bold text-text-primary dark:text-white">
-                Recent Additions
+              <h3 className="text-[11px] font-black text-text-tertiary dark:text-gray-400 uppercase tracking-[0.2em]">
+                Distributions
               </h3>
-              <button className="text-text-tertiary hover:text-text-primary transition-colors p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md">
-                <Clock className="w-4 h-4" />
-              </button>
+              <div className="w-8 h-8 rounded-xl bg-gray-50 dark:bg-gray-800 flex items-center justify-center border border-border-light dark:border-border-dark">
+                <Users className="w-4 h-4 text-text-tertiary" />
+              </div>
             </div>
 
-            <div className="space-y-4 mb-6">
-              {recentMembers.map((member) => (
-                <div
-                  key={member.organization_member_id}
-                  className="flex justify-between items-center group"
+            <div className="grid grid-cols-1 gap-2.5">
+              {distributions.map((item, idx) => (
+                <div 
+                  key={idx} 
+                  className="flex items-center justify-between p-2.5 rounded-2xl bg-gray-50/50 dark:bg-gray-900/10 border border-border-light/40 dark:border-border-dark/40 hover:border-primary/30 hover:bg-white dark:hover:bg-gray-800/50 transition-all group/item shadow-sm hover:shadow-md"
                 >
                   <div className="flex items-center gap-3">
-                    <Avatar
-                      src={member.avatar}
-                      fallback={member.first_name?.[0]}
-                      size="sm"
-                      className="w-8 h-8"
-                    />
+                    <div className={`w-10 h-10 rounded-xl ${item.bg} ${item.color} flex items-center justify-center transition-transform group-hover/item:scale-110 shadow-sm border border-current/10`}>
+                      <item.icon className="w-5 h-5" />
+                    </div>
                     <div>
-                      <h4 className="text-[13px] font-bold text-text-primary dark:text-gray-200 group-hover:text-primary transition-colors cursor-pointer">
-                        {member.first_name} {member.last_name}
+                      <h4 className="text-[13px] font-black text-text-primary dark:text-gray-200 leading-none">
+                        {item.label}
                       </h4>
-                      <p className="text-[10px] font-bold text-text-tertiary mt-0.5 max-w-[130px] truncate">
-                        {getMemberRole(member)}
+                      <p className="text-[9px] font-bold text-text-tertiary uppercase tracking-wider mt-1 opacity-70">
+                        Organization Role
                       </p>
                     </div>
                   </div>
-                  <div className="text-[10px] font-black uppercase tracking-wider text-text-tertiary">
-                    {getDaysAgo(member.joined_at)}
+                  <div className="flex items-center gap-2">
+                    <span className="h-1.5 w-1.5 rounded-full bg-border-light dark:bg-border-dark"></span>
+                    <div className="text-xl font-black text-text-primary dark:text-white tabular-nums">
+                      {item.count}
+                    </div>
                   </div>
                 </div>
               ))}
-              {recentMembers.length === 0 && (
-                <div className="text-xs text-text-tertiary text-center py-2">
-                  No active members found.
+            </div>
+          </div>
+
+          {/* Resource Activity Wall */}
+          <div className="bg-white dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-3xl p-6 shadow-sm flex flex-col flex-1 overflow-hidden relative group">
+            <div className="flex items-center justify-between mb-5">
+              <div className="flex items-center gap-2">
+                <FileText className="w-3.5 h-3.5 text-text-tertiary" />
+                <h3 className="text-[11px] font-black text-text-tertiary dark:text-gray-400 uppercase tracking-[0.2em] leading-none mt-0.5">
+                  Recent Resources
+                </h3>
+              </div>
+              <button 
+                onClick={onViewResources}
+                className="text-[10px] font-bold text-primary hover:text-primary-dark transition-colors bg-primary/5 hover:bg-primary/10 px-3 py-1.5 rounded-lg border border-primary/10"
+              >
+                View All &rarr;
+              </button>
+            </div>
+
+            <div className="space-y-3 relative ml-0 flex-1">
+              {resources.map((file, i) => (
+                <div 
+                  key={file.id || i} 
+                  className="group/file flex items-center gap-4 p-3 rounded-2xl bg-gray-50/30 dark:bg-gray-900/20 border border-transparent hover:border-primary/10 hover:bg-white dark:hover:bg-gray-800 transition-all cursor-pointer hover:shadow-sm"
+                  onClick={() => setSelectedResource(file)}
+                >
+                  <div className="w-10 h-10 shrink-0 rounded-xl bg-white dark:bg-surface-dark border border-border-light dark:border-border-dark flex items-center justify-center text-text-tertiary group-hover/file:text-primary transition-all shadow-sm group-hover/file:scale-110">
+                    {file.isExternal ? <ExternalLink className="w-5 h-5 text-blue-400" /> : getFileIcon(file.fileName)}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-black text-text-primary dark:text-white truncate group-hover/file:text-primary transition-colors">
+                      {file.fileName}
+                    </p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="text-[10px] font-bold text-text-tertiary uppercase tracking-tighter bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded">
+                        {new Date(file.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                      </span>
+                      <span className="text-[10px] text-text-tertiary opacity-40">•</span>
+                      <div className="flex items-center gap-1 min-w-0">
+                        <Users className="w-2.5 h-2.5 text-text-tertiary" />
+                        <span className="text-[10px] font-black uppercase text-text-tertiary truncate max-w-[120px]">
+                          {file.uploaderName}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              
+              {resources.length === 0 && (
+                <div className="flex-1 flex flex-col items-center justify-center py-10 bg-gray-50/50 dark:bg-gray-900/20 rounded-2xl border border-dashed border-border-light dark:border-border-dark mb-4">
+                  <div className="w-12 h-12 rounded-2xl bg-white dark:bg-gray-800 flex items-center justify-center mb-3 shadow-sm border border-border-light dark:border-border-dark">
+                    <FileMinus className="w-6 h-6 text-text-tertiary opacity-40" />
+                  </div>
+                  <p className="text-[11px] font-black text-text-tertiary uppercase tracking-widest">No recent records</p>
                 </div>
               )}
             </div>
-
-            <button className="w-full py-2.5 mt-auto bg-gray-50 hover:bg-gray-100 dark:bg-gray-800/50 dark:hover:bg-gray-800 rounded-xl text-xs font-bold text-text-secondary dark:text-gray-300 hover:text-text-primary dark:hover:text-white transition-colors border border-border-light dark:border-border-dark shadow-sm">
-              View All Activity
-            </button>
           </div>
         </div>
       </div>
+
+      <FileDetailModal
+        isOpen={!!selectedResource}
+        onClose={() => setSelectedResource(null)}
+        asset={selectedResource}
+        canManageFiles={myRole === "FOUNDER" || myRole === "ADMIN"}
+        onDownload={handleDownloadFile}
+      />
     </div>
   );
 }
 
-// Simple MapPin SVG component
-function MapPin(props) {
-  return (
-    <svg
-      {...props}
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" />
-      <circle cx="12" cy="10" r="3" />
-    </svg>
-  );
-}

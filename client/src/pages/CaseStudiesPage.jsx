@@ -1,174 +1,272 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, Filter, ArrowRight, TrendingUp, Calendar } from 'lucide-react';
+import { Search, Filter, ArrowRight, TrendingUp, Calendar, Zap, LayoutGrid, List } from 'lucide-react';
+import { motion as Motion, AnimatePresence } from 'framer-motion';
 import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { Card } from '../components/ui/Card';
-
-const STUDIES = [
-  {
-    id: 'nextgen-ai',
-    title: "Scaling from Garage to Series A in 9 Months",
-    company: "NextGen AI",
-    industry: "SaaS / AI",
-    outcome: "raised-series-a",
-    date: "Oct 2023",
-    metrics: { growth: "300%", runway_saved: "4 Months" },
-    img: "https://images.unsplash.com/photo-1556761175-5973dc0f32e7?q=80&w=2664&auto=format&fit=crop",
-    excerpt: "How a small team used LaunchPad's Financial Hub to extend their runway and secure funding during a market downturn."
-  },
-  {
-    id: 'green-earth',
-    title: "The Pivot: From B2C App to Enterprise Platform",
-    company: "Green Earth Tech",
-    industry: "Cleantech",
-    outcome: "successful-pivot",
-    date: "Sept 2023",
-    metrics: { growth: "150%", runway_saved: "6 Months" },
-    img: "https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?q=80&w=2626&auto=format&fit=crop",
-    excerpt: "Recognizing a failing B2C model early using LaunchPad's Operational Metrics allowed Green Earth to pivot before cash ran out."
-  },
-  {
-    id: 'urban-logistics',
-    title: "Managing a 50-Person Gig Workforce Remotely",
-    company: "Urban Logistics",
-    industry: "Logistics",
-    outcome: "operational-efficiency",
-    date: "Aug 2023",
-    metrics: { growth: "500%", runway_saved: "N/A" },
-    img: "https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?q=80&w=2340&auto=format&fit=crop",
-    excerpt: "How Urban Logistics used the Talent Marketplace to scale their delivery fleet without bloating their full-time headcount."
-  }
-];
+import { CASE_STUDIES } from '../data/caseStudiesData';
 
 export function CaseStudiesPage() {
   const [filter, setFilter] = useState('All');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'list'
+
+  const industries = useMemo(() => {
+    const sets = new Set(CASE_STUDIES.map(s => s.industry));
+    return ['All', ...Array.from(sets)];
+  }, []);
+
+  const filteredStudies = useMemo(() => {
+    return CASE_STUDIES.filter(study => {
+      const matchesFilter = filter === 'All' || study.industry === filter;
+      const matchesSearch = study.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                           study.company.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                           study.excerpt.toLowerCase().includes(searchQuery.toLowerCase());
+      return matchesFilter && matchesSearch;
+    });
+  }, [filter, searchQuery]);
+
+  const featuredStudy = CASE_STUDIES[0]; // Take the first one as featured
+
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1
+      }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { y: 20, opacity: 0 },
+    visible: {
+      y: 0,
+      opacity: 1,
+      transition: { duration: 0.5, ease: "easeOut" }
+    }
+  };
 
   return (
-    <div className="bg-background-light dark:bg-background-dark min-h-screen font-sans text-text-primary transition-colors duration-300">
+    <div className="bg-background-light dark:bg-[#0a0a0c] min-h-screen font-sans text-text-primary transition-colors duration-500">
       
       {/* Magazine Header */}
-      <section className="bg-surface-light dark:bg-surface-dark border-b border-border-light dark:border-border-dark py-20 px-6">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-end justify-between gap-8">
-          <div className="max-w-3xl">
-            <p className="text-primary font-bold tracking-wider uppercase text-sm mb-2">Startup Insider • Monthly Report</p>
-            <h1 className="text-4xl md:text-5xl font-bold text-text-primary dark:text-white leading-tight">
-              Real Stories. <span className="text-text-secondary dark:text-gray-400">Real Data.</span> <br/>
-              Real Growth.
+      <section className="relative overflow-hidden bg-surface-light dark:bg-[#111114] border-b border-border-light dark:border-white/5 py-24 px-6">
+        <div className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none">
+          <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary rounded-full blur-[120px]"></div>
+          <div className="absolute bottom-[-10%] right-[-10%] w-[30%] h-[30%] bg-blue-500 rounded-full blur-[100px]"></div>
+        </div>
+
+        <div className="max-w-7xl mx-auto relative z-10 flex flex-col md:flex-row items-center md:items-end justify-between gap-12 text-center md:text-left">
+          <Motion.div 
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="max-w-3xl"
+          >
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-bold tracking-widest uppercase mb-6">
+              <Zap className="h-3 w-3 fill-primary" /> Startup Insider • Q1 2024
+            </div>
+            <h1 className="text-5xl md:text-7xl font-black text-text-primary dark:text-white leading-[1.1] tracking-tight">
+              Blueprint for <br/>
+              <span className="text-transparent bg-clip-text bg-linear-to-r from-primary via-blue-500 to-indigo-600">Exponential Growth.</span>
             </h1>
-            <p className="mt-6 text-xl text-text-secondary dark:text-gray-400 max-w-2xl leading-relaxed">
-              Deep dives into how high-growth startups use operational discipline to win. Not just inspiration—blueprints for your own success.
+            <p className="mt-8 text-xl text-text-secondary dark:text-gray-400 max-w-2xl leading-relaxed font-medium">
+              We deconstruct the operational DNA of the world's fastest-growing startups. Real data. Real strategies. Zero fluff.
             </p>
-          </div>
+          </Motion.div>
           
           {/* Search/Filter Bar */}
-          <div className="w-full md:w-auto flex flex-col gap-3">
-             <div className="relative">
-               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-tertiary" />
+          <Motion.div 
+             initial={{ opacity: 0, y: 20 }}
+             animate={{ opacity: 1, y: 0 }}
+             transition={{ delay: 0.2 }}
+             className="w-full md:w-auto flex flex-col gap-4 bg-white dark:bg-[#1c1c21] p-6 rounded-2xl shadow-xl border border-border-light dark:border-white/10"
+          >
+             <div className="relative group">
+               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-tertiary group-focus-within:text-primary transition-colors" />
                <input 
                  type="text" 
-                 placeholder="Search case studies..." 
-                 className="h-10 w-full md:w-64 pl-9 pr-4 rounded-lg border border-border-light dark:border-border-dark bg-white dark:bg-[#161121] text-sm focus:ring-2 focus:ring-primary/20"
+                 value={searchQuery}
+                 onChange={(e) => setSearchQuery(e.target.value)}
+                 placeholder="Search by company or tech..." 
+                 className="h-12 w-full md:w-80 pl-10 pr-4 rounded-xl border border-border-light dark:border-white/10 bg-gray-50 dark:bg-[#0a0a0c] text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-hidden"
                />
              </div>
-             <div className="flex gap-2">
-               {['All', 'SaaS', 'Fintech', 'Cleantech'].map(f => (
+             <div className="flex flex-wrap gap-2">
+               {industries.map(ind => (
                  <button 
-                   key={f}
-                   onClick={() => setFilter(f)}
-                   className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors border ${filter === f ? 'bg-primary text-white border-primary' : 'bg-transparent text-text-secondary border-border-light hover:border-text-secondary'}`}
+                   key={ind}
+                   onClick={() => setFilter(ind)}
+                   className={`px-4 py-2 rounded-lg text-xs font-bold transition-all border ${filter === ind ? 'bg-primary text-white border-primary shadow-lg shadow-primary/20' : 'bg-transparent text-text-secondary border-border-light dark:border-white/10 hover:border-primary/50'}`}
                  >
-                   {f}
+                   {ind}
                  </button>
                ))}
              </div>
-          </div>
+          </Motion.div>
         </div>
       </section>
 
-      {/* Featured Case Study (Magazine Cover Style) */}
-      <section className="py-16 px-6 border-b border-border-light dark:border-border-dark">
+      {/* Featured Case Study */}
+      <section className="py-20 px-6">
         <div className="max-w-7xl mx-auto">
-          <div className="relative rounded-2xl overflow-hidden bg-surface-dark text-white shadow-2xl">
-            <div className="absolute inset-0 bg-linear-to-r from-black/80 via-black/50 to-transparent z-10"></div>
-            <img 
-              src="https://images.unsplash.com/photo-1522071820081-009f0129c71c?q=80&w=2340&auto=format&fit=crop" 
-              alt="Featured Case Study" 
-              className="absolute inset-0 w-full h-full object-cover"
+          <Motion.div 
+            initial={{ opacity: 0, scale: 0.98 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            viewport={{ once: true }}
+            className="group relative rounded-[2.5rem] overflow-hidden bg-surface-dark text-white shadow-2xl h-[500px] md:h-[600px]"
+          >
+            <div className="absolute inset-0 bg-linear-to-t from-black via-black/40 to-transparent z-10 transition-opacity duration-700 group-hover:opacity-80"></div>
+            <Motion.img 
+              src={featuredStudy.img} 
+              alt={featuredStudy.title} 
+              className="absolute inset-0 w-full h-full object-cover grayscale-20 group-hover:grayscale-0 transition-all duration-1000 scale-105 group-hover:scale-100"
             />
             
-            <div className="relative z-20 p-8 md:p-16 max-w-2xl">
-              <Badge className="bg-white/20 text-white border-none backdrop-blur-md mb-6">Editor's Pick</Badge>
-              <h2 className="text-3xl md:text-5xl font-bold leading-tight mb-6">
-                The "Zero-to-One" Playbook: How Stealth Co. Validated in 30 Days
-              </h2>
-              <p className="text-lg text-gray-200 mb-8 leading-relaxed">
-                A granular look at the exact tasks, budget allocation, and hiring roadmap used by Stealth Co. to launch their MVP ahead of schedule and under budget.
-              </p>
-              <div className="flex flex-wrap gap-6 items-center">
-                <Link to="/case-studies/stealth-co">
-                  <Button size="lg" className="bg-white text-primary hover:bg-gray-100 border-none">
-                    Read Full Report
-                  </Button>
-                </Link>
-                <div className="flex gap-4 text-sm font-medium text-gray-300">
-                  <span className="flex items-center gap-1"><TrendingUp className="h-4 w-4" /> Growth Strategy</span>
-                  <span className="flex items-center gap-1"><Calendar className="h-4 w-4" /> Nov 2023</span>
+            <div className="relative z-20 p-8 md:p-20 flex flex-col justify-end h-full max-w-4xl">
+              <Motion.div
+                initial={{ y: 20, opacity: 0 }}
+                whileInView={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.3 }}
+              >
+                <Badge className="bg-primary text-white border-none px-4 py-1.5 mb-8 text-xs font-black uppercase tracking-widest">Featured Insight</Badge>
+                <h2 className="text-4xl md:text-6xl font-black leading-[1.05] mb-8 group-hover:translate-x-2 transition-transform duration-500">
+                  {featuredStudy.title}
+                </h2>
+                <p className="text-lg md:text-xl text-gray-300 mb-10 leading-relaxed font-medium max-w-2xl border-l-4 border-primary pl-6">
+                  {featuredStudy.excerpt}
+                </p>
+                <div className="flex flex-wrap gap-8 items-center">
+                  <Link to={`/case-studies/${featuredStudy.id}`}>
+                    <Button size="lg" className="bg-white text-black hover:bg-primary hover:text-white border-none px-10 h-14 rounded-xl font-black text-base shadow-xl transition-all hover:-translate-y-1">
+                      Explore Case Study
+                    </Button>
+                  </Link>
+                  <div className="flex gap-8 text-sm font-bold text-gray-400">
+                    <span className="flex items-center gap-2"><TrendingUp className="h-5 w-5 text-green-400" /> Operational Mastery</span>
+                    <span className="flex items-center gap-2"><Calendar className="h-5 w-5 text-blue-400" /> {featuredStudy.date}</span>
+                  </div>
                 </div>
-              </div>
+              </Motion.div>
             </div>
-          </div>
+          </Motion.div>
         </div>
       </section>
 
       {/* Case Study Grid */}
-      <section className="py-20 px-6 bg-gray-50 dark:bg-background-dark/50">
+      <section className="py-24 px-6 bg-gray-50 dark:bg-transparent">
         <div className="max-w-7xl mx-auto">
-          <div className="flex justify-between items-center mb-10">
-            <h3 className="text-2xl font-bold text-text-primary dark:text-white">Latest Reports</h3>
-            <Link to="/case-studies/archive" className="text-primary font-medium hover:underline text-sm">View Archive →</Link>
+          <div className="flex flex-col md:flex-row justify-between items-center mb-16 gap-4">
+            <div>
+              <h3 className="text-3xl font-black text-text-primary dark:text-white">Latest Intelligence</h3>
+              <p className="text-text-secondary mt-2 font-medium">Filtered access to recent success stories</p>
+            </div>
+            <div className="flex items-center gap-4 bg-white dark:bg-white/5 p-1.5 rounded-xl border border-border-light dark:border-white/10">
+               <button onClick={() => setViewMode('grid')} className={`p-2 rounded-lg transition-all ${viewMode === 'grid' ? 'bg-primary text-white shadow-md' : 'text-text-tertiary hover:bg-gray-100 dark:hover:bg-white/5'}`}><LayoutGrid className="h-5 w-5" /></button>
+               <button onClick={() => setViewMode('list')} className={`p-2 rounded-lg transition-all ${viewMode === 'list' ? 'bg-primary text-white shadow-md' : 'text-text-tertiary hover:bg-gray-100 dark:hover:bg-white/5'}`}><List className="h-5 w-5" /></button>
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {STUDIES.map((study) => (
-              <Card key={study.id} className="group overflow-hidden border-border-light dark:border-border-dark hover:shadow-lg transition-all duration-300">
-                <div className="h-48 overflow-hidden relative">
-                  <img 
-                    src={study.img} 
-                    alt={study.title} 
-                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                  />
-                  <div className="absolute top-4 left-4">
-                    <Badge className="bg-white/90 text-text-primary shadow-sm backdrop-blur-sm">{study.industry}</Badge>
-                  </div>
-                </div>
-                
-                <div className="p-6 flex flex-col h-[280px]">
-                  <div className="mb-4">
-                    <h4 className="text-lg font-bold text-text-primary dark:text-white leading-snug group-hover:text-primary transition-colors">
-                      {study.title}
-                    </h4>
-                    <p className="mt-2 text-sm text-text-secondary dark:text-gray-400 line-clamp-3">
-                      {study.excerpt}
-                    </p>
-                  </div>
-                  
-                  <div className="mt-auto pt-4 border-t border-border-light dark:border-border-dark flex justify-between items-center">
-                    <div className="text-xs">
-                      <p className="font-semibold text-text-primary dark:text-white">{study.company}</p>
-                      <p className="text-text-tertiary">{study.date}</p>
+          <Motion.div 
+            variants={containerVariants}
+            initial="hidden"
+            animate="visible"
+            className={viewMode === 'grid' ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10" : "flex flex-col gap-8"}
+          >
+            <AnimatePresence mode="popLayout">
+              {filteredStudies.map((study) => (
+                <Motion.div
+                  key={study.id}
+                  layout
+                  variants={itemVariants}
+                  initial="hidden"
+                  animate="visible"
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  transition={{ duration: 0.4 }}
+                  className="h-full"
+                >
+                  <Card className={`group relative overflow-hidden border-border-light dark:border-white/5 dark:bg-[#111114] hover:shadow-2xl hover:border-primary/20 transition-all duration-500 rounded-4xl flex flex-col ${viewMode === 'list' ? 'md:flex-row gap-8 h-auto' : 'h-full min-h-[520px]'}`}>
+                    {/* Absolute Link Overlay for the whole card */}
+                    <Link to={`/case-studies/${study.id}`} className="absolute inset-0 z-20" aria-label={`Read ${study.title}`} />
+                    
+                    <div className={`${viewMode === 'list' ? 'md:w-1/3' : 'h-56'} overflow-hidden relative shrink-0`}>
+                      <img 
+                        src={study.img} 
+                        alt={study.title} 
+                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                      />
+                      <div className="absolute top-6 left-6 z-30">
+                        <Badge className="bg-white/90 dark:bg-black/80 dark:text-white text-text-primary shadow-xl backdrop-blur-md px-3 py-1 font-bold rounded-lg border-none">{study.industry}</Badge>
+                      </div>
                     </div>
-                    <Link to={`/case-studies/${study.id}`}>
-                      <Button variant="ghost" size="sm" className="gap-1 pr-0 hover:bg-transparent hover:text-primary">
-                        Read <ArrowRight className="h-4 w-4" />
-                      </Button>
-                    </Link>
-                  </div>
-                </div>
-              </Card>
-            ))}
+                    
+                    <div className={`p-8 flex flex-col grow relative z-10`}>
+                      <div className="mb-6">
+                        <div className="flex items-center gap-2 mb-3">
+                          <span className="w-8 h-1 bg-primary rounded-full"></span>
+                          <p className="text-xs font-black text-primary uppercase tracking-widest">{study.company}</p>
+                        </div>
+                        <h4 className="text-xl font-black text-text-primary dark:text-white leading-tight group-hover:text-primary transition-colors line-clamp-2">
+                          {study.title}
+                        </h4>
+                        <p className="mt-4 text-sm text-text-secondary dark:text-gray-400 line-clamp-3 leading-relaxed font-medium">
+                          {study.excerpt}
+                        </p>
+                      </div>
+                      
+                      <div className="mt-auto flex flex-wrap gap-4 mb-6">
+                        {study.metrics.slice(0, 2).map((m, i) => (
+                          <div key={i} className="flex flex-col">
+                            <span className="text-[10px] font-black text-text-tertiary uppercase tracking-tighter">{m.label}</span>
+                            <span className="text-lg font-black text-text-primary dark:text-white">{m.value}</span>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="pt-6 border-t border-border-light dark:border-white/5 flex justify-between items-center mt-auto">
+                        <span className="text-xs font-bold text-text-tertiary">{study.date}</span>
+                        <div className="relative z-30">
+                          {/* Button is now purely visual or redundant since the card has an overlay, 
+                              but keeping it for UI consistency and making it non-interactive to clicks (the overlay handles it) */}
+                          <div className="flex items-center gap-2 font-black text-primary p-0 group-hover:translate-x-1 transition-transform cursor-pointer text-sm">
+                            Read Report <ArrowRight className="h-4 w-4" />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </Card>
+                </Motion.div>
+              ))}
+            </AnimatePresence>
+          </Motion.div>
+          
+          {filteredStudies.length === 0 && (
+            <Motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="py-40 text-center"
+            >
+              <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gray-100 dark:bg-white/5 mb-6">
+                <Search className="h-8 w-8 text-text-tertiary" />
+              </div>
+              <h4 className="text-2xl font-black text-text-primary dark:text-white">No reports match your criteria</h4>
+              <p className="text-text-secondary mt-2 font-medium">Try adjusting your filters or search query</p>
+              <Button onClick={() => {setFilter('All'); setSearchQuery('');}} variant="outline" className="mt-8 rounded-xl font-bold">Clear All Filters</Button>
+            </Motion.div>
+          )}
+        </div>
+      </section>
+
+      {/* Magazine Footer */}
+      <section className="py-20 px-6 border-t border-border-light dark:border-white/5">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-12 text-center md:text-left">
+          <div className="max-w-xl">
+            <h3 className="text-3xl font-black text-text-primary dark:text-white mb-4">Want your story featured?</h3>
+            <p className="text-text-secondary font-medium">We're always looking for high-growth startups with disciplined operations to highlight.</p>
           </div>
+          <Button size="lg" className="h-14 px-10 rounded-xl font-bold">Submit Your Growth Story</Button>
         </div>
       </section>
 

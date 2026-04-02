@@ -360,7 +360,6 @@ export function OrgPublicProfilePage({ overrideSlug }) {
                       {team_size && (
                         <Chip icon={Users}>{team_size} people</Chip>
                       )}
-                      <Chip icon={Users}>{members.length} members</Chip>
                     </div>
                   </div>
                 </div>
@@ -496,7 +495,7 @@ export function OrgPublicProfilePage({ overrideSlug }) {
             )}
 
             {/* ── Team Members ────────────────────────── */}
-            {regularMembers.length > 0 && (
+            {regularMembers.length > 0 && false && (
               <Motion.div {...fadeUp} transition={{ duration: 0.45, delay: 0.22 }}>
                 <div className="bg-white dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-3xl p-7">
                   <SectionHead icon={Users} color="text-blue-500" bg="bg-blue-500/10">
@@ -572,12 +571,6 @@ export function OrgPublicProfilePage({ overrideSlug }) {
                       </span>
                     </OverviewRow>
                   )}
-
-                  <OverviewRow label="Members">
-                    <span className="text-sm font-semibold">
-                      {members.length} people
-                    </span>
-                  </OverviewRow>
                 </div>
               </div>
             </Motion.div>

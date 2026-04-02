@@ -98,6 +98,37 @@ class FileAssetController {
       return contextId === userId.toString() || contextId === userId;
     }
 
+    if (contextType === "organization_transaction") {
+      if (contextId === "0" || parseInt(contextId) === 0) {
+        // Special case: Adding a new transaction. 
+        // We verify if the user is an admin or founder of at least one active organization.
+        const res = await pool.query(
+          "SELECT 1 FROM organization_members WHERE user_id = $1 AND is_active = true AND org_role IN ('FOUNDER', 'CO-FOUNDER', 'ADMIN')",
+          [userId]
+        );
+        return res.rows.length > 0;
+      }
+      // Check if user has access to the organization that owns this transaction
+      const txRes = await pool.query(
+        "SELECT organization_id FROM financial_transactions WHERE id = CAST($1 AS INTEGER)",
+        [contextId]
+      );
+      if (txRes.rows.length === 0) return false;
+      const orgId = txRes.rows[0].organization_id;
+      const result = await pool.query(
+        "SELECT org_role FROM organization_members WHERE organization_id = $1 AND user_id = $2 AND is_active = true",
+        [orgId, userId],
+      );
+      if (result.rows.length > 0) {
+        const orgRole = result.rows[0].org_role;
+        if (isWriteAction) {
+          return ["FOUNDER", "CO-FOUNDER", "ADMIN"].includes(orgRole);
+        }
+        return true;
+      }
+      return false;
+    }
+
     return false;
   }
 
@@ -123,6 +154,14 @@ class FileAssetController {
           (f.context_type = $1 AND f.context_id = CAST($2 AS INTEGER)) 
           OR (f.context_type = 'task' AND f.context_id IN (
             SELECT id FROM tasks WHERE project_id = CAST($2 AS INTEGER)
+          ))
+        `;
+      } else if (contextType === "organization_finance") {
+        queryLogic = `
+          (f.context_type = $1 AND f.context_id = CAST($2 AS INTEGER)) 
+          OR (f.context_type = 'organization_transaction' AND (
+            f.context_id IN (SELECT id FROM financial_transactions WHERE organization_id = CAST($2 AS INTEGER))
+            OR (CAST(f.context_id AS INTEGER) = 0 AND f.uploader_user_id IN (SELECT user_id FROM organization_members WHERE organization_id = CAST($2 AS INTEGER)))
           ))
         `;
       } else if (contextType === "organization") {
