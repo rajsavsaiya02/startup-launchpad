@@ -54,6 +54,7 @@ const DROP_ORDER = [
   "fin_config_profile",
 
   // Org
+  "talent_blocked_organizations",
   "organization_talent_messages",
   "organization_shortlisted_talent",
   "organization_invitations",
@@ -536,10 +537,22 @@ const initDb = async () => {
         user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
         sender_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
         content TEXT NOT NULL,
+        is_deleted_by_org BOOLEAN DEFAULT FALSE,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
     log("organization_talent_messages");
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS talent_blocked_organizations (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        organization_id INTEGER REFERENCES organizations(organization_id) ON DELETE CASCADE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(user_id, organization_id)
+      );
+    `);
+    log("talent_blocked_organizations");
 
     // ── 20. projects ────────────────────────────────────────
     step("Creating project tables …");
@@ -767,7 +780,7 @@ const initDb = async () => {
         cover_letter   TEXT,
         proposed_rate  NUMERIC(15, 2),
         status         VARCHAR(50) DEFAULT 'Pending'
-                         CHECK (status IN ('Pending','Shortlisted','Accepted','Rejected')),
+                         CHECK (status IN ('Pending', 'Under Review', 'Shortlisted', 'Interviewing', 'Accepted', 'Rejected')),
         created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         UNIQUE (opportunity_id, freelancer_id)
@@ -812,6 +825,15 @@ const initDb = async () => {
         slug             VARCHAR(100) UNIQUE NOT NULL,
         title            VARCHAR(255) NOT NULL,
         is_system_page   BOOLEAN DEFAULT FALSE,
+        category         VARCHAR(100),
+        tags             TEXT[],
+        excerpt          TEXT,
+        author_name      VARCHAR(255),
+        author_image     TEXT,
+        author_bio       TEXT,
+        read_time        VARCHAR(50),
+        subtitle         TEXT,
+        page_type        VARCHAR(20) DEFAULT 'page' CHECK (page_type IN ('page', 'blog')),
         draft_content    JSONB DEFAULT '{}',
         published_content JSONB DEFAULT '{}',
         seo_title        VARCHAR(255),
