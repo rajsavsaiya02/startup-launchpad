@@ -1,6 +1,13 @@
 import React from "react";
 import ReactECharts from "echarts-for-react";
-import { TrendingUp, Lock, ExternalLink, ArrowUpRight, ArrowDownRight, Minus } from "lucide-react";
+import {
+  TrendingUp,
+  Lock,
+  ExternalLink,
+  ArrowUpRight,
+  ArrowDownRight,
+  Minus,
+} from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 const formatCurrency = (val) => {
@@ -20,21 +27,24 @@ export function FinanceChartWidget({ financeData }) {
         <div className="w-16 h-16 bg-gray-50 dark:bg-gray-800 rounded-2xl flex items-center justify-center mb-4 border border-border-light dark:border-border-dark">
           <Lock className="w-7 h-7 text-text-tertiary" />
         </div>
-        <h4 className="font-black text-text-primary dark:text-white text-sm mb-1">Finance Overview</h4>
+        <h4 className="font-black text-text-primary dark:text-white text-sm mb-1">
+          Finance Overview
+        </h4>
         <p className="text-xs text-text-tertiary max-w-[220px] leading-relaxed">
           Financial data is only visible to Founders and Admins.
         </p>
-        <button
-          onClick={() => navigate("/org/finances")}
-          className="mt-4 text-[11px] font-black uppercase tracking-widest text-primary hover:text-primary/80 transition-colors flex items-center gap-1"
-        >
-          Request Access <ExternalLink size={11} />
-        </button>
+        {/* 'Request Access' button temporarily hidden due to errors */}
       </div>
     );
   }
 
-  const { totalRevenue, totalExpenses, netCashflow, healthScore, monthlyChart = [] } = financeData;
+  const {
+    totalRevenue,
+    totalExpenses,
+    netCashflow,
+    healthScore,
+    monthlyChart = [],
+  } = financeData;
 
   const months = monthlyChart.map((d) => d.month);
   const incomeData = monthlyChart.map((d) => d.income);
@@ -46,7 +56,11 @@ export function FinanceChartWidget({ financeData }) {
     tooltip: {
       trigger: "axis",
       backgroundColor: "rgba(17, 24, 39, 0.92)",
-      textStyle: { color: "#fff", fontSize: 12, fontFamily: "Inter, sans-serif" },
+      textStyle: {
+        color: "#fff",
+        fontSize: 12,
+        fontFamily: "Inter, sans-serif",
+      },
       borderWidth: 0,
       borderRadius: 10,
       padding: [10, 14],
@@ -76,7 +90,8 @@ export function FinanceChartWidget({ financeData }) {
     xAxis: {
       type: "category",
       boundaryGap: false,
-      data: months.length > 0 ? months : ["Jan", "Feb", "Mar", "Apr", "May", "Jun"],
+      data:
+        months.length > 0 ? months : ["Jan", "Feb", "Mar", "Apr", "May", "Jun"],
       axisLine: { show: false },
       axisTick: { show: false },
       axisLabel: { color: "#9CA3AF", fontSize: 11, fontWeight: 700 },
@@ -101,7 +116,11 @@ export function FinanceChartWidget({ financeData }) {
         lineStyle: { color: "#10B981", width: 3 },
         areaStyle: {
           color: {
-            type: "linear", x: 0, y: 0, x2: 0, y2: 1,
+            type: "linear",
+            x: 0,
+            y: 0,
+            x2: 0,
+            y2: 1,
             colorStops: [
               { offset: 0, color: "rgba(16, 185, 129, 0.25)" },
               { offset: 1, color: "rgba(16, 185, 129, 0.02)" },
@@ -120,7 +139,11 @@ export function FinanceChartWidget({ financeData }) {
         lineStyle: { color: "#F97316", width: 3 },
         areaStyle: {
           color: {
-            type: "linear", x: 0, y: 0, x2: 0, y2: 1,
+            type: "linear",
+            x: 0,
+            y: 0,
+            x2: 0,
+            y2: 1,
             colorStops: [
               { offset: 0, color: "rgba(249, 115, 22, 0.2)" },
               { offset: 1, color: "rgba(249, 115, 22, 0.02)" },
@@ -146,14 +169,16 @@ export function FinanceChartWidget({ financeData }) {
                 healthScore >= 80
                   ? "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600"
                   : healthScore >= 60
-                  ? "bg-amber-50 dark:bg-amber-900/20 text-amber-600"
-                  : "bg-red-50 dark:bg-red-900/20 text-red-600"
+                    ? "bg-amber-50 dark:bg-amber-900/20 text-amber-600"
+                    : "bg-red-50 dark:bg-red-900/20 text-red-600"
               }`}
             >
               Health {healthScore}%
             </span>
           </h3>
-          <p className="text-[11px] text-text-tertiary mt-0.5">Last 6 months income vs expenses</p>
+          <p className="text-[11px] text-text-tertiary mt-0.5">
+            Last 6 months income vs expenses
+          </p>
         </div>
         <button
           onClick={() => navigate("/org/finances")}
@@ -167,11 +192,15 @@ export function FinanceChartWidget({ financeData }) {
       <div className="flex items-center gap-4 mb-4">
         <div className="flex items-center gap-1.5">
           <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block" />
-          <span className="text-[11px] font-bold text-text-tertiary">Income</span>
+          <span className="text-[11px] font-bold text-text-tertiary">
+            Income
+          </span>
         </div>
         <div className="flex items-center gap-1.5">
           <span className="w-2.5 h-2.5 rounded-full bg-orange-500 inline-block" />
-          <span className="text-[11px] font-bold text-text-tertiary">Expenses</span>
+          <span className="text-[11px] font-bold text-text-tertiary">
+            Expenses
+          </span>
         </div>
       </div>
 
@@ -188,25 +217,37 @@ export function FinanceChartWidget({ financeData }) {
       {/* Summary Row */}
       <div className="grid grid-cols-3 gap-3 mt-4 pt-4 border-t border-border-light dark:border-border-dark">
         <div className="text-center">
-          <p className="text-[9px] font-black text-text-tertiary uppercase tracking-widest">Total Income</p>
+          <p className="text-[9px] font-black text-text-tertiary uppercase tracking-widest">
+            Total Income
+          </p>
           <p className="text-sm font-black text-emerald-600 dark:text-emerald-400 tabular-nums mt-0.5">
             {formatCurrency(totalRevenue)}
           </p>
         </div>
         <div className="text-center border-x border-border-light dark:border-border-dark">
-          <p className="text-[9px] font-black text-text-tertiary uppercase tracking-widest">Total Expenses</p>
+          <p className="text-[9px] font-black text-text-tertiary uppercase tracking-widest">
+            Total Expenses
+          </p>
           <p className="text-sm font-black text-orange-600 dark:text-orange-400 tabular-nums mt-0.5">
             {formatCurrency(totalExpenses)}
           </p>
         </div>
         <div className="text-center">
-          <p className="text-[9px] font-black text-text-tertiary uppercase tracking-widest">Net Cashflow</p>
+          <p className="text-[9px] font-black text-text-tertiary uppercase tracking-widest">
+            Net Cashflow
+          </p>
           <p
             className={`text-sm font-black tabular-nums mt-0.5 flex items-center justify-center gap-0.5 ${
-              cashflowPositive ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"
+              cashflowPositive
+                ? "text-emerald-600 dark:text-emerald-400"
+                : "text-red-600 dark:text-red-400"
             }`}
           >
-            {cashflowPositive ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
+            {cashflowPositive ? (
+              <ArrowUpRight size={12} />
+            ) : (
+              <ArrowDownRight size={12} />
+            )}
             {formatCurrency(Math.abs(netCashflow))}
           </p>
         </div>

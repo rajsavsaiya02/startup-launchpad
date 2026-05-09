@@ -21,6 +21,10 @@ const createTask = async (projectId, taskData) => {
 };
 
 const updateTask = async (projectId, taskId, taskData) => {
+  if (!projectId || projectId === "null") {
+    const response = await apiClient.put(`/tasks/${taskId}`, taskData);
+    return response.data;
+  }
   const response = await apiClient.put(
     `${BASE_PATH}/${projectId}/tasks/${taskId}`,
     taskData,
@@ -29,6 +33,11 @@ const updateTask = async (projectId, taskId, taskData) => {
 };
 
 const deleteTask = async (projectId, taskId) => {
+  // If project_id is null/undefined, use the direct personal task delete route
+  if (!projectId || projectId === "null") {
+    const response = await apiClient.delete(`/tasks/${taskId}`);
+    return response.data;
+  }
   const response = await apiClient.delete(
     `${BASE_PATH}/${projectId}/tasks/${taskId}`,
   );

@@ -108,7 +108,8 @@ export function ProjectDetailsPage() {
   const fetchTasks = useCallback(async () => {
     if (!id) return;
     try {
-      setLoading(true);
+      // Note: We intentionally do NOT call setLoading(true) here to avoid
+      // unmounting the entire project page during a task refresh.
       const data = await taskService.getTasksByProject(id);
       setTasks(data);
       setSelectedTask((prevTask) => {
@@ -119,8 +120,6 @@ export function ProjectDetailsPage() {
     } catch (error) {
       console.error("Failed to fetch tasks:", error);
       toast.error("Failed to load tasks");
-    } finally {
-      setLoading(false);
     }
   }, [id]);
 

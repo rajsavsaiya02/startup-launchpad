@@ -1068,13 +1068,11 @@ exports.sendDirectMessage = async (req, res) => {
       ],
     );
 
-    // Undelete whole conversation for org if they are sending
-    if (isOrgSender) {
-      await pool.query(
-        "UPDATE organization_talent_messages SET is_deleted_by_org = FALSE WHERE organization_id = $1 AND user_id = $2",
-        [organizationId, recipientId]
-      );
-    }
+    // Undelete whole conversation for org regardless of sender so that replies become visible
+    await pool.query(
+      "UPDATE organization_talent_messages SET is_deleted_by_org = FALSE WHERE organization_id = $1 AND user_id = $2",
+      [organizationId, isOrgSender ? recipientId : sender_id]
+    );
 
     const fullMsgParams = [result.rows[0].id];
     const fullMessage = await pool.query(
@@ -1193,16 +1191,11 @@ exports.sendMessage = async (req, res) => {
     );
 
     // Ensure conversation is NOT deleted for org
-    const orgRes = await pool.query(
-      "SELECT organization_id FROM organization_members WHERE user_id = $1",
-      [sender_id]
+    // We update the specific application to be visible (is_deleted_by_org = FALSE)
+    await pool.query(
+      "UPDATE opportunity_applications SET is_deleted_by_org = FALSE WHERE id = $1",
+      [application_id]
     );
-    if (orgRes.rows.length > 0) {
-      await pool.query(
-        "UPDATE opportunity_applications SET is_deleted_by_org = FALSE WHERE id = $1 AND opportunity_id IN (SELECT id FROM opportunities WHERE organization_id = $2)",
-        [application_id, orgRes.rows[0].organization_id]
-      );
-    }
 
     const fullMessage = await pool.query(
       `

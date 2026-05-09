@@ -13,7 +13,7 @@ import {
   Zap,
   Calendar,
 } from "lucide-react";
-import { format, subDays, isSameDay } from "date-fns";
+import { format, subDays, isSameDay, isBefore, startOfDay } from "date-fns";
 
 import { useAuth } from "../../context/AuthContext";
 import projectService from "../../services/projectService";
@@ -103,7 +103,14 @@ export function UserDashboard() {
     const now = new Date();
     
     // Project Metrics
-    const activeProjects = projects.filter(p => p.status === "Active" || p.status === "Planning").length;
+    const activeProjectsList = projects.filter(p => {
+      const isCompleted = (p.status || "Active") === "Completed" || Number(p.progress) >= 100;
+      const isOverdue = p.due_date && isBefore(startOfDay(new Date(p.due_date)), startOfDay(new Date()));
+      const isArchived = isCompleted && isOverdue;
+      return !isArchived;
+    });
+
+    const activeProjectCount = activeProjectsList.filter(p => p.status === "Active" || p.status === "Planning").length;
     
     // Task Metrics
     const highPriorityTasks = tasks.filter(t => 
@@ -145,7 +152,8 @@ export function UserDashboard() {
     };
 
     return {
-      activeProjects,
+      activeProjects: activeProjectCount,
+      activeProjectsList,
       urgentTasks: highPriorityTasks.length,
       urgentTasksList: highPriorityTasks.slice(0, 5), // Top 5 for radar
       weeklyVelocity: completedTasksLast7Days.length,
@@ -289,7 +297,7 @@ export function UserDashboard() {
                        <div key={i} className="h-12 bg-gray-100 dark:bg-gray-800 rounded-xl w-full"></div>
                      ))}
                    </div>
-                ) : projects.slice(0, 4).map((proj) => (
+                ) : metrics.activeProjectsList.slice(0, 4).map((proj) => (
                   <div key={proj.id} className="group relative">
                     <div className="flex justify-between text-sm mb-2 items-end">
                       <span className="font-bold text-text-primary dark:text-white truncate pr-4">
@@ -314,7 +322,7 @@ export function UserDashboard() {
                     </div>
                   </div>
                 ))}
-                {!loading && projects.length === 0 && (
+                {!loading && metrics.activeProjectsList.length === 0 && (
                   <div className="p-8 text-center rounded-2xl border border-dashed border-gray-200 dark:border-gray-800">
                     <Folder className="w-8 h-8 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
                     <p className="text-text-secondary font-medium">No projects yet. Start building!</p>

@@ -65,18 +65,31 @@ const getTasksByProject = async (req, res) => {
   const { id } = req.params; // project_id
   const userId = req.user.id;
   try {
-    // Determine the user's org role for this project's organization
-    const orgMemberResult = await pool.query(
-      `SELECT om.org_role
-       FROM organization_members om
-       JOIN projects p ON p.owner_org_id = om.organization_id
-       WHERE om.user_id = $1 AND om.is_active = true AND p.id = $2
-       LIMIT 1`,
-      [userId, id],
-    );
+    // Determine if it's an org project or personal project
+    const projectResult = await pool.query("SELECT owner_org_id FROM projects WHERE id = $1", [id]);
+    if (projectResult.rows.length === 0) {
+      return res.status(404).json({ message: "Project not found" });
+    }
+    const isPersonal = !projectResult.rows[0].owner_org_id;
 
-    const orgRole = orgMemberResult.rows[0]?.org_role;
-    const isGuest = !orgRole || !['FOUNDER', 'CO-FOUNDER', 'ADMIN', 'MEMBER'].includes(orgRole);
+    let isGuest = true;
+    if (isPersonal) {
+      // For personal projects, if you made it through `protect` and can access the project, you have full view
+      isGuest = false;
+    } else {
+      // Determine the user's org role for this project's organization
+      const orgMemberResult = await pool.query(
+        `SELECT om.org_role
+         FROM organization_members om
+         JOIN projects p ON p.owner_org_id = om.organization_id
+         WHERE om.user_id = $1 AND om.is_active = true AND p.id = $2
+         LIMIT 1`,
+        [userId, id],
+      );
+
+      const orgRole = orgMemberResult.rows[0]?.org_role;
+      isGuest = !orgRole || !['FOUNDER', 'CO-FOUNDER', 'ADMIN', 'MEMBER'].includes(orgRole);
+    }
 
     let tasksQuery;
     let params;
